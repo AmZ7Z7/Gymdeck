@@ -1,0 +1,22 @@
+import { chromium } from "playwright";
+const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+const page = await ctx.newPage();
+await page.goto("http://localhost:3100/");
+await page.waitForSelector(".app .screen");
+await page.evaluate(() => {
+  const mk = (i, slug, rarity, atq, def, passive) => ({ id: "t" + i, obtainedSeq: i, exerciseSlug: slug, rarity, atq, def, passive });
+  const cards = [mk(1, "developpe-incline", "UR", 1100, 960, { type: "BOTH", atqTenths: 15, defTenths: 12 }), mk(2, "developpe-couche", "SSR", 720, 655, null), mk(3, "curl-biceps", "SR", 400, 400, null), mk(4, "elevations-laterales", "LR", 1400, 1400, { type: "ATQ", atqTenths: 55, defTenths: 0 })];
+  const s = JSON.parse(localStorage.getItem("gymdeck:proto:v1"));
+  s.player = { ...s.player, cards, boosters: [], seq: 4 }; s.opening = null;
+  localStorage.setItem("gymdeck:proto:v1", JSON.stringify(s));
+});
+await page.reload();
+await page.getByRole("button", { name: "Collection" }).click();
+await page.getByText("Voir toutes ›").first().click();
+await page.waitForTimeout(500);
+await page.screenshot({ path: process.argv[2] + "/30-long-names.png" });
+await page.locator(".cell").first().click();
+await page.waitForTimeout(400);
+await page.screenshot({ path: process.argv[2] + "/31-long-detail.png" });
+await browser.close();

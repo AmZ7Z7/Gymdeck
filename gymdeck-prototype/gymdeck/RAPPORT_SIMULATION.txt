@@ -1,0 +1,48 @@
+
+=== 1. Table normale — 5 000 000 cartes, sans garanties ===
+rareté   attendu    observé
+C      42.000 %  42.032 %
+R      30.000 %  29.977 %
+SR     17.000 %  17.017 %
+SSR     9.700 %   9.688 %
+UR      1.000 %   0.990 %
+LR      0.300 %   0.297 %
+χ² = 9.81 (seuil 5 % à 5 ddl : 11,07)
+
+=== 1. Table 2e bienvenue — 5 000 000 cartes, sans garanties ===
+rareté   attendu    observé
+C      28.400 %  28.396 %
+R      30.000 %  30.004 %
+SR     25.500 %  25.498 %
+SSR    14.550 %  14.552 %
+UR      1.250 %   1.246 %
+LR      0.300 %   0.304 %
+χ² = 3.26 (seuil 5 % à 5 ddl : 11,07)
+
+=== 2. 1 000 000 boosters normaux AVEC garanties (R+ et pity à 12) ===
+rareté   table      observé    écart
+C      42.000 %  40.784 % -1.216 pt
+R      30.000 %  30.181 % +0.181 pt
+SR     17.000 %  16.966 % -0.034 pt
+SSR     9.700 %   9.701 % +0.001 pt
+UR      1.000 %   2.065 % +1.065 pt
+LR      0.300 %   0.304 % +0.004 pt
+
+Boosters contenant ≥ 1 UR/LR :   11.67 % (théorie sans pity :    6.33 %)
+Nb moyen de boosters entre deux UR/LR : 8.57 (théorie avec pity 8.59 ; sans pity 15.79)
+Écart maximal observé : 12 boosters (plafond attendu : 12)
+Pity déclenché sur    5.30 % des boosters, soit    45.5 % des séquences UR/LR
+Garantie R+ déclenchée sur    1.24 % des boosters (théorie :    1.31 %)
+Théorie : P(11 boosters sans UR/LR) =    48.7 % ; P(12 sans) =    45.6 %
+LR : 1 tous les 66 boosters ; UR : 1 tous les 9.7 boosters
+Total UR+LR : 0.1184 par booster
+
+=== 3. Stats et passifs (200 000 cartes par rareté) ===
+C    ATQ/DEF min 100 max 180 (fourchette 100–180) · moyenne ATQ 139.9 (milieu 140) · corrélation ATQ/DEF 0.0005
+R    ATQ/DEF min 220 max 320 (fourchette 220–320) · moyenne ATQ 270.1 (milieu 270) · corrélation ATQ/DEF 0.0003
+SR   ATQ/DEF min 380 max 520 (fourchette 380–520) · moyenne ATQ 449.9 (milieu 450) · corrélation ATQ/DEF -0.0007
+SSR  ATQ/DEF min 600 max 800 (fourchette 600–800) · moyenne ATQ 700.1 (milieu 700) · corrélation ATQ/DEF -0.0036
+UR   ATQ/DEF min 900 max 1150 (fourchette 900–1150) · moyenne ATQ 1025.0 (milieu 1025) · corrélation ATQ/DEF 0.0008
+     passifs : ATQ    33.2 % · DEF    33.4 % · ATQ+DEF    33.4 % · valeur 1.0–4.0 % (moy. 2.25 %)
+LR   ATQ/DEF min 1300 max 1700 (fourchette 1300–1700) · moyenne ATQ 1500.3 (milieu 1500) · corrélation ATQ/DEF 0.0011
+     passifs : ATQ    33.2 % · DEF    33.3 % · ATQ+DEF    33.5 % · valeur 2.5–7.0 % (moy. 4.49 %)

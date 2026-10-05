@@ -1,0 +1,31 @@
+import type { Metadata, Viewport } from "next";
+import "@fontsource/barlow/400.css";
+import "@fontsource/barlow/600.css";
+import "@fontsource/barlow-condensed/600-italic.css";
+import "@fontsource/barlow-condensed/700-italic.css";
+import "@fontsource/barlow-condensed/800-italic.css";
+import "@fontsource/barlow-condensed/700.css";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "GymDeck",
+  description: "Ta séance, ton booster.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "GymDeck", statusBarStyle: "black-translucent" },
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover",
+  themeColor: "#070a12",
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="fr">
+      <body>{children}</body>
+    </html>
+  );
+}
