@@ -22,7 +22,7 @@ export function Card({ card, count }: { card: CardData; count?: number }) {
   const top = card.rarity === "UR" || card.rarity === "LR";
   return (
     <div className="card">
-      <img className="frame" src={`/assets/frames/${card.rarity}.webp`} alt="" draggable={false} />
+      <img className="frame" src={`/assets/frames/${card.rarity}.webp`} alt="" draggable={false} decoding="async" />
       <img
         className="art"
         src={ex.image}

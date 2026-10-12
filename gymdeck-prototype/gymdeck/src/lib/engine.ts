@@ -150,3 +150,46 @@ export function deckTotals(cards: CardData[]): DeckTotals {
     totalDef: Math.round((baseDef * (1000 + defTenths)) / 1000),
   };
 }
+
+// ───────────── Aides deck ─────────────
+
+/** Puissance d'un deck = ATQ totale + DEF totale (passifs inclus). */
+export function deckPower(cards: CardData[]): number {
+  const t = deckTotals(cards);
+  return t.totalAtq + t.totalDef;
+}
+
+/**
+ * Meilleur deck possible parmi les cartes possédées : un exemplaire par exercice, passifs compris.
+ * Glouton (on ajoute la carte qui fait le plus monter la puissance) puis améliorations par échanges.
+ */
+export function bestDeckIds<T extends CardData & { id: string }>(cards: T[], size = DECK_SIZE): string[] {
+  const picked: T[] = [];
+  const power = (list: T[]) => deckPower(list);
+
+  while (picked.length < size) {
+    let best: T | null = null;
+    let bestPower = -1;
+    for (const c of cards) {
+      if (picked.some((p) => p.exerciseSlug === c.exerciseSlug)) continue;
+      const pw = power([...picked, c]);
+      if (pw > bestPower) { bestPower = pw; best = c; }
+    }
+    if (!best) break;
+    picked.push(best);
+  }
+
+  let improved = true;
+  while (improved) {
+    improved = false;
+    for (let i = 0; i < picked.length; i++) {
+      for (const c of cards) {
+        if (picked[i]!.id === c.id) continue;
+        if (picked.some((p, k) => k !== i && p.exerciseSlug === c.exerciseSlug)) continue;
+        const candidate = picked.map((p, k) => (k === i ? c : p));
+        if (power(candidate) > power(picked)) { picked[i] = c; improved = true; }
+      }
+    }
+  }
+  return picked.map((c) => c.id);
+}

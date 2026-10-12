@@ -134,3 +134,78 @@ describe("défausse et deck", () => {
     expect(setDeck(s, [s.cards[0]!.id, s.cards[1]!.id]).ok).toBe(false);
   });
 });
+
+import { autoDeck, completion, discardMany, duplicateIds, msUntilParisMidnight, setName } from "../src/lib/game";
+import { deckPower } from "../src/lib/engine";
+
+describe("pseudo", () => {
+  it("accepte un pseudo propre, refuse trop court, tronque à 20", () => {
+    const s = createAccount();
+    expect(ok(setName(s, "  Adrien  ")).state.name).toBe("Adrien");
+    expect(setName(s, "A").ok).toBe(false);
+    expect(ok(setName(s, "x".repeat(40))).state.name).toHaveLength(20);
+  });
+});
+
+describe("deck automatique", () => {
+  const mk = (id: string, slug: string, rarity: "C" | "R" | "SR" | "SSR" | "UR" | "LR", atq: number, def: number, passive: any = null) =>
+    ({ id, obtainedSeq: 0, exerciseSlug: slug, rarity, atq, def, passive } as any);
+
+  it("prend un seul exemplaire par exercice, le meilleur, et jamais plus de 5 cartes", () => {
+    const s = { ...createAccount(), cards: [
+      mk("a1", "a", "C", 100, 100), mk("a2", "a", "SR", 500, 500),
+      mk("b1", "b", "R", 300, 300), mk("c1", "c", "R", 250, 250), mk("d1", "d", "SSR", 700, 700),
+      mk("e1", "e", "C", 150, 150), mk("f1", "f", "C", 120, 120), mk("g1", "g", "C", 110, 110),
+    ] };
+    const deck = ok(autoDeck(s)).state.deck;
+    expect(deck).toHaveLength(5);
+    expect(deck).toContain("a2");
+    expect(deck).not.toContain("a1");
+    expect(new Set(deck.map((id) => s.cards.find((c) => c.id === id)!.exerciseSlug)).size).toBe(5);
+  });
+
+  it("un passif puissant peut l'emporter sur des stats brutes un peu plus hautes", () => {
+    const s = { ...createAccount(), cards: [
+      mk("x1", "x", "UR", 900, 900, { type: "BOTH", atqTenths: 20, defTenths: 20 }),
+      mk("x2", "x", "UR", 1000, 1000, null),
+      mk("y1", "y", "SSR", 800, 800), mk("z1", "z", "SSR", 800, 800), mk("w1", "w", "SSR", 800, 800), mk("v1", "v", "SSR", 800, 800),
+    ] };
+    const deck = ok(autoDeck(s)).state.deck;
+    const chosen = deck.map((id) => s.cards.find((c) => c.id === id)!);
+    const alt = chosen.map((c) => (c.id === "x1" ? s.cards.find((k) => k.id === "x2")! : c));
+    expect(deckPower(chosen)).toBeGreaterThanOrEqual(deckPower(alt));
+  });
+
+  it("refuse si la collection est vide", () => {
+    expect(autoDeck(createAccount()).ok).toBe(false);
+  });
+});
+
+describe("doublons", () => {
+  const mk = (id: string, slug: string, rarity: any, atq: number, def: number) => ({ id, obtainedSeq: 0, exerciseSlug: slug, rarity, atq, def, passive: null } as any);
+
+  it("garde la meilleure carte par exercice+rareté, jamais une carte du deck, et crédite les GC", () => {
+    let s = { ...createAccount(), cards: [mk("a", "x", "R", 300, 300), mk("b", "x", "R", 250, 250), mk("c", "x", "R", 220, 220), mk("d", "x", "SR", 400, 400)] };
+    expect(duplicateIds(s).sort()).toEqual(["b", "c"]);
+    s = { ...s, deck: ["c"] }; // la carte du deck est conservée en priorité
+    expect(duplicateIds(s).sort()).toEqual(["a", "b"]);
+    const r = ok(discardMany(s, ["a", "b", "c"]));
+    expect(r.count).toBe(2); // « c » est dans le deck
+    expect(r.gained).toBe(4); // 2 × 2 GC (R)
+    expect(r.state.cards.map((c) => c.id).sort()).toEqual(["c", "d"]);
+  });
+
+  it("complétion : couples exercice+rareté distincts", () => {
+    const s = { ...createAccount(), cards: [mk("a", "x", "R", 1, 1), mk("b", "x", "R", 2, 2), mk("c", "y", "R", 1, 1)] };
+    expect(completion(s)).toEqual({ owned: 2, total: 60 });
+  });
+});
+
+describe("minuit à Paris", () => {
+  it("compte les millisecondes restantes avant le reset", () => {
+    // 21:00Z = 23:00 Paris (été) → 1 h restante
+    expect(msUntilParisMidnight(new Date("2026-10-05T21:00:00Z"))).toBe(3600_000);
+    // 22:00Z = minuit pile → 24 h restantes
+    expect(msUntilParisMidnight(new Date("2026-10-05T22:00:00Z"))).toBe(86400_000);
+  });
+});

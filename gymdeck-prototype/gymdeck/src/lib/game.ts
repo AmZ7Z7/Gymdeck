@@ -1,7 +1,7 @@
 import {
-  BOOSTER_PRICE_GC, BoosterKind, DAILY_LOGIN_GC, DECK_SIZE, DISCARD_GC, LOGIN_CYCLE, PARIS_TZ,
+  BOOSTER_PRICE_GC, BoosterKind, DAILY_LOGIN_GC, DECK_SIZE, DISCARD_GC, EXERCISES, LOGIN_CYCLE, PARIS_TZ, RARITIES,
 } from "./config";
-import { CardData, openBooster, validateDeck } from "./engine";
+import { CardData, bestDeckIds, openBooster, validateDeck } from "./engine";
 import type { Rng } from "./rng";
 
 export interface OwnedCard extends CardData {
@@ -17,6 +17,8 @@ export interface PendingBooster {
 
 /** État sérialisable d'un joueur — c'est ce qui sera stocké en base. */
 export interface PlayerState {
+  /** Pseudo choisi à l'arrivée (absent sur les anciennes sauvegardes : on le redemande). */
+  name?: string;
   gc: number;
   boosters: PendingBooster[];
   cards: OwnedCard[];
@@ -153,4 +155,63 @@ export function setDeck(s: PlayerState, cardIds: string[]): Result<{ state: Play
   const err = validateDeck(cards);
   if (err) return { ok: false, error: err };
   return { ok: true, state: { ...s, deck: cardIds } };
+}
+
+
+// ───────────── Compléments : pseudo, deck auto, doublons, progression ─────────────
+
+export function setName(s: PlayerState, name: string): Result<{ state: PlayerState }> {
+  const clean = name.trim().replace(/\s+/g, " ").slice(0, 20);
+  if (clean.length < 2) return { ok: false, error: "Ton pseudo doit faire au moins 2 caractères." };
+  return { ok: true, state: { ...s, name: clean } };
+}
+
+/** Remplit / optimise le deck avec les meilleures cartes possédées. */
+export function autoDeck(s: PlayerState): Result<{ state: PlayerState }> {
+  const ids = bestDeckIds(s.cards);
+  if (ids.length === 0) return { ok: false, error: "Tu n'as pas encore de carte." };
+  return { ok: true, state: { ...s, deck: ids } };
+}
+
+/**
+ * Doublons défaussables : pour chaque couple (exercice, rareté), on garde la meilleure carte
+ * (celle du deck en priorité) et on propose les autres. Une carte du deck n'est jamais proposée.
+ */
+export function duplicateIds(s: PlayerState): string[] {
+  const groups = new Map<string, OwnedCard[]>();
+  for (const c of s.cards) {
+    const key = `${c.exerciseSlug}|${c.rarity}`;
+    groups.set(key, [...(groups.get(key) ?? []), c]);
+  }
+  const out: string[] = [];
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    const sorted = [...list].sort((a, b) =>
+      Number(s.deck.includes(b.id)) - Number(s.deck.includes(a.id)) || b.atq + b.def - (a.atq + a.def));
+    for (const c of sorted.slice(1)) if (!s.deck.includes(c.id)) out.push(c.id);
+  }
+  return out;
+}
+
+export function discardMany(s: PlayerState, ids: string[]): Result<{ state: PlayerState; gained: number; count: number }> {
+  const set = new Set(ids);
+  const removable = s.cards.filter((c) => set.has(c.id) && !s.deck.includes(c.id));
+  if (removable.length === 0) return { ok: false, error: "Rien à défausser." };
+  const gained = removable.reduce((sum, c) => sum + DISCARD_GC[c.rarity], 0);
+  const gone = new Set(removable.map((c) => c.id));
+  return { ok: true, gained, count: removable.length, state: { ...s, gc: s.gc + gained, cards: s.cards.filter((c) => !gone.has(c.id)) } };
+}
+
+/** Complétion : nombre de couples (exercice, rareté) possédés sur le total possible. */
+export function completion(s: PlayerState): { owned: number; total: number } {
+  const owned = new Set(s.cards.map((c) => `${c.exerciseSlug}|${c.rarity}`)).size;
+  return { owned, total: EXERCISES.length * RARITIES.length };
+}
+
+/** Millisecondes avant le prochain minuit à Paris (reset du booster de séance). */
+export function msUntilParisMidnight(now: Date): number {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: PARIS_TZ, hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" }).formatToParts(now);
+  const v = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
+  const elapsed = v("hour") * 3600 + v("minute") * 60 + v("second");
+  return Math.max(0, (86400 - elapsed) * 1000);
 }

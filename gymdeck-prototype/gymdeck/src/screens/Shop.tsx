@@ -1,9 +1,11 @@
 "use client";
 
-import { GcPill, Wordmark } from "@/components/Bits";
+import { useState } from "react";
+import { GcPill, LoginDots, OddsSheet, Wordmark } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
 import { IconCart, IconChevron } from "@/components/Icons";
-import { BOOSTER_PRICE_GC, DAILY_LOGIN_GC, LOGIN_CYCLE, type BoosterKind } from "@/lib/config";
+import { Sheet } from "@/components/Sheet";
+import { BOOSTER_PRICE_GC, DAILY_LOGIN_GC, LOGIN_CYCLE, PITY_THRESHOLD, type BoosterKind } from "@/lib/config";
 
 const KIND_LABEL: Record<BoosterKind, string> = {
   welcome1: "Bienvenue", welcome2: "Bienvenue ✦", session: "Séance", login: "Connexion", shop: "Boutique",
@@ -12,7 +14,12 @@ const KIND_LABEL: Record<BoosterKind, string> = {
 export function Shop({ onMarket }: { onMarket: () => void }) {
   const g = useGame();
   const { player } = g;
-  const untilBonus = LOGIN_CYCLE - (player.loginCount % LOGIN_CYCLE);
+  const [odds, setOdds] = useState(false);
+  const [bought, setBought] = useState<string | null>(null);
+  const cycle = player.loginCount % LOGIN_CYCLE;
+  const untilBonus = LOGIN_CYCLE - cycle;
+  const missing = BOOSTER_PRICE_GC - player.gc;
+  const pity = Math.min(player.pityCounter, PITY_THRESHOLD - 1);
 
   return (
     <div className="screen">
@@ -28,13 +35,24 @@ export function Shop({ onMarket }: { onMarket: () => void }) {
           <button
             className="btn primary small"
             style={{ marginTop: 8 }}
-            disabled={player.gc < BOOSTER_PRICE_GC}
-            onClick={() => { const e = g.buy(); g.say(e ?? "Booster ajouté à tes boosters"); }}
-          >Acheter — {BOOSTER_PRICE_GC} GC</button>
+            disabled={missing > 0}
+            onClick={() => {
+              const r = g.buy();
+              if ("error" in r) { g.say(r.error); return; }
+              setBought(r.boosterId);
+            }}
+          >{missing > 0 ? `Il manque ${missing} GC` : `Acheter — ${BOOSTER_PRICE_GC} GC`}</button>
         </div>
       </div>
+      {missing > 0 && <p className="hint">Récupère ta récompense du jour ou défausse des doublons pour gagner des GC.</p>}
 
-      <div className="panel reward">
+      <div className="pityrow">
+        <div className="l"><span>Garantie UR</span><span>{pity >= PITY_THRESHOLD - 1 ? <b>au prochain booster !</b> : <>dans <b>{PITY_THRESHOLD - pity}</b> booster{PITY_THRESHOLD - pity > 1 ? "s" : ""} au plus</>}</span></div>
+        <div className="progress"><i style={{ width: `${(pity / (PITY_THRESHOLD - 1)) * 100}%` }} /></div>
+        <button className="link" style={{ justifySelf: "start", marginTop: 2 }} onClick={() => setOdds(true)}>Voir les taux de drop ›</button>
+      </div>
+
+      <div className="panel reward" style={{ flexWrap: "wrap" }}>
         <span className="coin" />
         <div className="t">Récompense quotidienne
           <span>{g.loginDoneToday ? "Déjà récupérée aujourd’hui." : `+${DAILY_LOGIN_GC} GC · booster dans ${untilBonus} connexion${untilBonus > 1 ? "s" : ""}`}</span>
@@ -47,6 +65,7 @@ export function Shop({ onMarket }: { onMarket: () => void }) {
             g.say(r === "bonus" ? `+${DAILY_LOGIN_GC} GC et un booster offert !` : r ?? `+${DAILY_LOGIN_GC} GC`);
           }}
         >Récupérer</button>
+        <div style={{ width: "100%" }}><LoginDots done={g.loginDoneToday && cycle === 0 ? LOGIN_CYCLE : cycle} total={LOGIN_CYCLE} /></div>
       </div>
 
       <div className="row-head">
@@ -54,7 +73,7 @@ export function Shop({ onMarket }: { onMarket: () => void }) {
         <span className="link" style={{ color: "var(--muted)" }}>{player.boosters.length}</span>
       </div>
       {player.boosters.length === 0 ? (
-        <div className="empty">Aucun booster en stock.</div>
+        <div className="empty">Aucun booster en stock. Valide ta séance sur l’accueil !</div>
       ) : (
         <div className="panel mypacks">
           {player.boosters.map((b) => (
@@ -71,6 +90,16 @@ export function Shop({ onMarket }: { onMarket: () => void }) {
         <span className="t">Marché</span>
         <span className="soon">Bientôt disponible <IconChevron width={14} height={14} style={{ verticalAlign: "-2px" }} /></span>
       </button>
+
+      {odds && <OddsSheet onClose={() => setOdds(false)} />}
+      {bought && (
+        <Sheet onClose={() => setBought(null)} label="Booster acheté">
+          <div className="sheet-title">Booster acheté !</div>
+          <p>Il est dans tes boosters. Tu l’ouvres maintenant ?</p>
+          <button className="btn primary" onClick={() => { const id = bought; setBought(null); g.startOpening(id); }}>Ouvrir maintenant</button>
+          <button className="btn ghost small" onClick={() => setBought(null)}>Plus tard</button>
+        </Sheet>
+      )}
     </div>
   );
 }

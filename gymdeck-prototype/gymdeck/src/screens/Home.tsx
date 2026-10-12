@@ -1,17 +1,32 @@
 "use client";
 
+import { motion } from "framer-motion";
+import { useState } from "react";
 import { Card } from "@/components/Card";
-import { DEMO_NAME, GcPill, Wordmark } from "@/components/Bits";
+import { GcPill, LoginDots, Wordmark, formatDuration, useNow } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
 import { IconChevron } from "@/components/Icons";
+import { Sheet } from "@/components/Sheet";
+import { DAILY_LOGIN_GC, DECK_SIZE, LOGIN_CYCLE } from "@/lib/config";
+import { deckTotals } from "@/lib/engine";
+import { completion, msUntilParisMidnight } from "@/lib/game";
 import type { Tab } from "@/app/page";
 
 export function Home({ go }: { go: (t: Tab) => void }) {
   const g = useGame();
   const { player } = g;
+  const now = useNow();
+  const [confirm, setConfirm] = useState(false);
   const stock = player.boosters.length;
   const hasWelcome = player.boosters.some((b) => b.kind === "welcome1" || b.kind === "welcome2");
   const recent = [...player.cards].sort((a, b) => b.obtainedSeq - a.obtainedSeq).slice(0, 8);
+  const comp = completion(player);
+  const t = deckTotals(g.deckCards);
+  const cycle = player.loginCount % LOGIN_CYCLE;
+  const untilBonus = LOGIN_CYCLE - cycle;
+  const countdown = formatDuration(msUntilParisMidnight(now));
+
+  const openFirst = () => stock > 0 && g.startOpening(player.boosters[0]!.id);
 
   return (
     <div className="screen">
@@ -19,61 +34,128 @@ export function Home({ go }: { go: (t: Tab) => void }) {
         <Wordmark />
         <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
           <GcPill gc={player.gc} />
-          <div className="avatar">{DEMO_NAME[0]}</div>
+          <button className="avatar" aria-label="Mon profil" onClick={() => go("profile")}>{(player.name ?? "?")[0]!.toUpperCase()}</button>
         </div>
       </div>
 
-      <h1 className="title" style={{ fontSize: 46, marginTop: 20, marginBottom: 2 }}>
-        Bonjour <span style={{ color: "var(--lime)" }}>{DEMO_NAME} !</span>
+      <h1 className="title" style={{ fontSize: 44, marginTop: 16, marginBottom: 2 }}>
+        Bonjour <span style={{ color: "var(--lime)" }}>{player.name} !</span>
       </h1>
-      <div style={{ fontSize: 22, color: "#d5dbee" }}>Ta séance, ton booster.</div>
+      <div style={{ fontSize: 20, color: "#d5dbee" }}>
+        {stock > 0 ? (hasWelcome ? "Tes boosters de bienvenue t’attendent." : "Un booster t’attend.") : g.sessionDoneToday ? "Séance validée. Bien joué." : "Ta séance, ton booster."}
+      </div>
 
-      <button
-        className="pack pulse"
-        style={{ height: "min(38dvh, 340px)", marginTop: 8 }}
-        aria-label="Ouvrir un booster"
-        onClick={() => stock > 0 && g.startOpening(player.boosters[0]!.id)}
-      >
-        <img src="/assets/ui/booster.webp" alt="Booster GymDeck" draggable={false} />
-        {stock > 0 && (
-          <span style={{ position: "absolute", right: "18%", top: "8%", minWidth: 34, height: 34, borderRadius: 17, background: "var(--lime)", color: "#0a0d14", display: "grid", placeItems: "center", fontFamily: "var(--display)", fontWeight: 800, fontSize: 22, padding: "0 8px" }}>
-            {stock}
-          </span>
-        )}
-      </button>
+      <div className="hero">
+        <span className="halo" />
+        <motion.button
+          className="pack"
+          aria-label={stock > 0 ? "Ouvrir un booster" : "Booster GymDeck"}
+          animate={{ y: [0, -8, 0] }}
+          transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+          whileTap={{ scale: 0.96 }}
+          onClick={openFirst}
+        >
+          <img src="/assets/ui/booster.webp" alt="" draggable={false} />
+        </motion.button>
+        {stock > 0 && <span className="stockbadge">{stock}</span>}
+      </div>
 
       {!g.sessionDoneToday ? (
-        <button
-          className="btn primary"
-          onClick={() => {
-            const err = g.validate();
-            if (err) g.say(err);
-          }}
-        >
-          Valider ma séance <IconChevron width={22} height={22} />
-        </button>
+        <>
+          <button className="btn primary" onClick={() => setConfirm(true)}>
+            Valider ma séance <IconChevron width={22} height={22} />
+          </button>
+          {stock > 0 && (
+            <button className="btn ghost small" style={{ marginTop: 10 }} onClick={openFirst}>
+              {hasWelcome ? "Ouvrir mes boosters de bienvenue" : `Ouvrir un booster (${stock})`}
+            </button>
+          )}
+          <p className="hint">1 booster de séance par jour</p>
+        </>
+      ) : stock > 0 ? (
+        <>
+          <button className="btn primary" onClick={openFirst}>{hasWelcome ? "Ouvrir mes boosters" : `Ouvrir un booster (${stock})`}</button>
+          <p className="hint">Prochain booster de séance dans {countdown}</p>
+        </>
       ) : (
-        <button className="btn ghost" disabled>Séance du jour validée ✓</button>
+        <>
+          <button className="btn ghost" disabled>Séance du jour validée ✓</button>
+          <p className="hint">Prochain booster de séance dans {countdown}</p>
+        </>
       )}
-      {stock > 0 && (
-        <button className="btn ghost small" style={{ marginTop: 10 }} onClick={() => g.startOpening(player.boosters[0]!.id)}>
-          {hasWelcome ? "Ouvrir mes boosters de bienvenue" : `Ouvrir un booster (${stock})`}
-        </button>
+
+      {!g.loginDoneToday ? (
+        <div className="panel dailybanner">
+          <div className="top">
+            <span className="coin" />
+            <div className="t">Récompense du jour<span>+{DAILY_LOGIN_GC} GC{untilBonus === 1 ? " + un booster offert !" : ` · booster dans ${untilBonus} connexion${untilBonus > 1 ? "s" : ""}`}</span></div>
+            <button
+              className="btn primary chipbtn"
+              onClick={() => {
+                const r = g.claim();
+                g.say(r === "bonus" ? `+${DAILY_LOGIN_GC} GC et un booster offert !` : r ?? `+${DAILY_LOGIN_GC} GC récupérés`);
+              }}
+            >Récupérer</button>
+          </div>
+          <LoginDots done={cycle} total={LOGIN_CYCLE} />
+        </div>
+      ) : (
+        <div className="dailydone">
+          <LoginDots done={cycle === 0 ? LOGIN_CYCLE : cycle} total={LOGIN_CYCLE} />
+          <span>{cycle === 0 ? "Cycle terminé, booster reçu · un nouveau cycle commence à ta prochaine connexion." : `Connexion du jour récupérée · booster offert dans ${untilBonus} connexion${untilBonus > 1 ? "s" : ""}`}</span>
+        </div>
       )}
-      <p className="hint">{g.sessionDoneToday ? "Reviens demain pour un nouveau booster de séance." : "1 booster de séance par jour"}</p>
+
+      <button className="panel minideck" onClick={() => go("gymdeck")}>
+        <div className="row-head" style={{ margin: 0 }}>
+          <h2 className="section" style={{ fontSize: 26 }}>Mon GymDeck</h2>
+          <span className="link">{g.deckCards.length}/{DECK_SIZE} ›</span>
+        </div>
+        <div className="row">
+          {Array.from({ length: DECK_SIZE }, (_, i) => {
+            const c = g.deckCards[i];
+            return c ? <div key={c.id}><Card card={c} /></div> : <div key={i} className="slotmini">+</div>;
+          })}
+        </div>
+        {g.deckCards.length > 0 ? (
+          <div className="tot"><span>ATQ {t.totalAtq}</span><span>DEF {t.totalDef}</span></div>
+        ) : (
+          <div style={{ marginTop: 10, color: "var(--muted)", fontSize: 15 }}>
+            {player.cards.length > 0 ? "Compose ton deck de 5 exercices." : "Ouvre un booster, puis compose ton deck."}
+          </div>
+        )}
+      </button>
 
       <div className="row-head">
         <h2 className="section">Mes cartes</h2>
         <button className="link" onClick={() => go("collection")}>Voir toutes ›</button>
       </div>
+      <div className="statsline"><span>Collection : <b>{comp.owned} / {comp.total}</b> cartes uniques</span></div>
+      <div className="progress" style={{ marginBottom: 12 }}><i style={{ width: `${(comp.owned / comp.total) * 100}%` }} /></div>
       {recent.length === 0 ? (
         <div className="empty">Ouvre ton premier booster pour commencer ta collection.</div>
       ) : (
         <div className="strip">
           {recent.map((c) => (
-            <div className="cell" key={c.id}><Card card={c} /></div>
+            <button className="cell" key={c.id} aria-label="Voir ma collection" onClick={() => go("collection")}><Card card={c} /></button>
           ))}
         </div>
+      )}
+
+      {confirm && (
+        <Sheet onClose={() => setConfirm(false)} label="Valider ma séance">
+          <div className="sheet-title">Séance terminée ?</div>
+          <p>Tu as fait ta séance aujourd’hui ? GymDeck te fait confiance : pas de preuve à fournir. Tu reçois un booster de séance.</p>
+          <button
+            className="btn primary"
+            onClick={() => {
+              setConfirm(false);
+              const err = g.validate();
+              if (err) g.say(err);
+            }}
+          >Oui, je valide</button>
+          <button className="btn ghost small" onClick={() => setConfirm(false)}>Pas encore</button>
+        </Sheet>
       )}
     </div>
   );
