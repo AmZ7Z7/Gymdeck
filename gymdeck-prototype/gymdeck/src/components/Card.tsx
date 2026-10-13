@@ -26,12 +26,22 @@ export function Card({ card, count, holo = true }: { card: CardData; count?: num
   return (
     <div className="card">
       <img className="frame" src={`/assets/frames/${card.rarity}.webp`} alt="" draggable={false} decoding="async" />
+      {holo && top && (
+        <span
+          className={`holo ${card.rarity === "LR" ? "lr" : "ur"}`}
+          style={{ ["--mask" as string]: `url(/assets/frames/${card.rarity}-shine.webp)` }}
+          aria-hidden
+        />
+      )}
       <img
         className="art"
         src={ex.image}
         alt={ex.name}
         draggable={false}
-        style={{ top: "8.5%", height: `${L.nameTop * 100 - 10}%` }}
+        style={{
+          top: "8.5%", height: `${L.nameTop * 100 - 10}%`,
+          ...(ex.fit ? { transform: `translate(${ex.fit.x ?? 0}%, ${ex.fit.y ?? 0}%) scale(${ex.fit.s ?? 1})` } : {}),
+        }}
       />
       <span className="brand">GYMDECK</span>
       <span className="badge" style={{ color }}>{card.rarity}</span>
@@ -40,7 +50,7 @@ export function Card({ card, count, holo = true }: { card: CardData; count?: num
         style={{
           top: `${L.nameTop * 100}%`,
           height: `${(L.statsTop - L.nameTop) * 100}%`,
-          ...(ex.name.length > 16 ? { fontSize: "6.9cqw", whiteSpace: "nowrap" } : {}),
+          ...(ex.name.length > 30 ? { fontSize: "5.6cqw" } : ex.name.length > 16 ? { fontSize: "6.9cqw", whiteSpace: "nowrap" } : {}),
         }}
       >
         {ex.name}
@@ -55,20 +65,16 @@ export function Card({ card, count, holo = true }: { card: CardData; count?: num
           <span className="val" style={{ fontSize: `calc(var(--b) * .44)` }}>{card.def}</span>
         </div>
         {top && card.passive && (
-          <div className="passive" style={{ fontSize: `calc(var(--b) * .22)` }}>
-            <small>PASSIF</small>
-            {passiveLines(card.passive).map((l) => <div key={l}>{l}</div>)}
-            <div style={{ opacity: .8, fontWeight: 600 }}>du deck</div>
-          </div>
+          <>
+            <i className="sep" style={{ background: `linear-gradient(180deg, transparent, ${color} 18%, ${color} 82%, transparent)` }} />
+            <div className={`passive ${card.passive.type === "BOTH" ? "both" : ""}`} style={{ ["--pc" as string]: color }}>
+              <small>{card.passive.type === "BOTH" ? "PASSIF · DU DECK" : "PASSIF"}</small>
+              {passiveLines(card.passive).map((l) => <b key={l}>{l}</b>)}
+              {card.passive.type !== "BOTH" && <em>du deck</em>}
+            </div>
+          </>
         )}
       </div>
-      {holo && top && (
-        <span
-          className={`holo ${card.rarity === "LR" ? "lr" : "ur"}`}
-          style={{ ["--mask" as string]: `url(/assets/frames/${card.rarity}.webp)` }}
-          aria-hidden
-        />
-      )}
       {count && count > 1 ? <span className="count">×{count}</span> : null}
     </div>
   );

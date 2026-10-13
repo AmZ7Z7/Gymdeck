@@ -10,7 +10,7 @@ import { cancelAuction as cancelAuctionFn, emptyMarket, listCard as listCardFn, 
 import { secureRng } from "@/lib/rng";
 import {
   claimAchievement as claimAchFn, claimMission as claimMissionFn, claimSeason as claimSeasonFn, claimSet as claimSetFn,
-  claimStreak as claimStreakFn, seasonOf, track, type EventKind, type Extra,
+  claimStreak as claimStreakFn, seasonOf, toggleDeclaredDay, track, type EventKind, type Extra,
 } from "@/lib/progress";
 import {
   addFriend as addFriendFn, finalRank, normalizeState, proposeTrade, removeFriend as removeFriendFn, toggleShowcase as toggleShowcaseFn, botById,
@@ -102,6 +102,8 @@ interface Game {
   openFirstBooster: () => void;
   finishTutorial: () => void;
   setReminder: (r: Extra["reminder"]) => void;
+  /** Coche / décoche un jour passé au calendrier. Renvoie un message d'erreur ou null. */
+  toggleTrainingDay: (day: string) => string | null;
   tools: { nextDay: () => void; addGc: (n: number) => void; reset: () => void; advanceHours: (h: number) => void; giveCard: (r: Rarity) => void; advanceDays: (n: number) => void; resetTutorial: () => void };
 }
 
@@ -510,6 +512,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setReminder: (rem) => {
       const p = live.current.player;
       if (p.extra) commit({ ...live.current, player: { ...p, extra: { ...p.extra, reminder: rem } } });
+    },
+
+    toggleTrainingDay: (day) => {
+      const r = toggleDeclaredDay(live.current.player, day, parisDay(clock()));
+      if (!r.ok) return r.error;
+      commit({ ...live.current, player: r.state });
+      return null;
     },
 
     tools: {

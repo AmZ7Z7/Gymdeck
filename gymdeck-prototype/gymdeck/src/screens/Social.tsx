@@ -192,24 +192,21 @@ function TradeSheet({ bot, onClose }: { bot: Bot; onClose: () => void }) {
 
 // ───────────────────────── Classement ─────────────────────────
 
-const monthName = (id: string) => {
+export const monthName = (id: string) => {
   const s = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(`${id}-01T00:00:00Z`));
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
-export function Ranking({ back }: { back: () => void }) {
+export function RankingBody() {
   const g = useGame();
   const e = g.extra;
   const rows = useMemo(() => leaderboard(g.player, g.day), [g.player, g.day]);
   const me = rows.find((r) => r.me);
   const top = rows.slice(0, 15);
-  const days = seasonEndsIn(g.day);
   const pend = e.pendingSeason;
 
   return (
-    <div className="screen">
-      <Head back={back} title="Classement" sub={`Saison ${monthName(seasonOf(g.day))} · fin dans ${days} jour${days > 1 ? "s" : ""}`} />
-
+    <>
       {pend && (
         <div className="panel seasonwin">
           <div className="t">Saison {monthName(pend.id)} terminée</div>
@@ -245,7 +242,7 @@ export function Ranking({ back }: { back: () => void }) {
         {SEASON_TIERS.map((t, i) => <div className="kv" key={t.label} style={i === SEASON_TIERS.length - 1 ? { borderBottom: 0 } : undefined}><span>{t.label}</span><b><Coin s={16} />{t.reward} GC</b></div>)}
       </div>
       <p className="warn">Le classement compare la puissance de ton deck (ATQ + DEF, passifs compris). Les autres joueurs sont fictifs pendant le prototype, et la puissance monte au fil du mois. Les combats viendront s’ajouter plus tard.</p>
-    </div>
+    </>
   );
 }
 

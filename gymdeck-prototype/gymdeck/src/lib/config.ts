@@ -61,7 +61,7 @@ export const PASSIVE_TENTHS = {
 
 export type BoosterKind = "welcome1" | "welcome2" | "session" | "login" | "shop";
 
-export type MuscleGroup = "pecs" | "epaules" | "dos" | "bras" | "jambes";
+export type MuscleGroup = "pecs" | "epaules" | "dos" | "bras" | "jambes" | "abdos";
 
 /** Extensions (séries) : une par groupe musculaire. Les nouveaux exercices s'y ajoutent via le champ `group`. */
 export const GROUPS: { id: MuscleGroup; name: string; emoji: string }[] = [
@@ -70,16 +70,24 @@ export const GROUPS: { id: MuscleGroup; name: string; emoji: string }[] = [
   { id: "dos", name: "Dos", emoji: "🦅" },
   { id: "bras", name: "Bras", emoji: "💪" },
   { id: "jambes", name: "Jambes & fessiers", emoji: "🦵" },
+  { id: "abdos", name: "Abdos & gainage", emoji: "🎯" },
 ];
+
+/**
+ * Cadrage de l'illustration dans la zone d'art de la carte (toujours en « contain », jamais recadrée) :
+ * `s` = échelle (1 = la zone entière), `x` / `y` = décalage en % de la zone (y > 0 descend l'image).
+ */
+export interface ArtFit { s?: number; x?: number; y?: number }
 
 export interface Exercise {
   slug: string;
   name: string;
   image: string;
   group: MuscleGroup;
+  fit?: ArtFit;
 }
 
-/** Catalogue de lancement (10 exercices). */
+/** Catalogue (21 exercices illustrés). */
 export const EXERCISES: Exercise[] = [
   { slug: "developpe-couche", name: "Développé couché haltères", image: "/assets/exercises/developpe-couche.webp", group: "pecs" },
   { slug: "developpe-incline", name: "Développé incliné haltères", image: "/assets/exercises/developpe-incline.webp", group: "pecs" },
@@ -91,6 +99,17 @@ export const EXERCISES: Exercise[] = [
   { slug: "curl-biceps", name: "Curl biceps haltères", image: "/assets/exercises/curl-biceps.webp", group: "bras" },
   { slug: "elevations-laterales", name: "Élévations latérales", image: "/assets/exercises/elevations-laterales.webp", group: "epaules" },
   { slug: "squat", name: "Squat barre", image: "/assets/exercises/squat.webp", group: "jambes" },
+  { slug: "presse-a-cuisses", name: "Presse à cuisses", image: "/assets/exercises/presse-a-cuisses.webp", group: "jambes", fit: { y: -10 } },
+  { slug: "crunch-poulie", name: "Crunch poulie", image: "/assets/exercises/crunch-poulie.webp", group: "abdos" },
+  { slug: "leg-curl-assis", name: "Leg curl assis", image: "/assets/exercises/leg-curl-assis.webp", group: "jambes" },
+  { slug: "extension-triceps-corde", name: "Extension triceps corde", image: "/assets/exercises/extension-triceps-corde.webp", group: "bras" },
+  { slug: "developpe-poitrine-machine", name: "Développé poitrine machine", image: "/assets/exercises/developpe-poitrine-machine.webp", group: "pecs" },
+  { slug: "rowing-poulie-basse", name: "Rowing poulie basse", image: "/assets/exercises/rowing-poulie-basse.webp", group: "dos" },
+  { slug: "leg-extension", name: "Leg extension", image: "/assets/exercises/leg-extension.webp", group: "jambes" },
+  { slug: "gainage", name: "Gainage", image: "/assets/exercises/gainage.webp", group: "abdos", fit: { s: 0.93, y: -32 } },
+  { slug: "tractions-assistees", name: "Tractions assistées", image: "/assets/exercises/tractions-assistees.webp", group: "dos" },
+  { slug: "curl-marteau", name: "Curl marteau", image: "/assets/exercises/curl-marteau.webp", group: "bras" },
+  { slug: "extension-triceps-overhead", name: "Extension triceps au-dessus de la tête", image: "/assets/exercises/extension-triceps-overhead.webp", group: "bras" },
 ];
 
 // Garde-fou : une table de probabilités incorrecte doit empêcher le démarrage.

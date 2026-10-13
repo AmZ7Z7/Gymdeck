@@ -35,6 +35,10 @@ export interface Extra {
   season: { id: string; bestPower: number };
   pendingSeason: SeasonResult | null;
   reminder: { days: number[]; time: string } | null;
+  /** Jours de séance validés dans l'app (calendrier). */
+  history?: string[];
+  /** Jours passés ajoutés à la main (calendrier uniquement : aucune récompense, aucun effet sur la série). */
+  declared?: string[];
   /** Jours ajoutés à l'horloge (outil de test uniquement). */
   dayShift?: number;
 }
@@ -77,7 +81,7 @@ export function newExtra(rng: Rng, day: string): Extra {
     day, daily: {}, dailyClaimed: [], week: weekOf(day), weekly: {}, weeklyClaimed: [], life: {},
     streak: { current: 0, best: 0, lastDay: null, claimed: [] },
     achClaimed: [], setsClaimed: [], showcase: [], friends: [], tradeNonce: {},
-    season: { id: seasonOf(day), bestPower: 0 }, pendingSeason: null, reminder: null,
+    season: { id: seasonOf(day), bestPower: 0 }, pendingSeason: null, reminder: null, history: [], declared: [],
   };
 }
 
@@ -95,6 +99,7 @@ export function rankedPower(s: PlayerState): number {
 export function normalize(s: PlayerState, rng: Rng, day: string, ranker: (seasonId: string, power: number) => { rank: number; total: number }): PlayerState {
   const e0 = s.extra ?? newExtra(rng, day);
   let e: Extra = { ...e0 };
+  if (!e.history || !e.declared) e = { ...e, history: e.history ?? (s.lastSessionDay ? [s.lastSessionDay] : []), declared: e.declared ?? [] };
   if (e.day !== day) { e = { ...e, day, daily: {}, dailyClaimed: [] }; }
   const wk = weekOf(day);
   if (e.week !== wk) e = { ...e, week: wk, weekly: {}, weeklyClaimed: [] };
@@ -150,12 +155,51 @@ export function track(s: PlayerState, kind: EventKind, rng: Rng, day: string, ra
       streak = { current: cur, best: Math.max(streak.best, cur), lastDay: day, claimed: gap !== null && gap <= 2 && streak.current > 0 ? streak.claimed : [] };
     }
   }
-  const next: Extra = { ...e, daily: inc(e.daily, kind, n), weekly: inc(e.weekly, kind, n), life: inc(e.life, kind, n), streak };
+  let history = e.history ?? [];
+  if (kind === "session" && !history.includes(day)) history = [...history, day].sort().slice(-1500);
+  const next: Extra = { ...e, daily: inc(e.daily, kind, n), weekly: inc(e.weekly, kind, n), life: inc(e.life, kind, n), streak, history };
   const out = { ...base, extra: next };
   // la puissance du deck a pu changer
   const power = rankedPower(out);
   if (power > next.season.bestPower) return { ...out, extra: { ...next, season: { ...next.season, bestPower: power } } };
   return out;
+}
+
+// ───────────── Calendrier des séances ─────────────
+
+export const CALENDAR_MAX_PAST_DAYS = 365;
+
+/** Tous les jours d'entraînement connus (validés ou ajoutés à la main), triés. */
+export function trainingDays(e: Extra | undefined): string[] {
+  if (!e) return [];
+  return [...new Set([...(e.history ?? []), ...(e.declared ?? [])])].sort();
+}
+
+/**
+ * Ajoute (ou retire) un jour passé « où j'étais à la salle ». Pur confort de suivi : pas de booster, pas de GC,
+ * pas d'effet sur la série. Les jours validés dans l'app ne se retirent pas.
+ */
+export function toggleDeclaredDay(s: PlayerState, day: string, today: string): Result<{ state: PlayerState; on: boolean }> {
+  const e = s.extra;
+  if (!e) return { ok: false, error: "Indisponible." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { ok: false, error: "Date invalide." };
+  if (day > today) return { ok: false, error: "Tu ne peux pas cocher un jour à venir." };
+  if (daysBetween(day, today) > CALENDAR_MAX_PAST_DAYS) return { ok: false, error: "Ce jour est trop ancien." };
+  if ((e.history ?? []).includes(day)) return { ok: false, error: "Séance déjà validée dans l’app : elle reste au calendrier." };
+  const declared = e.declared ?? [];
+  const on = !declared.includes(day);
+  return { ok: true, on, state: { ...s, extra: { ...e, declared: on ? [...declared, day].sort() : declared.filter((d) => d !== day) } } };
+}
+
+/** Stats d'un mois (`YYYY-MM`) : jours d'entraînement, et plus longue suite de jours consécutifs. */
+export function monthStats(e: Extra | undefined, month: string) {
+  const days = trainingDays(e).filter((d) => d.startsWith(month));
+  let best = 0, run = 0, prev: string | null = null;
+  for (const d of days) {
+    run = prev && daysBetween(prev, d) === 1 ? run + 1 : 1;
+    best = Math.max(best, run); prev = d;
+  }
+  return { count: days.length, best };
 }
 
 // ───────────── Missions ─────────────

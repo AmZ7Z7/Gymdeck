@@ -3,7 +3,7 @@
 import { MotionConfig } from "framer-motion";
 import { useCallback, useEffect, useState } from "react";
 import { GameProvider, useGame } from "@/components/GameProvider";
-import { IconCards, IconCart, IconDumbbell, IconHome, IconUser } from "@/components/Icons";
+import { IconCards, IconCart, IconCombat, IconDumbbell, IconHome, IconMarket, IconUser } from "@/components/Icons";
 import { Collection } from "@/screens/Collection";
 import { GymDeckTab } from "@/screens/GymDeck";
 import { Home } from "@/screens/Home";
@@ -11,25 +11,32 @@ import { Onboarding } from "@/screens/Onboarding";
 import { Opening } from "@/screens/Opening";
 import { Market } from "@/screens/Market";
 import { Missions } from "@/screens/Missions";
-import { Friends, Ranking } from "@/screens/Social";
+import { Friends } from "@/screens/Social";
+import { Calendar } from "@/screens/Calendar";
+import { Combats } from "@/screens/Combats";
 import { claimableCount } from "@/lib/progress";
 import { Profile } from "@/screens/Others";
 import { Shop } from "@/screens/Shop";
-import { sfx, unlockAudio } from "@/lib/sound";
+import { unlockAudio } from "@/lib/sound";
 
-export type Page = "market" | "missions" | "friends" | "ranking";
-const PAGES: Page[] = ["market", "missions", "friends", "ranking"];
-const PAGE_HASH: Record<Page, string> = { market: "marche", missions: "missions", friends: "amis", ranking: "classement" };
+/** Pages ouvertes depuis un onglet (avec un bouton retour). */
+export type Page = "missions" | "friends" | "calendar";
+const PAGES: Page[] = ["missions", "friends", "calendar"];
+const PAGE_HASH: Record<Page, string> = { missions: "missions", friends: "amis", calendar: "calendrier" };
 
-export type Tab = "home" | "collection" | "gymdeck" | "shop" | "profile";
+export type Tab = "home" | "collection" | "gymdeck" | "shop" | "market" | "combats" | "profile";
 
 const TABS: { id: Tab; label: string; Icon: typeof IconHome }[] = [
   { id: "home", label: "Accueil", Icon: IconHome },
   { id: "collection", label: "Collection", Icon: IconCards },
-  { id: "gymdeck", label: "GymDeck", Icon: IconDumbbell },
+  { id: "gymdeck", label: "Deck", Icon: IconDumbbell },
   { id: "shop", label: "Boutique", Icon: IconCart },
+  { id: "market", label: "Marché", Icon: IconMarket },
+  { id: "combats", label: "Combats", Icon: IconCombat },
   { id: "profile", label: "Profil", Icon: IconUser },
 ];
+/** Anciennes adresses : on les redirige vers le bon onglet. */
+const LEGACY: Record<string, Tab> = { marche: "market", classement: "combats" };
 const isTab = (v: string): v is Tab => TABS.some((t) => t.id === v);
 
 function Shell() {
@@ -43,8 +50,7 @@ function Shell() {
       const h = window.location.hash.replace("#", "");
       const pg = PAGES.find((x) => PAGE_HASH[x] === h) ?? null;
       setPage(pg);
-      if (pg === "market") setTab("shop");
-      else if (!pg) setTab(isTab(h) ? h : "home");
+      if (!pg) setTab(isTab(h) ? h : LEGACY[h] ?? "home");
     };
     read();
     window.addEventListener("hashchange", read);
@@ -61,10 +67,7 @@ function Shell() {
     setPage(p);
     try { window.history.replaceState(null, "", `#${PAGE_HASH[p]}`); } catch { /* ignoré */ }
   };
-  const closePage = () => {
-    const back = page === "market" ? "shop" : tab;
-    go(back);
-  };
+  const closePage = () => go(tab);
 
   if (!g.ready) return <div className="app" id="app-root" />;
 
@@ -76,7 +79,7 @@ function Shell() {
     <div
       className="app"
       id="app-root"
-      onPointerDownCapture={(e) => { unlockAudio(); if ((e.target as HTMLElement).closest("button, a")) sfx.tap(); }}
+      onPointerDownCapture={unlockAudio}
     >
       {needsName ? (
         <Onboarding />
@@ -86,17 +89,18 @@ function Shell() {
         <>
           {page === "missions" ? <Missions back={closePage} />
             : page === "friends" ? <Friends back={closePage} />
-              : page === "ranking" ? <Ranking back={closePage} />
-                : page === "market" ? <Market back={closePage} />
-                  : (
-                    <>
-                      {tab === "home" && <Home go={go} openPage={openPage} />}
-                      {tab === "collection" && <Collection />}
-                      {tab === "gymdeck" && <GymDeckTab openPage={openPage} />}
-                      {tab === "shop" && <Shop onMarket={() => openPage("market")} />}
-                      {tab === "profile" && <Profile openPage={openPage} />}
-                    </>
-                  )}
+              : page === "calendar" ? <Calendar back={closePage} />
+                : (
+                  <>
+                    {tab === "home" && <Home go={go} openPage={openPage} />}
+                    {tab === "collection" && <Collection />}
+                    {tab === "gymdeck" && <GymDeckTab go={go} />}
+                    {tab === "shop" && <Shop onMarket={() => go("market")} />}
+                    {tab === "market" && <Market />}
+                    {tab === "combats" && <Combats />}
+                    {tab === "profile" && <Profile openPage={openPage} go={go} />}
+                  </>
+                )}
           <nav className="tabbar" aria-label="Navigation">
             {TABS.map(({ id, label, Icon }) => (
               <button key={id} className={`tab ${tab === id ? "active" : ""}`} aria-current={tab === id ? "page" : undefined} onClick={() => go(id)}>

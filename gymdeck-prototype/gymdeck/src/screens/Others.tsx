@@ -3,7 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { Card } from "@/components/Card";
 import { Tutorial } from "@/components/Tutorial";
-import type { Page } from "@/app/page";
+import type { Page, Tab } from "@/app/page";
 import { DAY_LABELS, downloadIcs } from "@/lib/reminder";
 import { claimableCount } from "@/lib/progress";
 import { GcPill, OddsSheet, Wordmark } from "@/components/Bits";
@@ -11,9 +11,9 @@ import { useGame } from "@/components/GameProvider";
 import { Sheet } from "@/components/Sheet";
 import { LOGIN_CYCLE, PITY_THRESHOLD } from "@/lib/config";
 import { completion } from "@/lib/game";
-import { isMuted, setMuted, subscribeSound } from "@/lib/sound";
+import { getLevel, setLevel, subscribeSound, type SoundLevel } from "@/lib/sound";
 
-export function Profile({ openPage }: { openPage: (p: Page) => void }) {
+export function Profile({ openPage, go }: { openPage: (p: Page) => void; go: (t: Tab) => void }) {
   const g = useGame();
   const p = g.player;
   const comp = completion(p);
@@ -29,7 +29,7 @@ export function Profile({ openPage }: { openPage: (p: Page) => void }) {
   const e = g.extra;
   const ready = claimableCount(p, g.day);
   const showcase = e.showcase.map((id) => p.cards.find((c) => c.id === id)).filter((c) => !!c);
-  const muted = useSyncExternalStore(subscribeSound, isMuted, () => false);
+  const level = useSyncExternalStore(subscribeSound, getLevel, () => "low" as SoundLevel);
   const cycle = p.loginCount % LOGIN_CYCLE;
   const tops = p.cards.filter((c) => c.rarity === "UR" || c.rarity === "LR").length;
 
@@ -72,11 +72,12 @@ export function Profile({ openPage }: { openPage: (p: Page) => void }) {
 
       <div style={{ marginTop: 10 }}>
         <button className="linkrow" onClick={() => openPage("missions")}><span>Missions, série et succès</span><span>{ready > 0 ? <span className="tabbadge" style={{ position: "static", display: "inline-grid" }}>{ready}</span> : "›"}</span></button>
+        <button className="linkrow" onClick={() => openPage("calendar")}><span>Calendrier des séances</span><span>›</span></button>
         <button className="linkrow" onClick={() => openPage("friends")}><span>Amis et échanges</span><span>{e.friends.length > 0 ? e.friends.length : "›"}</span></button>
-        <button className="linkrow" onClick={() => openPage("ranking")}><span>Classement de saison</span><span>›</span></button>
+        <button className="linkrow" onClick={() => go("combats")}><span>Combats et classement de saison</span><span>›</span></button>
         <button className="linkrow" onClick={() => setRem(true)}><span>Rappel de séance</span><span>{e.reminder ? `${e.reminder.time}` : "›"}</span></button>
         <button className="linkrow" onClick={() => setTuto(true)}><span>Revoir le tutoriel</span><span>›</span></button>
-        <button className="linkrow" onClick={() => setMuted(!muted)} aria-pressed={!muted}><span>Sons du jeu</span><span>{muted ? "Coupés" : "Activés"}</span></button>
+        <button className="linkrow" onClick={() => setLevel(level === "off" ? "low" : level === "low" ? "on" : "off")}><span>Sons du jeu</span><span>{level === "off" ? "Coupés" : level === "low" ? "Doux" : "Normal"}</span></button>
         <button className="linkrow" onClick={() => setOdds(true)}><span>Taux de drop et garanties</span><span>›</span></button>
       </div>
       <h2 className="section" style={{ fontSize: 24, margin: "16px 0 8px" }}>Compte</h2>

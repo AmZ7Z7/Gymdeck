@@ -197,7 +197,7 @@ describe("doublons", () => {
 
   it("complétion : couples exercice+rareté distincts", () => {
     const s = { ...createAccount(), cards: [mk("a", "x", "R", 1, 1), mk("b", "x", "R", 2, 2), mk("c", "y", "R", 1, 1)] };
-    expect(completion(s)).toEqual({ owned: 2, total: 60 });
+    expect(completion(s)).toEqual({ owned: 2, total: 126 });
   });
 });
 

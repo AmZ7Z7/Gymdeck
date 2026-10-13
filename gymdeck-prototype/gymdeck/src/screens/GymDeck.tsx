@@ -9,12 +9,12 @@ import { Sheet } from "@/components/Sheet";
 import { DECK_SIZE, EXERCISES, RARITY_COLOR, RARITY_RANK, exerciseBySlug } from "@/lib/config";
 import { bestDeckIds, deckPower, deckTotals } from "@/lib/engine";
 import type { OwnedCard } from "@/lib/game";
-import type { Page } from "@/app/page";
+import type { Tab } from "@/app/page";
 
 const fmtPct = (v: number) => `${v.toFixed(1).replace(".", ",")} %`;
 const fmt = (n: number) => n.toLocaleString("fr-FR");
 
-export function GymDeckTab({ openPage }: { openPage: (p: Page) => void }) {
+export function GymDeckTab({ go }: { go: (t: Tab) => void }) {
   const g = useGame();
   const { player } = g;
   const [picker, setPicker] = useState(false);
@@ -109,7 +109,7 @@ export function GymDeckTab({ openPage }: { openPage: (p: Page) => void }) {
         <div className="t">Combats<span>Affronte d’autres joueurs avec ton deck.</span></div>
         <span className="soon">Bientôt disponible</span>
       </div>
-      <button className="linkrow" style={{ marginTop: 10 }} onClick={() => openPage("ranking")}><span>🏆 Classement de saison</span><span>›</span></button>
+      <button className="linkrow" style={{ marginTop: 10 }} onClick={() => go("combats")}><span>🏆 Combats et classement</span><span>›</span></button>
 
       {picker && <DeckPicker onClose={() => setPicker(false)} />}
       {help && (

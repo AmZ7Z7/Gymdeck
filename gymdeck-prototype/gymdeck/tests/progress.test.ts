@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createAccount, type OwnedCard, type PlayerState } from "../src/lib/game";
 import {
   ACHIEVEMENTS, STREAK_MILESTONES, WEEKLY, claimAchievement, claimMission, claimSet, claimSeason, claimStreak, claimableCount, dailyMissions,
-  normalize, seasonOf, setProgress, streakNow, track, weekOf, daysBetween,
+  normalize, seasonOf, setProgress, streakNow, track, weekOf, daysBetween, toggleDeclaredDay, trainingDays, monthStats,
 } from "../src/lib/progress";
 import { BOTS, addFriend, botOffers, finalRank, leaderboard, normalizeState, proposeTrade, toggleShowcase } from "../src/lib/social";
 import { fairValue } from "../src/lib/market";
@@ -73,6 +73,8 @@ describe("extensions et succès", () => {
     s = { ...s, cards: [card(1, "developpe-couche", "C")] };
     expect(setProgress(s, "pecs", "C").done).toBe(false);
     s = { ...s, cards: [...s.cards, card(2, "developpe-incline", "R")] };
+    expect(setProgress(s, "pecs", "C").done).toBe(false);
+    s = { ...s, cards: [...s.cards, card(3, "developpe-poitrine-machine", "R")] };
     expect(setProgress(s, "pecs", "C").done).toBe(true);
     expect(setProgress(s, "pecs", "R").done).toBe(false);
     const r = claimSet(s, "pecs", "t1");
@@ -160,5 +162,44 @@ describe("saison", () => {
     const r = claimSeason(n);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.state.extra!.pendingSeason).toBeNull();
+  });
+});
+
+describe("calendrier des séances", () => {
+  it("une séance validée entre au calendrier, une seule fois par jour", () => {
+    let s = base();
+    s = track(s, "session", rng, "2026-10-13", ranker);
+    s = track(s, "session", rng, "2026-10-13", ranker);
+    expect(trainingDays(s.extra)).toEqual(["2026-10-13"]);
+  });
+  it("on coche / décoche un jour passé sans toucher à la série ni aux GC", () => {
+    let s = base();
+    const gc = s.gc;
+    const on = toggleDeclaredDay(s, "2026-10-10", "2026-10-13");
+    expect(on.ok && on.on).toBe(true);
+    if (!on.ok) return;
+    s = on.state;
+    expect(trainingDays(s.extra)).toEqual(["2026-10-10"]);
+    expect(s.gc).toBe(gc);
+    expect(s.extra!.streak.current).toBe(0);
+    const off = toggleDeclaredDay(s, "2026-10-10", "2026-10-13");
+    expect(off.ok && off.on).toBe(false);
+    if (off.ok) expect(trainingDays(off.state.extra)).toEqual([]);
+  });
+  it("refuse le futur, les dates invalides, les jours trop anciens et les jours déjà validés", () => {
+    let s = base();
+    expect(toggleDeclaredDay(s, "2026-10-14", "2026-10-13").ok).toBe(false);
+    expect(toggleDeclaredDay(s, "13/10/2026", "2026-10-13").ok).toBe(false);
+    expect(toggleDeclaredDay(s, "2024-01-01", "2026-10-13").ok).toBe(false);
+    s = track(s, "session", rng, "2026-10-13", ranker);
+    expect(toggleDeclaredDay(s, "2026-10-13", "2026-10-13").ok).toBe(false);
+  });
+  it("statistiques du mois : total et plus longue suite", () => {
+    let s = base();
+    for (const d of ["2026-10-01", "2026-10-02", "2026-10-03", "2026-10-07", "2026-10-08"]) {
+      const r = toggleDeclaredDay(s, d, "2026-10-13"); if (r.ok) s = r.state;
+    }
+    expect(monthStats(s.extra, "2026-10")).toEqual({ count: 5, best: 3 });
+    expect(monthStats(s.extra, "2026-09")).toEqual({ count: 0, best: 0 });
   });
 });

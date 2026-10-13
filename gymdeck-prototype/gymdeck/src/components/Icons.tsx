@@ -18,3 +18,6 @@ export const IconSearch = (p: P) => (<svg {...base} {...p}><circle cx="11" cy="1
 export const IconBack = (p: P) => (<svg {...base} strokeWidth={2.4} {...p}><path d="m15 5-7 7 7 7" /></svg>);
 export const IconNext = (p: P) => (<svg {...base} strokeWidth={2.4} {...p}><path d="m9 5 7 7-7 7" /></svg>);
 export const IconChevron = (p: P) => (<svg {...base} strokeWidth={3} {...p}><path d="m9 5 7 7-7 7" /></svg>);
+export const IconMarket = (p: P) => (<svg {...base} {...p}><path d="m14 4 6 6-3 3-6-6 3-3Z" fill="currentColor" /><path d="m11 7-7 7 3 3 7-7M3 21h9" /></svg>);
+export const IconCombat = (p: P) => <Swords {...p} />;
+export const IconCalendar = (p: P) => (<svg {...base} {...p}><rect x="3.5" y="5" width="17" height="15.5" rx="2.5" /><path d="M3.5 10h17M8 3v4M16 3v4" /></svg>);

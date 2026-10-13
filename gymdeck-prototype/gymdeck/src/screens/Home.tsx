@@ -13,7 +13,7 @@ import { deckTotals } from "@/lib/engine";
 import { completion, msUntilParisMidnight } from "@/lib/game";
 import type { Page, Tab } from "@/app/page";
 import { Tutorial } from "@/components/Tutorial";
-import { claimableCount, dailyMissions, missionProgress, streakNow } from "@/lib/progress";
+import { claimableCount, dailyMissions, missionProgress, streakNow, trainingDays, weekOf } from "@/lib/progress";
 import { reminderDue } from "@/lib/reminder";
 
 export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: (p: Page) => void }) {
@@ -37,6 +37,11 @@ export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: (p: Pag
   const cycle = player.loginCount % LOGIN_CYCLE;
   const untilBonus = LOGIN_CYCLE - cycle;
   const countdown = formatDuration(msUntilParisMidnight(now));
+
+  const trainSet = new Set(trainingDays(e));
+  const wk0 = weekOf(g.day);
+  const weekDays = Array.from({ length: 7 }, (_, i) => new Date(Date.parse(`${wk0}T00:00:00Z`) + i * 86_400_000).toISOString().slice(0, 10));
+  const weekCount = weekDays.filter((d) => trainSet.has(d)).length;
 
   const openFirst = () => stock > 0 && g.startOpening(player.boosters[0]!.id);
 
@@ -129,6 +134,22 @@ export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: (p: Pag
           <div className="mc-s">{mDone} / {missions.length} missions{streak > 0 ? ` · 🔥 ${streak} séance${streak > 1 ? "s" : ""} d’affilée` : ""}</div>
         </div>
         {ready > 0 ? <span className="tabbadge" style={{ position: "static" }}>{ready}</span> : <span className="link">›</span>}
+      </button>
+
+      <button className="panel weekcard" onClick={() => openPage("calendar")} aria-label="Ouvrir le calendrier des séances">
+        <div className="wk-head">
+          <div className="mc-t">Cette semaine</div>
+          <span className="link">Calendrier ›</span>
+        </div>
+        <div className="wk-days">
+          {weekDays.map((d, i) => (
+            <div key={d} className={`wk ${trainSet.has(d) ? "on" : ""} ${d === g.day ? "today" : ""} ${d > g.day ? "future" : ""}`}>
+              <span>{["L", "M", "M", "J", "V", "S", "D"][i]}</span>
+              <i>{trainSet.has(d) ? <svg viewBox="0 0 24 24" aria-hidden><path d="m5 12.5 4.5 4.5L19 7.5" /></svg> : null}</i>
+            </div>
+          ))}
+        </div>
+        <div className="mc-s">{weekCount} séance{weekCount > 1 ? "s" : ""} cette semaine</div>
       </button>
 
       <button className="panel minideck" onClick={() => go("gymdeck")}>

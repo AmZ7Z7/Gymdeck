@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import { Card, passiveLabel } from "@/components/Card";
 import { GcPill, Wordmark, formatDuration, useNow } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
-import { IconBack } from "@/components/Icons";
 import { Sheet } from "@/components/Sheet";
 import { RARITIES, RARITY_COLOR, RARITY_RANK, exerciseBySlug, type Rarity } from "@/lib/config";
 import {
@@ -21,7 +20,7 @@ const cardOf = (a: Auction) => ({ ...a.card });
 const Coin = ({ s = 16 }: { s?: number }) => <span className="coin" style={{ width: s, height: s, display: "inline-block", verticalAlign: "-3px", marginRight: 4 }} />;
 const left = (a: Auction, now: number) => formatDuration(a.endsAt - now);
 
-export function Market({ back }: { back: () => void }) {
+export function Market() {
   const g = useGame();
   useNow(15000); // rafraîchit les comptes à rebours
   const now = g.marketClock();
@@ -48,7 +47,6 @@ export function Market({ back }: { back: () => void }) {
   return (
     <div className="screen">
       <div className="topbar">
-        <button className="backbtn" aria-label="Retour à la boutique" onClick={back}><IconBack width={22} height={22} /></button>
         <Wordmark />
         <GcPill gc={g.player.gc} />
       </div>
