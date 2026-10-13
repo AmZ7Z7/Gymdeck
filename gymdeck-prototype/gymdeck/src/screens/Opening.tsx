@@ -1,12 +1,14 @@
 "use client";
 
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardBack } from "@/components/Card";
 import { Wordmark } from "@/components/Bits";
+import { shareCards } from "@/lib/share";
 import { useGame } from "@/components/GameProvider";
 import { IconBack } from "@/components/Icons";
-import { RARITIES, RARITY_COLOR, type Rarity } from "@/lib/config";
+import { RARITIES, RARITY_COLOR, RARITY_RANK, type Rarity } from "@/lib/config";
+import { sfx, unlockAudio } from "@/lib/sound";
 import { bestDeckIds, deckPower, isTop } from "@/lib/engine";
 import type { OwnedCard } from "@/lib/game";
 import type { Tab } from "@/app/page";
@@ -19,9 +21,9 @@ export function Opening({ go }: { go: (t: Tab) => void }) {
   // Le tirage est déjà enregistré quand la phase passe à « cards » : l'animation du paquet ne sert qu'à l'habillage.
   const [packDone, setPackDone] = useState(o.phase !== "closed");
   const [dealt] = useState(o.phase === "closed"); // true = on vient de déchirer le paquet → entrée animée des cartes
-  const [flash, setFlash] = useState(0);
+  const [flash, setFlash] = useState<{ n: number; color: string }>({ n: 0, color: "#fff" });
 
-  const burst = useCallback(() => { setFlash((n) => n + 1); setPackDone(true); }, []);
+  const burst = useCallback((color: string) => { setFlash((f) => ({ n: f.n + 1, color })); setPackDone(true); }, []);
 
   return (
     <>
@@ -32,13 +34,14 @@ export function Opening({ go }: { go: (t: Tab) => void }) {
       ) : (
         <Cards go={go} dealt={dealt} />
       )}
-      {flash > 0 && (
+      {flash.n > 0 && (
         <motion.div
-          key={flash}
+          key={flash.n}
           className="whiteflash"
+          style={{ background: `radial-gradient(circle at 50% 50%, #fff 0%, ${flash.color} 70%)` }}
           initial={{ opacity: 1 }}
           animate={{ opacity: 0 }}
-          transition={{ duration: 0.9, ease: "easeOut" }}
+          transition={{ duration: 1.1, ease: "easeOut" }}
         />
       )}
     </>
@@ -47,20 +50,35 @@ export function Opening({ go }: { go: (t: Tab) => void }) {
 
 /* ───────────────────────── Le paquet ───────────────────────── */
 
-function PackStage({ go, onBurst }: { go: (t: Tab) => void; onBurst: () => void }) {
+/** Couleur de la lumière qui sort du paquet : elle trahit (un peu) la meilleure carte, comme dans Pokémon TCG Pocket. */
+const lightFor = (best: Rarity) => (RARITY_RANK[best] >= RARITY_RANK.SR ? RARITY_COLOR[best] : "#ffffff");
+
+function PackStage({ go, onBurst }: { go: (t: Tab) => void; onBurst: (color: string) => void }) {
   const g = useGame();
   const o = g.opening!;
-  const [step, setStep] = useState<"idle" | "charge">("idle");
+  const [step, setStep] = useState<"idle" | "charge" | "tear">("idle");
+
+  // Meilleure rareté du tirage (déjà enregistré dès le toucher) : sert à teinter la lumière.
+  const bestRef = useRef<Rarity>("C");
+  const drawn = o.cardIds.map((id) => g.player.cards.find((c) => c.id === id)).filter((c): c is OwnedCard => !!c);
+  if (drawn.length) bestRef.current = drawn.reduce((b, c) => (RARITY_RANK[c.rarity] > RARITY_RANK[b] ? c.rarity : b), "C" as Rarity);
 
   const open = () => {
     if (step !== "idle") return;
+    unlockAudio();
     setStep("charge");
     g.openNow(); // tirage généré et sauvegardé immédiatement, avant l'animation
-    try { navigator.vibrate?.(30); } catch { /* ignoré */ }
-    window.setTimeout(onBurst, 1050);
+    sfx.charge(0.95);
+    try { navigator.vibrate?.([20, 40, 30, 40, 40]); } catch { /* ignoré */ }
+    window.setTimeout(() => { setStep("tear"); sfx.tear(); try { navigator.vibrate?.(60); } catch { /* ignoré */ } }, 950);
+    window.setTimeout(() => sfx.burst(), 1230);
+    window.setTimeout(() => onBurst(lightFor(bestRef.current)), 1380);
   };
 
   const charging = step === "charge";
+  const tearing = step === "tear";
+  const light = lightFor(bestRef.current);
+  const rainbow = bestRef.current === "LR";
 
   return (
     <div className="stage">
@@ -71,7 +89,7 @@ function PackStage({ go, onBurst }: { go: (t: Tab) => void; onBurst: () => void 
       </div>
       <div className="center-copy">
         <h1>Ton booster</h1>
-        <p>{charging ? "Ça vient…" : "Touche le booster pour l’ouvrir."}</p>
+        <p>{step === "idle" ? "Touche le booster pour l’ouvrir." : charging ? "Ça vibre…" : "Il s’ouvre !"}</p>
         {o.kind === "welcome2" && <p className="tagline">✦ Booster de bienvenue amélioré</p>}
         {o.kind === "welcome1" && <p className="tagline">✦ Booster de bienvenue</p>}
       </div>
@@ -79,31 +97,65 @@ function PackStage({ go, onBurst }: { go: (t: Tab) => void; onBurst: () => void 
       <div className="packstage">
         <motion.div
           className="packaura"
-          animate={charging ? { opacity: [0.4, 1], scale: [1, 2.1] } : { opacity: [0.35, 0.6, 0.35], scale: [1, 1.08, 1] }}
-          transition={charging ? { duration: 1.05, ease: "easeIn" } : { duration: 3, repeat: Infinity }}
+          animate={
+            tearing ? { opacity: 1, scale: 2.6 }
+              : charging ? { opacity: [0.4, 1], scale: [1, 2.1] }
+                : { opacity: [0.35, 0.6, 0.35], scale: [1, 1.08, 1] }
+          }
+          transition={tearing ? { duration: 0.4 } : charging ? { duration: 0.95, ease: "easeIn" } : { duration: 3, repeat: Infinity }}
         />
-        {charging && (
+        {(charging || tearing) && (
           <motion.div
-            className="packrays"
-            initial={{ opacity: 0, rotate: 0 }}
-            animate={{ opacity: [0, 0.9], rotate: 90 }}
-            transition={{ duration: 1.05, ease: "easeIn" }}
+            className={`packrays ${tearing && rainbow ? "rainbow" : ""}`}
+            style={tearing && !rainbow ? { background: `repeating-conic-gradient(from 0deg, ${light} 0 4deg, transparent 4deg 14deg)` } : undefined}
+            initial={{ opacity: 0, rotate: 0, scale: 0.8 }}
+            animate={tearing ? { opacity: 1, rotate: 140, scale: 1.25 } : { opacity: [0, 0.8], rotate: 70, scale: 1 }}
+            transition={{ duration: tearing ? 0.55 : 0.95, ease: "easeIn" }}
           />
         )}
+
         <motion.button
           className="pack"
           aria-label="Ouvrir le booster"
-          disabled={charging}
+          disabled={step !== "idle"}
           onClick={open}
           animate={
             charging
-              ? { rotate: [0, -3, 3, -5, 5, -7, 7, -9, 9, 0], scale: [1, 1.03, 1.06, 1.09, 1.12, 1.15, 1.2, 1.26, 1.34, 1.5], y: 0 }
-              : { y: [0, -9, 0], rotate: 0, scale: 1 }
+              ? { rotate: [0, -3, 3, -5, 5, -7, 7, -9, 9, 0], scale: [1, 1.03, 1.06, 1.09, 1.12, 1.15, 1.2, 1.26, 1.3, 1.34], y: 0 }
+              : tearing
+                ? { rotate: 0, scale: 1.38, y: 26, opacity: [1, 1, 0] }
+                : { y: [0, -9, 0], rotate: 0, scale: 1 }
           }
-          transition={charging ? { duration: 1.05, ease: "easeIn" } : { duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+          transition={
+            charging ? { duration: 0.95, ease: "easeIn" }
+              : tearing ? { duration: 0.5, ease: "easeIn" }
+                : { duration: 2.8, repeat: Infinity, ease: "easeInOut" }
+          }
           whileTap={{ scale: 0.96 }}
         >
-          <img src="/assets/ui/booster.webp" alt="Booster" draggable={false} />
+          <div className="tearwrap">
+            {/* corps du paquet */}
+            <img className="tbody" src="/assets/ui/booster.webp" alt="Booster" draggable={false} />
+            {/* haut du paquet : il s'arrache et s'envole */}
+            <motion.img
+              className="tflap"
+              src="/assets/ui/booster.webp"
+              alt=""
+              draggable={false}
+              animate={tearing ? { y: -170, x: 40, rotate: 28, opacity: 0 } : { y: 0, x: 0, rotate: 0, opacity: 1 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+            />
+            {/* lumière qui jaillit de la déchirure */}
+            {tearing && (
+              <motion.span
+                className="tbeam"
+                style={{ background: `radial-gradient(ellipse 50% 100% at 50% 100%, #fff 0, ${light} 38%, transparent 72%)` }}
+                initial={{ scaleY: 0, opacity: 0 }}
+                animate={{ scaleY: 4, opacity: [0, 1, 0.55] }}
+                transition={{ duration: 0.45, ease: "easeOut" }}
+              />
+            )}
+          </div>
         </motion.button>
       </div>
       <div className="count-label">5 cartes à découvrir.</div>
@@ -187,7 +239,13 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
   const [fx, setFx] = useState<{ i: number; key: number } | null>(null);
   const [intro, setIntro] = useState(dealt);
   const [dragX, setDragX] = useState(0);
+  const [holding, setHolding] = useState<number | null>(null); // doigt posé longtemps sur une carte : on voit sa couleur
+  const [tilt, setTilt] = useState({ x: 0, y: 0 }); // inclinaison de la carte sous le doigt, entre -1 et 1
+  const holdTimer = useRef<number | null>(null);
+  const shakeCtl = useAnimationControls();
   const [area, box] = useBox<HTMLDivElement>();
+
+  useEffect(() => { if (dealt) sfx.deal(5); }, [dealt]);
 
   useEffect(() => {
     if (!intro) return;
@@ -202,14 +260,21 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
 
   const goTo = useCallback((i: number) => {
     const next = Math.max(0, Math.min(n - 1, i));
+    if (next !== idx) sfx.slide();
     setIdx(next);
     g.setIndex(next);
-  }, [n, g]);
+  }, [n, g, idx]);
 
   const flipNow = (i: number) => {
     setShown((s) => s.map((v, k) => (k === i ? true : v)));
     setFx({ i, key: Date.now() });
-    if (isTop(cards[i]!.rarity)) { try { navigator.vibrate?.([40, 40, 80]); } catch { /* ignoré */ } }
+    const r = cards[i]!.rarity;
+    sfx.flip();
+    window.setTimeout(() => sfx.reveal(r), isTop(r) ? 260 : 130);
+    if (isTop(r)) {
+      try { navigator.vibrate?.([40, 40, 80]); } catch { /* ignoré */ }
+      void shakeCtl.start({ x: [0, -9, 9, -7, 7, -4, 4, 0], transition: { duration: 0.5 } }); // l'écran tremble
+    }
   };
 
   const doReveal = (i: number) => {
@@ -217,7 +282,9 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
     g.reveal(i); // enregistré tout de suite : si on quitte, la carte reste révélée
     if (isTop(cards[i]!.rarity)) {
       setCharging(i);
-      window.setTimeout(() => { setCharging(null); flipNow(i); }, 1000);
+      sfx.heartbeat();
+      try { navigator.vibrate?.([30, 60, 30, 60, 30]); } catch { /* ignoré */ }
+      window.setTimeout(() => { setCharging(null); flipNow(i); }, 1050);
     } else {
       flipNow(i);
     }
@@ -229,12 +296,14 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
     if (i !== idx) return goTo(i);
     if (!shown[i]) return doReveal(i);
     if (i < n - 1) return goTo(i + 1);
+    sfx.good();
     g.finishOpening();
   };
 
   const revealAll = () => {
     if (charging !== null) return;
     g.revealAll();
+    sfx.flip();
     setShown(cards.map(() => true));
   };
 
@@ -255,13 +324,39 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
     const el = (e.target as HTMLElement).closest<HTMLElement>("[data-i]");
     press.current = { x: e.clientX, t: Date.now(), i: el ? Number(el.dataset.i) : null, moved: false };
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignoré */ }
+    unlockAudio();
+    const target = el ? Number(el.dataset.i) : idx;
+    if (holdTimer.current) window.clearTimeout(holdTimer.current);
+    if (target === idx && charging === null) {
+      // appui long sur une carte face cachée : sa couleur de rareté se met à briller autour du dos
+      holdTimer.current = window.setTimeout(() => {
+        if (press.current && !press.current.moved) {
+          setHolding(idx);
+          try { navigator.vibrate?.(14); } catch { /* ignoré */ }
+        }
+      }, 230);
+    }
+    tiltFrom(e);
+  };
+  const tiltFrom = (e: React.PointerEvent) => {
+    const r = area.current?.getBoundingClientRect();
+    if (!r || press.current?.moved) return;
+    const tx = (e.clientX - r.left - r.width / 2) / (cardW / 2);
+    const ty = (e.clientY - r.top - r.height / 2) / (cardH / 2);
+    setTilt({ x: Math.max(-1, Math.min(1, tx)), y: Math.max(-1, Math.min(1, ty)) });
+  };
+  const endPress = () => {
+    if (holdTimer.current) window.clearTimeout(holdTimer.current);
+    setHolding(null);
+    setTilt({ x: 0, y: 0 });
   };
   const onMove = (e: React.PointerEvent) => {
     const p = press.current;
     if (!p || charging !== null) return;
     const dx = e.clientX - p.x;
-    if (Math.abs(dx) > 10) p.moved = true;
+    if (Math.abs(dx) > 10) { p.moved = true; endPress(); }
     if (p.moved) setDragX(Math.max(-step, Math.min(step, dx)));
+    else tiltFrom(e);
   };
   const onUp = (e: React.PointerEvent) => {
     const p = press.current;
@@ -269,6 +364,7 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
     if (!p) return;
     const dx = e.clientX - p.x;
     setDragX(0);
+    endPress();
     if (p.moved) {
       const v = dx / Math.max(1, Date.now() - p.t); // px/ms
       if (charging === null && (Math.abs(dx) > step * 0.22 || Math.abs(v) > 0.45)) goTo(idx + (dx < 0 ? 1 : -1));
@@ -276,7 +372,7 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
       tap(p.i ?? idx); // un appui à côté d'une carte compte comme un appui sur la carte du milieu
     }
   };
-  const onCancel = () => { press.current = null; setDragX(0); };
+  const onCancel = () => { press.current = null; setDragX(0); endPress(); };
 
   const allShown = shown.length > 0 && shown.every(Boolean);
   const cur = cards[idx];
@@ -313,8 +409,9 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
         </AnimatePresence>
       </div>
 
-      <div
+      <motion.div
         className="deal"
+        animate={shakeCtl}
         ref={area}
         onPointerDown={onDown}
         onPointerMove={onMove}
@@ -336,7 +433,7 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
               aria-label={`Carte ${i + 1} sur ${n}${isShown ? "" : ", face cachée"}`}
               style={{
                 width: cardW, height: cardH, marginLeft: -cardW / 2, marginTop: -cardH / 2,
-                zIndex: 20 - Math.abs(d), pointerEvents: Math.abs(d) > 1 ? "none" : "auto",
+                zIndex: 30 - Math.abs(d) * 2, pointerEvents: Math.abs(d) > 1 ? "none" : "auto",
               }}
               initial={dealt ? { x: 0, y: cardH * 0.45, scale: 0.35, opacity: 0, rotate: (i - 2) * 9 } : false}
               animate={{
@@ -355,12 +452,15 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
                 className="aura"
                 style={{ background: color }}
                 animate={{
-                  opacity: charging === i ? [0.2, 0.95, 0.4, 1] : isShown ? (top ? [0.45, 0.85, 0.45] : 0.35) : 0,
-                  scale: charging === i ? [1, 1.25, 1.1, 1.35] : 1,
+                  opacity: charging === i ? [0.2, 0.95, 0.4, 1]
+                    : holding === i && !isShown ? [0.55, 0.95, 0.55]
+                      : isShown ? (top ? [0.45, 0.85, 0.45] : 0.35) : 0,
+                  scale: charging === i ? [1, 1.25, 1.1, 1.35] : holding === i && !isShown ? [1.04, 1.14, 1.04] : 1,
                 }}
                 transition={
                   charging === i ? { duration: 1, ease: "easeIn" }
-                    : isShown && top ? { duration: 2.2, repeat: Infinity, ease: "easeInOut" } : { duration: 0.5 }
+                    : (isShown && top) || (holding === i && !isShown) ? { duration: holding === i && !isShown ? 0.9 : 2.2, repeat: Infinity, ease: "easeInOut" }
+                      : { duration: 0.5 }
                 }
               />
               {isCur && isShown && top && (
@@ -375,8 +475,12 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
 
               <motion.div
                 className="shake"
-                animate={charging === i ? { x: [0, -5, 5, -7, 7, -9, 9, -5, 5, 0], y: -8, scale: 1.07 } : { x: 0, y: 0, scale: 1 }}
-                transition={charging === i ? { duration: 1, ease: "easeIn" } : { duration: 0.25 }}
+                style={{ transformPerspective: 900 }}
+                animate={
+                  charging === i ? { x: [0, -5, 5, -7, 7, -9, 9, -5, 5, 0], y: -8, scale: 1.1, rotateX: 0, rotateY: 0 }
+                    : { x: 0, y: 0, scale: isCur && holding !== null ? 1.04 : 1, rotateY: isCur ? tilt.x * 14 : 0, rotateX: isCur ? -tilt.y * 14 : 0 }
+                }
+                transition={charging === i ? { duration: 1.05, ease: "easeIn" } : { type: "spring", stiffness: 260, damping: 20 }}
               >
                 <motion.div
                   className="flipper"
@@ -405,6 +509,9 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
           );
         })}
 
+        {/* l'écran s'assombrit pendant le suspense d'une UR / LR */}
+        <motion.div className="dimmer" initial={false} animate={{ opacity: charging !== null ? 1 : 0 }} transition={{ duration: 0.4 }} />
+
         {/* flash de couleur plein écran pour les UR / LR */}
         {fx && isTop(cards[fx.i]!.rarity) && (
           <motion.div
@@ -416,7 +523,7 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
             transition={{ duration: 0.9 }}
           />
         )}
-      </div>
+      </motion.div>
 
       <div className="rarityline">
         {curShown && cur && (
@@ -511,6 +618,7 @@ function Summary({ go }: { go: (t: Tab) => void }) {
         {deckNudge && (
           <button className={`btn ${nextBooster ? "ghost" : "primary"} small`} onClick={() => { g.closeOpening(); go("gymdeck"); }}>{deckNudge}</button>
         )}
+        <button className="btn ghost small" onClick={async () => g.say(await shareCards(cards, g.player.name ?? "Joueur"))}>Partager mon tirage</button>
         <button className="btn ghost small" onClick={() => { g.closeOpening(); go("collection"); }}>Voir ma collection</button>
         <button className="link center" onClick={() => { g.closeOpening(); go("home"); }}>Retour à l’accueil</button>
       </div>

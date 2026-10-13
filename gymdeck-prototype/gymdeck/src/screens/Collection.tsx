@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardBack, passiveLabel } from "@/components/Card";
+import { Card, CardBack, Tilt, passiveLabel } from "@/components/Card";
+import { Extensions } from "@/screens/Missions";
+import { shareCards } from "@/lib/share";
 import { GcPill, Wordmark } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
 import { IconBack, IconNext, IconSearch } from "@/components/Icons";
 import { Sheet } from "@/components/Sheet";
+import { sfx } from "@/lib/sound";
 import { DISCARD_GC, EXERCISES, RARITIES, RARITY_COLOR, RARITY_RANK, exerciseBySlug, type Rarity } from "@/lib/config";
 import { completion, duplicateIds, type OwnedCard } from "@/lib/game";
 
@@ -23,7 +26,7 @@ export function Collection() {
   const g = useGame();
   const [q, setQ] = useState("");
   const [rarity, setRarity] = useState<Rarity | null>(null);
-  const [view, setView] = useState<"exercise" | "all">("exercise");
+  const [view, setView] = useState<"exercise" | "all" | "ext">("exercise");
   const [sort, setSort] = useState<Sort>("recent");
   const [detail, setDetail] = useState<{ slug: string; id: string } | null>(null);
   const [cleaning, setCleaning] = useState(false);
@@ -71,6 +74,7 @@ export function Collection() {
       </div>
       <div className="progress" style={{ marginBottom: 12 }}><i style={{ width: `${(comp.owned / comp.total) * 100}%` }} /></div>
 
+      {view !== "ext" && (<>
       <label className="search">
         <IconSearch />
         <input placeholder="Rechercher un exercice…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Rechercher un exercice" />
@@ -82,9 +86,12 @@ export function Collection() {
         ))}
       </div>
 
-      <div className="seg">
+      </>)}
+
+      <div className="seg three">
         <button className={view === "exercise" ? "on" : ""} onClick={() => setView("exercise")}>Par exercice</button>
-        <button className={view === "all" ? "on" : ""} onClick={() => setView("all")}>Toutes les cartes</button>
+        <button className={view === "all" ? "on" : ""} onClick={() => setView("all")}>Toutes</button>
+        <button className={view === "ext" ? "on" : ""} onClick={() => setView("ext")}>Extensions</button>
       </div>
 
       {view === "all" && (
@@ -96,7 +103,9 @@ export function Collection() {
         <div className="statsline"><span>Rareté <b style={{ color: RARITY_COLOR[rarity] }}>{rarity}</b> : <b>{rarityOwned} / {slots.length}</b> exercices</span></div>
       )}
 
-      {cards.length === 0 ? (
+      {view === "ext" ? (
+        <Extensions />
+      ) : cards.length === 0 ? (
         <div className="empty">Ta collection est vide. Ouvre un booster depuis l’accueil !</div>
       ) : view === "exercise" ? (
         <div className="cgrid">
@@ -173,7 +182,7 @@ function Detail({ slug, startId, onClose }: { slug: string; startId: string; onC
 
   return (
     <Sheet onClose={onClose} variant="center" label={exerciseBySlug(slug).name}>
-      <div className="cardwrap"><Card card={card} /></div>
+      <div className="cardwrap"><Tilt><Card card={card} /></Tilt></div>
       <div style={{ textAlign: "center", fontSize: 15, color: "#cfd6e8" }}>
         {exerciseBySlug(card.exerciseSlug).name} · <b style={{ color: RARITY_COLOR[card.rarity] }}>{card.rarity}</b>
         {card.passive && <div style={{ color: "var(--lime)", marginTop: 4 }}>Passif : {passiveLabel(card.passive)}</div>}
@@ -199,12 +208,18 @@ function Detail({ slug, startId, onClose }: { slug: string; startId: string; onC
           <button className="btn primary small" onClick={() => {
             const r = g.discard(card.id);
             setConfirm(false);
-            if ("gained" in r) g.say(`+${r.gained} GC`);
+            if ("gained" in r) { sfx.coin(); g.say(`+${r.gained} GC`); }
             else g.say(r.error);
           }}>Confirmer · +{DISCARD_GC[card.rarity]} GC</button>
         ) : (
           <button className="btn ghost small" onClick={() => setConfirm(true)}>Défausser · +{DISCARD_GC[card.rarity]} GC</button>
         )}
+        <div className="two">
+          <button className="btn ghost small" onClick={async () => g.say(await shareCards([card], g.player.name ?? "Joueur"))}>Partager</button>
+          <button className="btn ghost small" onClick={() => { const r = g.toggleShowcase(card.id); g.say(r ?? (g.extra.showcase.includes(card.id) ? "Retirée de ta vitrine" : "Ajoutée à ta vitrine")); }}>
+            {g.extra.showcase.includes(card.id) ? "Hors vitrine" : "En vitrine"}
+          </button>
+        </div>
         <button className="btn ghost small" onClick={onClose}>Fermer</button>
       </div>
     </Sheet>

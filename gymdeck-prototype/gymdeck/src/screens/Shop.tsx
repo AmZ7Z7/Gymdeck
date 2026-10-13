@@ -5,6 +5,7 @@ import { GcPill, LoginDots, OddsSheet, Wordmark } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
 import { IconCart, IconChevron } from "@/components/Icons";
 import { Sheet } from "@/components/Sheet";
+import { sfx } from "@/lib/sound";
 import { BOOSTER_PRICE_GC, DAILY_LOGIN_GC, LOGIN_CYCLE, PITY_THRESHOLD, type BoosterKind } from "@/lib/config";
 
 const KIND_LABEL: Record<BoosterKind, string> = {
@@ -62,6 +63,7 @@ export function Shop({ onMarket }: { onMarket: () => void }) {
           disabled={g.loginDoneToday}
           onClick={() => {
             const r = g.claim();
+            sfx.coin();
             g.say(r === "bonus" ? `+${DAILY_LOGIN_GC} GC et un booster offert !` : r ?? `+${DAILY_LOGIN_GC} GC`);
           }}
         >Récupérer</button>
@@ -87,8 +89,8 @@ export function Shop({ onMarket }: { onMarket: () => void }) {
 
       <button className="panel market" style={{ width: "100%", textAlign: "left" }} onClick={onMarket}>
         <IconCart />
-        <span className="t">Marché</span>
-        <span className="soon">Bientôt disponible <IconChevron width={14} height={14} style={{ verticalAlign: "-2px" }} /></span>
+        <span className="t">Marché<span className="sub">Enchères entre joueurs</span></span>
+        <span className="soon live">{g.market.auctions.filter((a) => a.seller !== "me").length} enchères <IconChevron width={14} height={14} style={{ verticalAlign: "-2px" }} /></span>
       </button>
 
       {odds && <OddsSheet onClose={() => setOdds(false)} />}

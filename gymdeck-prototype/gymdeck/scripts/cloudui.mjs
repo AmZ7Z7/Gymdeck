@@ -1,0 +1,10 @@
+import { chromium } from "playwright";
+const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
+const page = await (await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })).newPage();
+const errors = []; page.on("pageerror", (e) => errors.push(e.message));
+await page.goto("http://localhost:3200/"); await page.waitForSelector(".onboard", { timeout: 60000 }); await page.waitForTimeout(800);
+await page.click(".seg button:has-text('Se connecter')"); await page.waitForTimeout(300);
+await page.fill("#email", "a@b.fr"); await page.fill("#pw", "motdepasse1"); await page.click("button[type=submit]"); await page.waitForTimeout(2500);
+await page.screenshot({ path: process.argv[2] + "/cloud-login.png" });
+console.log("errors", errors);
+await browser.close();

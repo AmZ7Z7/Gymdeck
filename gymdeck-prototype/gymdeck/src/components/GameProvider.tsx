@@ -2,14 +2,32 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
-  autoDeck as autoDeckFn, buyBooster, claimLogin, createAccount, discardCard, discardMany as discardManyFn,
+  autoDeck as autoDeckFn, buyBooster, newId, claimLogin, createAccount, discardCard, discardMany as discardManyFn,
   openPendingBooster, parisDay, setDeck as setDeckFn, setName as setNameFn, validateSession,
   type OwnedCard, type PlayerState,
 } from "@/lib/game";
+import { cancelAuction as cancelAuctionFn, emptyMarket, listCard as listCardFn, marketNow, placeBid, syncMarket, HOUR, type MarketState } from "@/lib/market";
 import { secureRng } from "@/lib/rng";
+import {
+  claimAchievement as claimAchFn, claimMission as claimMissionFn, claimSeason as claimSeasonFn, claimSet as claimSetFn,
+  claimStreak as claimStreakFn, seasonOf, track, type EventKind, type Extra,
+} from "@/lib/progress";
+import {
+  addFriend as addFriendFn, finalRank, normalizeState, proposeTrade, removeFriend as removeFriendFn, toggleShowcase as toggleShowcaseFn, botById,
+} from "@/lib/social";
+import { makeCard } from "@/lib/engine";
+import {
+  cloudEnabled, cloudLoad, cloudResetPassword, cloudSave, cloudSession, cloudSignIn, cloudSignOut, cloudSignUp,
+} from "@/lib/cloud";
+import type { MuscleGroup, Rarity } from "@/lib/config";
+import { sfx } from "@/lib/sound";
 import { DECK_SIZE, type BoosterKind } from "@/lib/config";
 
 const STORAGE_KEY = "gymdeck:proto:v1";
+const ACCOUNT_KEY = "gymdeck:account:v1";
+
+/** Compte connecté : « local » = mode test sans serveur ; « cloud » = Supabase. */
+export interface Account { email: string; cloud: boolean; userId?: string }
 
 /** Session d'ouverture : survit à la fermeture / au rechargement de la page. */
 export interface OpeningSession {
@@ -52,8 +70,39 @@ interface Game {
   /** Ajoute / retire / remplace une carte du deck. */
   toggleDeck: (cardId: string) => { ok: boolean; msg: string };
   deckCards: OwnedCard[];
+  market: MarketState;
+  /** Heure du marché (heure réelle + décalage de test). */
+  marketClock: () => number;
+  bid: (auctionId: string, amount: number) => string | null;
+  listCard: (cardId: string, price: number, hours: number) => string | null;
+  cancelAuction: (auctionId: string) => string | null;
   say: (msg: string) => void;
-  tools: { nextDay: () => void; addGc: (n: number) => void; reset: () => void };
+  /** Mode du serveur : false tant que Supabase n'est pas branché. */
+  cloudEnabled: boolean;
+  account: Account | null;
+  extra: Extra;
+  /** Jour de Paris courant (horloge du jeu). */
+  day: string;
+  /** Création / connexion : renvoie un message d'erreur, "confirm" (e-mail à confirmer) ou null. */
+  signUp: (email: string, password: string, name: string) => Promise<string | null>;
+  signIn: (email: string, password: string) => Promise<string | null>;
+  resetPassword: (email: string) => Promise<string | null>;
+  localStart: (email: string, name: string) => string | null;
+  signOut: () => Promise<void>;
+  claimMission: (scope: "daily" | "weekly", id: string) => number | string;
+  claimStreak: (days: number) => number | string;
+  claimSet: (group: MuscleGroup, tier: string) => number | string;
+  claimAchievement: (id: string) => number | string;
+  claimSeason: () => number | string;
+  addFriend: (code: string) => string | null;
+  removeFriend: (botId: string) => void;
+  toggleShowcase: (cardId: string) => string | null;
+  trade: (botId: string, myCardId: string, offerIndex: number) => { error: string } | { gaveId: string; gotId: string };
+  /** Lance l'ouverture du premier booster en stock (après la création du compte). */
+  openFirstBooster: () => void;
+  finishTutorial: () => void;
+  setReminder: (r: Extra["reminder"]) => void;
+  tools: { nextDay: () => void; addGc: (n: number) => void; reset: () => void; advanceHours: (h: number) => void; giveCard: (r: Rarity) => void; advanceDays: (n: number) => void; resetTutorial: () => void };
 }
 
 const Ctx = createContext<Game | null>(null);
@@ -80,6 +129,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [player, setPlayer] = useState<PlayerState>(() => createAccount());
   const [opening, setOpening] = useState<OpeningSession | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [account, setAccount] = useState<Account | null>(null);
+  const accountRef = useRef<Account | null>(null);
+  const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Copie synchrone pour que chaque action lise le dernier état, même enchaînée dans le même tick.
   const live = useRef<Persisted>({ player, opening });
@@ -89,17 +141,78 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     save(next); // écrit AVANT toute animation : le tirage ne peut pas être relancé
     setPlayer(next.player);
     setOpening(next.opening);
+    // sauvegarde en ligne (au plus une fois toutes les 2 s)
+    const acc = accountRef.current;
+    if (acc?.cloud && acc.userId) {
+      if (syncTimer.current) clearTimeout(syncTimer.current);
+      syncTimer.current = setTimeout(() => { void cloudSave(acc.userId!, live.current.player); }, 2000);
+    }
   }, []);
+
+  const saveAccount = useCallback((a: Account | null) => {
+    accountRef.current = a;
+    setAccount(a);
+    try { if (a) localStorage.setItem(ACCOUNT_KEY, JSON.stringify(a)); else localStorage.removeItem(ACCOUNT_KEY); } catch { /* ignoré */ }
+  }, []);
+
+  /** Applique une action et enregistre l'événement pour les missions, la série et la saison. */
+  /** Horloge du jeu : l'heure réelle + un décalage de jours (outil de test). */
+  const clock = () => new Date(Date.now() + (live.current.player.extra?.dayShift ?? 0) * 86_400_000);
+  const trk = (p: PlayerState, kind: EventKind, n = 1) => track(p, kind, secureRng, parisDay(clock()), finalRank, n);
 
   useEffect(() => {
     const saved = load();
-    const initial = saved ?? { player: createAccount(), opening: null };
+    const initial0 = saved ?? { player: createAccount(), opening: null };
+    const initial = { ...initial0, player: normalizeState(initial0.player, secureRng, parisDay(new Date(Date.now() + (initial0.player.extra?.dayShift ?? 0) * 86_400_000))) };
     live.current = initial;
-    if (!saved) save(initial);
+    save(initial);
     setPlayer(initial.player);
     setOpening(initial.opening);
+    // compte : sauvegarde ancienne (prototype) avec pseudo → compte local automatique
+    let acc: Account | null = null;
+    try { const raw = localStorage.getItem(ACCOUNT_KEY); acc = raw ? (JSON.parse(raw) as Account) : null; } catch { /* ignoré */ }
+    if (!acc && initial.player.name) acc = { email: "", cloud: false };
+    if (acc?.cloud) {
+      void cloudSession().then((u) => {
+        if (!u) saveAccount(null); else saveAccount({ email: u.email, cloud: true, userId: u.id });
+      });
+    }
+    accountRef.current = acc;
+    setAccount(acc);
     setReady(true);
-  }, []);
+  }, [saveAccount]);
+
+  // passage à minuit (jour de Paris) pendant que l'appli est ouverte : missions et saison se remettent à jour
+  useEffect(() => {
+    if (!ready) return;
+    const t = setInterval(() => {
+      const p = live.current.player;
+      const n = normalizeState(p, secureRng, parisDay(clock()));
+      if (n !== p) commit({ ...live.current, player: n });
+    }, 60000);
+    return () => clearInterval(t);
+  }, [ready, commit]);
+
+  /** Fait avancer le marché (acheteurs simulés, fins d'enchères) et annonce ce qui s'est passé. */
+  const runSync = useCallback(() => {
+    const p = live.current.player;
+    const r = syncMarket(p, secureRng, marketNow(p.market, Date.now()));
+    if (!r.changed) return;
+    let st = r.state;
+    for (const ev of r.events) if (ev.kind === "won" || ev.kind === "sold") st = trk(st, ev.kind);
+    commit({ ...live.current, player: st });
+    if (r.events.some((e) => e.kind === "sold")) sfx.coin();
+    else if (r.events.some((e) => e.kind === "won")) sfx.good();
+    if (r.events.length === 1) say(r.events[0]!.message);
+    else if (r.events.length > 1) say(`${r.events.length} nouveautés sur le Marché`);
+  }, [commit]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!ready) return;
+    runSync();
+    const t = setInterval(runSync, 20000);
+    return () => clearInterval(t);
+  }, [ready, runSync]);
 
   const say = useCallback((msg: string) => {
     setToast(msg);
@@ -107,7 +220,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     toastTimer.current = setTimeout(() => setToast(null), 2600);
   }, []);
 
-  const today = parisDay(new Date());
+  const today = parisDay(new Date(Date.now() + (player.extra?.dayShift ?? 0) * 86_400_000));
+
+  const tools_advanceDays = (n: number) => {
+    const p = live.current.player;
+    const e = p.extra;
+    if (!e) return;
+    const shifted: PlayerState = { ...p, extra: { ...e, dayShift: (e.dayShift ?? 0) + n } };
+    const day = parisDay(new Date(Date.now() + (shifted.extra!.dayShift ?? 0) * 86_400_000));
+    commit({ ...live.current, player: normalizeState(shifted, secureRng, day) });
+  };
 
   const game = useMemo<Game>(() => ({
     ready,
@@ -117,6 +239,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     loginDoneToday: player.lastLoginDay === today,
     toast,
     say,
+    market: player.market ?? emptyMarket(),
+    marketClock: () => marketNow(live.current.player.market, Date.now()),
     deckCards: player.deck.map((id) => player.cards.find((c) => c.id === id)).filter((c): c is OwnedCard => !!c),
 
     startOpening: (boosterId) => {
@@ -132,7 +256,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const r = openPendingBooster(p, o.boosterId, secureRng);
       if (!r.ok) return;
       commit({
-        player: r.state,
+        player: trk(r.state, "open"),
         opening: {
           ...o, phase: "cards", cardIds: r.cards.map((c: OwnedCard) => c.id), revealed: r.cards.map(() => false), index: 0,
           isNew: (() => {
@@ -172,39 +296,39 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     closeOpening: () => commit({ player: live.current.player, opening: null }),
 
     validate: () => {
-      const r = validateSession(live.current.player, new Date());
+      const r = validateSession(live.current.player, clock());
       if (!r.ok) return r.error;
       // Le booster de séance vient d'être ajouté en dernier : on enchaîne directement sur son ouverture.
       const b = r.state.boosters[r.state.boosters.length - 1]!;
-      commit({ player: r.state, opening: { boosterId: b.id, kind: b.kind, phase: "closed", cardIds: [], revealed: [], index: 0 } });
+      commit({ player: trk(r.state, "session"), opening: { boosterId: b.id, kind: b.kind, phase: "closed", cardIds: [], revealed: [], index: 0 } });
       return null;
     },
 
     claim: () => {
-      const r = claimLogin(live.current.player, new Date());
+      const r = claimLogin(live.current.player, clock());
       if (!r.ok) return r.error;
-      commit({ ...live.current, player: r.state });
+      commit({ ...live.current, player: trk(r.state, "login") });
       return r.bonusBooster ? "bonus" : null;
     },
 
     buy: () => {
       const r = buyBooster(live.current.player);
       if (!r.ok) return { error: r.error };
-      commit({ ...live.current, player: r.state });
+      commit({ ...live.current, player: trk(r.state, "buy") });
       return { boosterId: r.state.boosters[r.state.boosters.length - 1]!.id };
     },
 
     discard: (cardId) => {
       const r = discardCard(live.current.player, cardId);
       if (!r.ok) return { error: r.error };
-      commit({ ...live.current, player: r.state });
+      commit({ ...live.current, player: trk(r.state, "discard") });
       return { gained: r.gained };
     },
 
     discardMany: (ids) => {
       const r = discardManyFn(live.current.player, ids);
       if (!r.ok) return { error: r.error };
-      commit({ ...live.current, player: r.state });
+      commit({ ...live.current, player: trk(r.state, "discard") });
       return { gained: r.gained, count: r.count };
     },
 
@@ -218,14 +342,14 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setDeck: (ids) => {
       const r = setDeckFn(live.current.player, ids);
       if (!r.ok) return r.error;
-      commit({ ...live.current, player: r.state });
+      commit({ ...live.current, player: trk(r.state, "deck") });
       return null;
     },
 
     autoDeck: () => {
       const r = autoDeckFn(live.current.player);
       if (!r.ok) return r.error;
-      commit({ ...live.current, player: r.state });
+      commit({ ...live.current, player: trk(r.state, "deck") });
       return null;
     },
 
@@ -246,16 +370,167 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       }
       const r = setDeckFn(p, next);
       if (!r.ok) return { ok: false, msg: r.error };
-      commit({ ...live.current, player: r.state });
+      commit({ ...live.current, player: trk(r.state, "deck") });
       return { ok: true, msg };
     },
 
-    tools: {
-      nextDay: () => commit({ ...live.current, player: { ...live.current.player, lastSessionDay: null, lastLoginDay: null } }),
-      addGc: (n) => commit({ ...live.current, player: { ...live.current.player, gc: live.current.player.gc + n } }),
-      reset: () => commit({ player: { ...createAccount(), name: live.current.player.name }, opening: null }),
+    bid: (auctionId, amount) => {
+      const p = live.current.player;
+      const r = placeBid(p, auctionId, amount, marketNow(p.market, Date.now()));
+      if (!r.ok) return r.error;
+      commit({ ...live.current, player: trk(r.state, "bid") });
+      return null;
     },
-  }), [ready, player, opening, toast, today, say, commit]);
+
+    listCard: (cardId, price, hours) => {
+      const p = live.current.player;
+      const r = listCardFn(p, secureRng, cardId, price, hours, marketNow(p.market, Date.now()));
+      if (!r.ok) return r.error;
+      commit({ ...live.current, player: trk(r.state, "list") });
+      return null;
+    },
+
+    cancelAuction: (auctionId) => {
+      const r = cancelAuctionFn(live.current.player, auctionId);
+      if (!r.ok) return r.error;
+      commit({ ...live.current, player: r.state });
+      return null;
+    },
+
+    cloudEnabled,
+    account,
+    extra: player.extra ?? ({} as Extra),
+    day: today,
+
+    signUp: async (email, password, name) => {
+      const nm = setNameFn(live.current.player, name);
+      if (!nm.ok) return nm.error;
+      const r = await cloudSignUp(email.trim(), password, name.trim());
+      if (!r.ok) return r.error;
+      if (r.needsConfirm || !r.user) return "confirm";
+      saveAccount({ email: r.user.email, cloud: true, userId: r.user.id });
+      const fresh = normalizeState({ ...createAccount(), name: nm.state.name }, secureRng, parisDay(new Date()));
+      commit({ player: fresh, opening: null });
+      void cloudSave(r.user.id, fresh);
+      return null;
+    },
+
+    signIn: async (email, password) => {
+      const r = await cloudSignIn(email.trim(), password);
+      if (!r.ok || !r.user) return r.ok ? "Connexion impossible." : r.error;
+      const saved = await cloudLoad(r.user.id);
+      saveAccount({ email: r.user.email, cloud: true, userId: r.user.id });
+      if (saved) commit({ player: normalizeState(saved.state, secureRng, parisDay(new Date())), opening: null });
+      else {
+        const base = normalizeState({ ...createAccount(), name: r.user.name ?? email.split("@")[0] }, secureRng, parisDay(new Date()));
+        commit({ player: base, opening: null });
+        void cloudSave(r.user.id, base);
+      }
+      return null;
+    },
+
+    resetPassword: (email) => cloudResetPassword(email.trim()),
+
+    localStart: (email, name) => {
+      const r = setNameFn(live.current.player, name);
+      if (!r.ok) return r.error;
+      saveAccount({ email: email.trim(), cloud: false });
+      commit({ ...live.current, player: r.state });
+      return null;
+    },
+
+    signOut: async () => {
+      const acc = accountRef.current;
+      if (acc?.cloud) { if (acc.userId) await cloudSave(acc.userId, live.current.player); await cloudSignOut(); }
+      saveAccount(null);
+      commit({ player: normalizeState(createAccount(), secureRng, parisDay(new Date())), opening: null });
+    },
+
+    claimMission: (scope, id) => {
+      const r = claimMissionFn(live.current.player, scope, id, parisDay(clock()));
+      if (!r.ok) return r.error;
+      commit({ ...live.current, player: r.state });
+      return r.reward;
+    },
+    claimStreak: (days) => {
+      const r = claimStreakFn(live.current.player, days, parisDay(clock()));
+      if (!r.ok) return r.error;
+      commit({ ...live.current, player: r.state });
+      return r.reward;
+    },
+    claimSet: (group, tier) => {
+      const r = claimSetFn(live.current.player, group, tier);
+      if (!r.ok) return r.error;
+      commit({ ...live.current, player: r.state });
+      return r.reward;
+    },
+    claimAchievement: (id) => {
+      const r = claimAchFn(live.current.player, id);
+      if (!r.ok) return r.error;
+      commit({ ...live.current, player: r.state });
+      return r.reward;
+    },
+    claimSeason: () => {
+      const r = claimSeasonFn(live.current.player);
+      if (!r.ok) return r.error;
+      commit({ ...live.current, player: r.state });
+      return r.reward;
+    },
+
+    addFriend: (code) => {
+      const r = addFriendFn(live.current.player, code);
+      if (!r.ok) return r.error;
+      commit({ ...live.current, player: r.state });
+      return null;
+    },
+    removeFriend: (botId) => commit({ ...live.current, player: removeFriendFn(live.current.player, botId) }),
+    toggleShowcase: (cardId) => {
+      const r = toggleShowcaseFn(live.current.player, cardId);
+      if (!r.ok) return r.error;
+      commit({ ...live.current, player: r.state });
+      return null;
+    },
+    trade: (botId, myCardId, offerIndex) => {
+      const p = live.current.player;
+      const daily = p.extra?.daily.trade ?? 0;
+      const r = proposeTrade(p, botId, myCardId, offerIndex, daily);
+      if (!r.ok) return { error: r.error };
+      commit({ ...live.current, player: trk(r.state, "trade") });
+      return { gaveId: r.gave.id, gotId: r.got.id };
+    },
+    openFirstBooster: () => {
+      const { player: p } = live.current;
+      const b = p.boosters[0];
+      if (b) commit({ player: p, opening: { boosterId: b.id, kind: b.kind, phase: "closed", cardIds: [], revealed: [], index: 0 } });
+    },
+    finishTutorial: () => {
+      const p = live.current.player;
+      if (p.extra && !p.extra.tutorialDone) commit({ ...live.current, player: { ...p, extra: { ...p.extra, tutorialDone: true } } });
+    },
+    setReminder: (rem) => {
+      const p = live.current.player;
+      if (p.extra) commit({ ...live.current, player: { ...p, extra: { ...p.extra, reminder: rem } } });
+    },
+
+    tools: {
+      advanceHours: (h) => {
+        const p = live.current.player;
+        const m = p.market ?? emptyMarket();
+        commit({ ...live.current, player: { ...p, market: { ...m, offsetMs: m.offsetMs + h * HOUR } } });
+        runSync();
+      },
+      nextDay: () => tools_advanceDays(1),
+      advanceDays: (n) => tools_advanceDays(n),
+      giveCard: (rarity) => {
+        const p = live.current.player;
+        const c: OwnedCard = { ...makeCard(secureRng, rarity), id: newId(), obtainedSeq: p.seq + 1 };
+        commit({ ...live.current, player: { ...p, seq: p.seq + 1, cards: [...p.cards, c] } });
+      },
+      resetTutorial: () => { const p = live.current.player; if (p.extra) commit({ ...live.current, player: { ...p, extra: { ...p.extra, tutorialDone: false } } }); },
+      addGc: (n) => commit({ ...live.current, player: { ...live.current.player, gc: live.current.player.gc + n } }),
+      reset: () => commit({ player: normalizeState({ ...createAccount(), name: live.current.player.name }, secureRng, parisDay(new Date())), opening: null }),
+    },
+  }), [ready, player, opening, toast, today, account, say, commit, runSync, saveAccount]);
 
   return <Ctx.Provider value={game}>{children}</Ctx.Provider>;
 }

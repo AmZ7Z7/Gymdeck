@@ -61,24 +61,36 @@ export const PASSIVE_TENTHS = {
 
 export type BoosterKind = "welcome1" | "welcome2" | "session" | "login" | "shop";
 
+export type MuscleGroup = "pecs" | "epaules" | "dos" | "bras" | "jambes";
+
+/** Extensions (séries) : une par groupe musculaire. Les nouveaux exercices s'y ajoutent via le champ `group`. */
+export const GROUPS: { id: MuscleGroup; name: string; emoji: string }[] = [
+  { id: "pecs", name: "Pectoraux", emoji: "🔥" },
+  { id: "epaules", name: "Épaules", emoji: "⚡" },
+  { id: "dos", name: "Dos", emoji: "🦅" },
+  { id: "bras", name: "Bras", emoji: "💪" },
+  { id: "jambes", name: "Jambes & fessiers", emoji: "🦵" },
+];
+
 export interface Exercise {
   slug: string;
   name: string;
   image: string;
+  group: MuscleGroup;
 }
 
 /** Catalogue de lancement (10 exercices). */
 export const EXERCISES: Exercise[] = [
-  { slug: "developpe-couche", name: "Développé couché haltères", image: "/assets/exercises/developpe-couche.webp" },
-  { slug: "developpe-incline", name: "Développé incliné haltères", image: "/assets/exercises/developpe-incline.webp" },
-  { slug: "developpe-militaire", name: "Développé militaire", image: "/assets/exercises/developpe-militaire.webp" },
-  { slug: "tirage-vertical", name: "Tirage vertical", image: "/assets/exercises/tirage-vertical.webp" },
-  { slug: "rowing-barre", name: "Rowing barre", image: "/assets/exercises/rowing-barre.webp" },
-  { slug: "souleve-de-terre", name: "Soulevé de terre", image: "/assets/exercises/souleve-de-terre.webp" },
-  { slug: "hip-thrust", name: "Hip thrust", image: "/assets/exercises/hip-thrust.webp" },
-  { slug: "curl-biceps", name: "Curl biceps haltères", image: "/assets/exercises/curl-biceps.webp" },
-  { slug: "elevations-laterales", name: "Élévations latérales", image: "/assets/exercises/elevations-laterales.webp" },
-  { slug: "squat", name: "Squat barre", image: "/assets/exercises/squat.webp" },
+  { slug: "developpe-couche", name: "Développé couché haltères", image: "/assets/exercises/developpe-couche.webp", group: "pecs" },
+  { slug: "developpe-incline", name: "Développé incliné haltères", image: "/assets/exercises/developpe-incline.webp", group: "pecs" },
+  { slug: "developpe-militaire", name: "Développé militaire", image: "/assets/exercises/developpe-militaire.webp", group: "epaules" },
+  { slug: "tirage-vertical", name: "Tirage vertical", image: "/assets/exercises/tirage-vertical.webp", group: "dos" },
+  { slug: "rowing-barre", name: "Rowing barre", image: "/assets/exercises/rowing-barre.webp", group: "dos" },
+  { slug: "souleve-de-terre", name: "Soulevé de terre", image: "/assets/exercises/souleve-de-terre.webp", group: "jambes" },
+  { slug: "hip-thrust", name: "Hip thrust", image: "/assets/exercises/hip-thrust.webp", group: "jambes" },
+  { slug: "curl-biceps", name: "Curl biceps haltères", image: "/assets/exercises/curl-biceps.webp", group: "bras" },
+  { slug: "elevations-laterales", name: "Élévations latérales", image: "/assets/exercises/elevations-laterales.webp", group: "epaules" },
+  { slug: "squat", name: "Squat barre", image: "/assets/exercises/squat.webp", group: "jambes" },
 ];
 
 // Garde-fou : une table de probabilités incorrecte doit empêcher le démarrage.

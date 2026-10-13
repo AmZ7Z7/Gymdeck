@@ -3,6 +3,8 @@ import {
 } from "./config";
 import { CardData, bestDeckIds, openBooster, validateDeck } from "./engine";
 import type { Rng } from "./rng";
+import type { MarketState } from "./market";
+import type { Extra } from "./progress";
 
 export interface OwnedCard extends CardData {
   id: string;
@@ -29,12 +31,16 @@ export interface PlayerState {
   lastLoginDay: string | null;
   sessionsValidated: number;
   seq: number;
+  /** Marché aux enchères (absent sur les anciennes sauvegardes : créé au premier passage). */
+  market?: MarketState;
+  /** Missions, série, succès, profil social, saison (créé au premier passage). */
+  extra?: Extra;
 }
 
 export type Result<T> = ({ ok: true } & T) | { ok: false; error: string };
 
 let idCounter = 0;
-const newId = () =>
+export const newId = () =>
   globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `id-${Date.now()}-${idCounter++}`;
 
 /** Jour calendaire à Paris (AAAA-MM-JJ) : le reset des boosters de séance se fait à minuit, heure de Paris. */

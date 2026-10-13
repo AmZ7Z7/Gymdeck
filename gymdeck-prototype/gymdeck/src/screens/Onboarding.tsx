@@ -4,17 +4,45 @@ import { motion } from "framer-motion";
 import { useState } from "react";
 import { useGame } from "@/components/GameProvider";
 
-/** Premier lancement : on choisit un pseudo, puis on enchaîne directement sur l'ouverture du premier booster. */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/** Première arrivée : création de compte (ou connexion), puis ouverture directe du premier booster. */
 export function Onboarding() {
   const g = useGame();
+  const cloud = g.cloudEnabled;
+  const [mode, setMode] = useState<"create" | "login">("create");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [pw, setPw] = useState("");
   const [err, setErr] = useState<string | null>(null);
-  const hasWelcome = g.player.boosters.length > 0;
+  const [info, setInfo] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const create = mode === "create";
 
-  const submit = () => {
-    const e = g.setName(name);
-    if (e) { setErr(e); return; }
-    if (hasWelcome) g.startOpening(g.player.boosters[0]!.id);
+  const submit = async () => {
+    setErr(null); setInfo(null);
+    if (create && name.trim().length < 2) { setErr("Ton pseudo doit faire au moins 2 caractères."); return; }
+    if (!EMAIL.test(email.trim())) { setErr("Adresse e-mail invalide."); return; }
+    if (pw.length < 8) { setErr("Mot de passe : 8 caractères minimum."); return; }
+    setBusy(true);
+    try {
+      if (!cloud) {
+        // Mode test : rien ne quitte ton téléphone et le mot de passe n'est pas enregistré.
+        const e = g.localStart(email, name);
+        if (e) setErr(e); else g.openFirstBooster();
+        return;
+      }
+      const e = create ? await g.signUp(email, pw, name) : await g.signIn(email, pw);
+      if (e === "confirm") { setInfo("Compte créé ! Clique sur le lien reçu par e-mail, puis reviens te connecter."); setMode("login"); return; }
+      if (e) { setErr(e); return; }
+      g.openFirstBooster();
+    } finally { setBusy(false); }
+  };
+
+  const forgot = async () => {
+    if (!EMAIL.test(email.trim())) { setErr("Entre ton e-mail ci-dessus d’abord."); return; }
+    const e = await g.resetPassword(email);
+    if (e) setErr(e); else setInfo("E-mail envoyé : suis le lien pour choisir un nouveau mot de passe.");
   };
 
   return (
@@ -26,22 +54,39 @@ export function Onboarding() {
         <div><b>2</b> Ouvre ton booster de 5 cartes</div>
         <div><b>3</b> Compose ton deck de 5 exercices</div>
       </div>
-      <div className="field">
-        <label htmlFor="pseudo">Choisis ton pseudo</label>
-        <input
-          id="pseudo"
-          value={name}
-          maxLength={20}
-          autoComplete="nickname"
-          placeholder="Ton pseudo"
-          onChange={(e) => { setName(e.target.value); setErr(null); }}
-          onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
-        />
-        {err && <span style={{ color: "#ff8a8a", fontSize: 14 }}>{err}</span>}
-      </div>
-      <button className="btn primary" onClick={submit}>C’est parti</button>
+
+      {cloud && (
+        <div className="seg" style={{ marginBottom: 12 }}>
+          <button className={create ? "on" : ""} onClick={() => { setMode("create"); setErr(null); }}>Créer un compte</button>
+          <button className={!create ? "on" : ""} onClick={() => { setMode("login"); setErr(null); }}>Se connecter</button>
+        </div>
+      )}
+
+      <form className="authform" onSubmit={(e) => { e.preventDefault(); void submit(); }}>
+        {create && (
+          <div className="field">
+            <label htmlFor="pseudo">Pseudo</label>
+            <input id="pseudo" value={name} maxLength={20} autoComplete="nickname" placeholder="Ton pseudo" onChange={(e) => { setName(e.target.value); setErr(null); }} />
+          </div>
+        )}
+        <div className="field">
+          <label htmlFor="email">E-mail</label>
+          <input id="email" type="email" inputMode="email" value={email} autoComplete="email" placeholder="toi@exemple.fr" onChange={(e) => { setEmail(e.target.value); setErr(null); }} />
+        </div>
+        <div className="field">
+          <label htmlFor="pw">Mot de passe</label>
+          <input id="pw" type="password" value={pw} autoComplete={create ? "new-password" : "current-password"} placeholder="8 caractères minimum" onChange={(e) => { setPw(e.target.value); setErr(null); }} />
+        </div>
+        {err && <span className="autherr" role="alert">{err}</span>}
+        {info && <span className="authinfo" role="status">{info}</span>}
+        <button className="btn primary" type="submit" disabled={busy}>{busy ? "…" : create ? "Créer mon compte" : "Me connecter"}</button>
+        {cloud && !create && <button type="button" className="textbtn" onClick={() => void forgot()}>Mot de passe oublié ?</button>}
+      </form>
+
       <p className="fine" style={{ textAlign: "center" }}>
-        {hasWelcome ? "2 boosters de bienvenue t’attendent. " : ""}GymDeck est gratuit : les cartes et les GymCoins n’ont aucune valeur en argent.
+        {!cloud && "Mode test : ton compte reste sur ce téléphone et ton mot de passe n’est pas enregistré. "}
+        {create && g.player.boosters.length > 0 ? "2 boosters de bienvenue t’attendent. " : ""}
+        GymDeck est gratuit : les cartes et les GymCoins n’ont aucune valeur en argent. Réservé aux 18 ans et plus.
       </p>
     </motion.div>
   );

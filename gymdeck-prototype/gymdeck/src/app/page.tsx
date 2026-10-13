@@ -9,8 +9,17 @@ import { GymDeckTab } from "@/screens/GymDeck";
 import { Home } from "@/screens/Home";
 import { Onboarding } from "@/screens/Onboarding";
 import { Opening } from "@/screens/Opening";
-import { Market, Profile } from "@/screens/Others";
+import { Market } from "@/screens/Market";
+import { Missions } from "@/screens/Missions";
+import { Friends, Ranking } from "@/screens/Social";
+import { claimableCount } from "@/lib/progress";
+import { Profile } from "@/screens/Others";
 import { Shop } from "@/screens/Shop";
+import { sfx, unlockAudio } from "@/lib/sound";
+
+export type Page = "market" | "missions" | "friends" | "ranking";
+const PAGES: Page[] = ["market", "missions", "friends", "ranking"];
+const PAGE_HASH: Record<Page, string> = { market: "marche", missions: "missions", friends: "amis", ranking: "classement" };
 
 export type Tab = "home" | "collection" | "gymdeck" | "shop" | "profile";
 
@@ -26,15 +35,16 @@ const isTab = (v: string): v is Tab => TABS.some((t) => t.id === v);
 function Shell() {
   const g = useGame();
   const [tab, setTab] = useState<Tab>("home");
-  const [market, setMarket] = useState(false);
+  const [page, setPage] = useState<Page | null>(null);
 
   // L'onglet est gardé dans l'adresse (#collection…) : un rechargement ou le bouton retour ne renvoie plus à l'accueil.
   useEffect(() => {
     const read = () => {
       const h = window.location.hash.replace("#", "");
-      setTab(isTab(h) ? h : "home");
-      setMarket(h === "marche");
-      if (h === "marche") setTab("shop");
+      const pg = PAGES.find((x) => PAGE_HASH[x] === h) ?? null;
+      setPage(pg);
+      if (pg === "market") setTab("shop");
+      else if (!pg) setTab(isTab(h) ? h : "home");
     };
     read();
     window.addEventListener("hashchange", read);
@@ -42,39 +52,57 @@ function Shell() {
   }, []);
 
   const go = useCallback((t: Tab) => {
-    setMarket(false);
+    setPage(null);
     setTab(t);
     try { window.history.replaceState(null, "", t === "home" ? window.location.pathname : `#${t}`); } catch { /* ignoré */ }
   }, []);
 
-  const openMarket = () => {
-    setMarket(true);
-    try { window.history.replaceState(null, "", "#marche"); } catch { /* ignoré */ }
+  const openPage = (p: Page) => {
+    setPage(p);
+    try { window.history.replaceState(null, "", `#${PAGE_HASH[p]}`); } catch { /* ignoré */ }
+  };
+  const closePage = () => {
+    const back = page === "market" ? "shop" : tab;
+    go(back);
   };
 
   if (!g.ready) return <div className="app" id="app-root" />;
 
-  const needsName = !g.player.name;
+  const needsName = !g.account || !g.player.name;
+  const ready = claimableCount(g.player, g.day);
   const stock = g.player.boosters.length;
 
   return (
-    <div className="app" id="app-root">
+    <div
+      className="app"
+      id="app-root"
+      onPointerDownCapture={(e) => { unlockAudio(); if ((e.target as HTMLElement).closest("button, a")) sfx.tap(); }}
+    >
       {needsName ? (
         <Onboarding />
       ) : g.opening ? (
         <Opening key={g.opening.boosterId} go={go} />
       ) : (
         <>
-          {tab === "home" && <Home go={go} />}
-          {tab === "collection" && <Collection />}
-          {tab === "gymdeck" && <GymDeckTab />}
-          {tab === "shop" && (market ? <Market back={() => go("shop")} /> : <Shop onMarket={openMarket} />)}
-          {tab === "profile" && <Profile />}
+          {page === "missions" ? <Missions back={closePage} />
+            : page === "friends" ? <Friends back={closePage} />
+              : page === "ranking" ? <Ranking back={closePage} />
+                : page === "market" ? <Market back={closePage} />
+                  : (
+                    <>
+                      {tab === "home" && <Home go={go} openPage={openPage} />}
+                      {tab === "collection" && <Collection />}
+                      {tab === "gymdeck" && <GymDeckTab openPage={openPage} />}
+                      {tab === "shop" && <Shop onMarket={() => openPage("market")} />}
+                      {tab === "profile" && <Profile openPage={openPage} />}
+                    </>
+                  )}
           <nav className="tabbar" aria-label="Navigation">
             {TABS.map(({ id, label, Icon }) => (
               <button key={id} className={`tab ${tab === id ? "active" : ""}`} aria-current={tab === id ? "page" : undefined} onClick={() => go(id)}>
                 <Icon /> {label}
                 {id === "home" && stock > 0 && <span className="tabbadge">{stock}</span>}
+                {id === "profile" && ready > 0 && <span className="tabbadge">{ready}</span>}
               </button>
             ))}
           </nav>

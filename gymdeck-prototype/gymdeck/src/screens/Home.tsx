@@ -1,22 +1,34 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/Card";
 import { GcPill, LoginDots, Wordmark, formatDuration, useNow } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
 import { IconChevron } from "@/components/Icons";
+import { sfx } from "@/lib/sound";
 import { Sheet } from "@/components/Sheet";
 import { DAILY_LOGIN_GC, DECK_SIZE, LOGIN_CYCLE } from "@/lib/config";
 import { deckTotals } from "@/lib/engine";
 import { completion, msUntilParisMidnight } from "@/lib/game";
-import type { Tab } from "@/app/page";
+import type { Page, Tab } from "@/app/page";
+import { Tutorial } from "@/components/Tutorial";
+import { claimableCount, dailyMissions, missionProgress, streakNow } from "@/lib/progress";
+import { reminderDue } from "@/lib/reminder";
 
-export function Home({ go }: { go: (t: Tab) => void }) {
+export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: (p: Page) => void }) {
   const g = useGame();
   const { player } = g;
   const now = useNow();
   const [confirm, setConfirm] = useState(false);
+  const [tuto, setTuto] = useState(false);
+  const e = g.extra;
+  useEffect(() => { if (g.ready && e.tutorialDone === false && !g.opening) setTuto(true); }, [g.ready, e.tutorialDone, g.opening]);
+  const missions = dailyMissions(g.day);
+  const mDone = missions.filter((m) => missionProgress(e, "daily", m).done).length;
+  const ready = claimableCount(player, g.day);
+  const streak = streakNow(e, g.day);
+  const showReminder = !g.sessionDoneToday && reminderDue(e.reminder, now);
   const stock = player.boosters.length;
   const hasWelcome = player.boosters.some((b) => b.kind === "welcome1" || b.kind === "welcome2");
   const recent = [...player.cards].sort((a, b) => b.obtainedSeq - a.obtainedSeq).slice(0, 8);
@@ -93,6 +105,7 @@ export function Home({ go }: { go: (t: Tab) => void }) {
               className="btn primary chipbtn"
               onClick={() => {
                 const r = g.claim();
+                sfx.coin();
                 g.say(r === "bonus" ? `+${DAILY_LOGIN_GC} GC et un booster offert !` : r ?? `+${DAILY_LOGIN_GC} GC récupérés`);
               }}
             >Récupérer</button>
@@ -105,6 +118,18 @@ export function Home({ go }: { go: (t: Tab) => void }) {
           <span>{cycle === 0 ? "Cycle terminé, booster reçu · un nouveau cycle commence à ta prochaine connexion." : `Connexion du jour récupérée · booster offert dans ${untilBonus} connexion${untilBonus > 1 ? "s" : ""}`}</span>
         </div>
       )}
+
+      {showReminder && (
+        <div className="panel remindbanner" role="status">⏰ C’est l’heure de ta séance ! Valide-la pour gagner ton booster.</div>
+      )}
+
+      <button className="panel missioncard" onClick={() => openPage("missions")}>
+        <div className="mc-l">
+          <div className="mc-t">Objectifs du jour</div>
+          <div className="mc-s">{mDone} / {missions.length} missions{streak > 0 ? ` · 🔥 ${streak} séance${streak > 1 ? "s" : ""} d’affilée` : ""}</div>
+        </div>
+        {ready > 0 ? <span className="tabbadge" style={{ position: "static" }}>{ready}</span> : <span className="link">›</span>}
+      </button>
 
       <button className="panel minideck" onClick={() => go("gymdeck")}>
         <div className="row-head" style={{ margin: 0 }}>
@@ -141,6 +166,8 @@ export function Home({ go }: { go: (t: Tab) => void }) {
           ))}
         </div>
       )}
+
+      {tuto && <Tutorial onClose={() => { setTuto(false); g.finishTutorial(); }} />}
 
       {confirm && (
         <Sheet onClose={() => setConfirm(false)} label="Valider ma séance">

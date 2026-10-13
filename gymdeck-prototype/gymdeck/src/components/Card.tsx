@@ -1,3 +1,6 @@
+"use client";
+
+import { useRef } from "react";
 import { FRAME_LAYOUT, RARITY_COLOR, exerciseBySlug, type Rarity } from "@/lib/config";
 import type { CardData, Passive } from "@/lib/engine";
 import { Shield, Swords } from "./Icons";
@@ -14,7 +17,7 @@ export function passiveLabel(p: Passive): string {
   return passiveLines(p).join(" · ") + " du deck";
 }
 
-export function Card({ card, count }: { card: CardData; count?: number }) {
+export function Card({ card, count, holo = true }: { card: CardData; count?: number; holo?: boolean }) {
   const L = FRAME_LAYOUT[card.rarity];
   const ex = exerciseBySlug(card.exerciseSlug);
   const bandH = (L.statsBottom - L.statsTop) * 144; // en cqw
@@ -59,6 +62,13 @@ export function Card({ card, count }: { card: CardData; count?: number }) {
           </div>
         )}
       </div>
+      {holo && top && (
+        <span
+          className={`holo ${card.rarity === "LR" ? "lr" : "ur"}`}
+          style={{ ["--mask" as string]: `url(/assets/frames/${card.rarity}.webp)` }}
+          aria-hidden
+        />
+      )}
       {count && count > 1 ? <span className="count">×{count}</span> : null}
     </div>
   );
@@ -66,4 +76,26 @@ export function Card({ card, count }: { card: CardData; count?: number }) {
 
 export function CardBack() {
   return <img src="/assets/ui/dos-carte.webp" alt="" draggable={false} />;
+}
+
+/** Carte qui s'incline sous le doigt et dont le reflet holographique suit le pointeur. */
+export function Tilt({ children, max = 12 }: { children: React.ReactNode; max?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const set = (x: number, y: number, on: boolean) => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.setProperty("--rx", on ? `${(0.5 - y) * 2 * max}deg` : "0deg");
+    el.style.setProperty("--ry", on ? `${(x - 0.5) * 2 * max}deg` : "0deg");
+    el.style.setProperty("--mx", `${x * 100}%`);
+    el.style.setProperty("--my", `${y * 100}%`);
+  };
+  const move = (e: React.PointerEvent) => {
+    const r = ref.current!.getBoundingClientRect();
+    set(Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)), true);
+  };
+  return (
+    <div ref={ref} className="tilt" onPointerMove={move} onPointerDown={move} onPointerLeave={() => set(0.5, 0.5, false)} onPointerUp={() => set(0.5, 0.5, false)}>
+      {children}
+    </div>
+  );
 }

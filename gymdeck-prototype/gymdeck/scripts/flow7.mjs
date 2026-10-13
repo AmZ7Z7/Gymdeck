@@ -1,0 +1,27 @@
+import { chromium } from "playwright";
+const OUT = process.argv[2];
+const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
+const page = await (await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })).newPage();
+const errors = []; page.on("pageerror", (e) => errors.push(e.message)); page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+const wait = (ms) => page.waitForTimeout(ms);
+await page.goto("http://localhost:3100/"); await page.waitForSelector(".onboard");
+await page.fill("#pseudo", "Adrien"); await page.fill("#email", "a@test.fr"); await page.fill("#pw", "motdepasse1"); await page.click("button[type=submit]"); await wait(1200);
+await page.evaluate(() => {
+  const mk = (i, slug, rarity, atq, def) => ({ id: "t" + i, obtainedSeq: i, exerciseSlug: slug, rarity, atq, def, passive: null });
+  const s = JSON.parse(localStorage.getItem("gymdeck:proto:v1"));
+  s.player.cards = [mk(1,"squat","SSR",700,700), mk(2,"hip-thrust","SSR",700,700), mk(3,"curl-biceps","SR",450,450), mk(4,"rowing-barre","SR",450,450), mk(5,"developpe-couche","SR",450,450)];
+  s.player.deck = ["t1","t2","t3","t4","t5"]; s.opening = null; s.player.boosters = [];
+  localStorage.setItem("gymdeck:proto:v1", JSON.stringify(s));
+});
+await page.goto("http://localhost:3100/#classement"); await page.reload(); await wait(900);
+await page.click(".btn.ghost, .seg button", { timeout: 1000 }).catch(() => {});
+await page.screenshot({ path: `${OUT}/r1-rank.png` });
+await page.goto("http://localhost:3100/#profile"); await page.reload(); await wait(600);
+await page.click("summary"); await wait(200);
+await page.click("text=Avancer d’un mois"); await wait(500);
+await page.goto("http://localhost:3100/#classement"); await page.reload(); await wait(900);
+await page.screenshot({ path: `${OUT}/r2-rank-end.png` });
+await page.click("text=Récupérer +"); await wait(500);
+await page.screenshot({ path: `${OUT}/r3-claimed.png` });
+console.log("errors", errors);
+await browser.close();

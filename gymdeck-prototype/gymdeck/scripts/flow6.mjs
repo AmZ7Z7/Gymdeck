@@ -1,0 +1,31 @@
+import { chromium } from "playwright";
+const OUT = process.argv[2];
+const browser = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium", args: ["--no-sandbox"] });
+const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true, acceptDownloads: true });
+const page = await ctx.newPage();
+const errors = [];
+page.on("pageerror", (e) => errors.push("pageerror: " + e.message));
+page.on("console", (m) => { if (m.type() === "error") errors.push("console: " + m.text()); });
+const wait = (ms) => page.waitForTimeout(ms);
+await page.goto("http://localhost:3100/"); await page.waitForSelector(".onboard");
+await page.fill("#pseudo", "Adrien"); await page.fill("#email", "a@test.fr"); await page.fill("#pw", "motdepasse1"); await page.click("button[type=submit]"); await wait(1200);
+await page.evaluate(() => {
+  const mk = (i, slug, rarity, atq, def, passive) => ({ id: "t" + i, obtainedSeq: i, exerciseSlug: slug, rarity, atq, def, passive });
+  const s = JSON.parse(localStorage.getItem("gymdeck:proto:v1"));
+  s.player.cards = [mk(5, "developpe-incline", "UR", 1100, 960, { type: "ATQ", atqTenths: 35, defTenths: 0 }), mk(6, "squat", "LR", 1500, 1400, { type: "BOTH", atqTenths: 30, defTenths: 28 })];
+  s.player.deck = []; s.opening = null; localStorage.setItem("gymdeck:proto:v1", JSON.stringify(s));
+});
+await page.goto("http://localhost:3100/#collection"); await page.reload(); await wait(800);
+await page.click(".seg button:has-text('Toutes')"); await wait(400);
+await page.screenshot({ path: `${OUT}/h1-grid.png` });
+await page.locator(".ccell").nth(0).click({ force: true }); await wait(900);
+await page.screenshot({ path: `${OUT}/h2-detail-a.png` });
+const box = await page.locator(".tilt").boundingBox();
+await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.2); await page.mouse.down(); await wait(400);
+await page.screenshot({ path: `${OUT}/h3-detail-tilt.png` });
+await page.mouse.up(); 
+const dl = page.waitForEvent("download", { timeout: 20000 }).catch(() => null);
+await page.click("text=Partager"); const d = await dl;
+if (d) { await d.saveAs(`${OUT}/share.png`); console.log("download ok"); }
+console.log("errors:", errors);
+await browser.close();

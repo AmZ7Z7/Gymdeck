@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   title: "GymDeck",
   description: "Ta séance, ton booster.",
   manifest: "/manifest.webmanifest",
+  icons: { icon: "/icon-192.png", apple: "/apple-touch-icon.png" },
   appleWebApp: { capable: true, title: "GymDeck", statusBarStyle: "black-translucent" },
 };
 
