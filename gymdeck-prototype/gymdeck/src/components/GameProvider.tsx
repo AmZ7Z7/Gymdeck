@@ -16,7 +16,7 @@ import {
   addFriend as addFriendFn, finalRank, normalizeState, proposeTrade, removeFriend as removeFriendFn, toggleShowcase as toggleShowcaseFn, botById,
 } from "@/lib/social";
 import { deckPower, makeCard, revealOrder, type CardData } from "@/lib/engine";
-import { finishAll, revealGrading as revealGradingFn, submitGrading as submitGradingFn, type GradeReveal, type GradingJob } from "@/lib/grading";
+import { finishAll, gradedStats, revealGrading as revealGradingFn, submitGrading as submitGradingFn, type GradeReveal, type GradingJob } from "@/lib/grading";
 import { duelsLeft as duelsLeftFn, makeOpponent, playDuel, type DuelRecord, type DuelResult, type Opponent } from "@/lib/duel";
 import {
   cloudEnabled, cloudLoad, cloudResetPassword, cloudSave, cloudSession, cloudSignIn, cloudSignOut, cloudSignUp,
@@ -119,8 +119,8 @@ interface Game {
   findOpponent: (avoid?: string[]) => Opponent | { error: string };
   fight: (order: string[], opp: Opponent) => { result: DuelResult; theirOrder: CardData[]; record: DuelRecord } | { error: string };
   tools: {
-    nextDay: () => void; addGc: (n: number) => void; reset: () => void; advanceHours: (h: number) => void; giveCard: (r: Rarity) => void;
-    openTestBooster: (r: Rarity) => void; advanceDays: (n: number) => void; resetTutorial: () => void; finishGradings: () => void; addDuels: (n: number) => void;
+    nextDay: () => void; addGc: (n: number) => void; reset: () => void; advanceHours: (h: number) => void; giveCard: (r: Rarity, grade?: number) => void;
+    openTestBooster: (r: Rarity) => void; advanceDays: (n: number) => void; resetTutorial: () => void; finishGradings: (grade?: number) => void; addDuels: (n: number) => void;
   };
 }
 
@@ -579,9 +579,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       },
       nextDay: () => tools_advanceDays(1),
       advanceDays: (n) => tools_advanceDays(n),
-      giveCard: (rarity) => {
+      giveCard: (rarity, grade) => {
         const p = live.current.player;
-        const c: OwnedCard = { ...makeCard(secureRng, rarity), id: newId(), obtainedSeq: p.seq + 1 };
+        const base = makeCard(secureRng, rarity);
+        const c: OwnedCard = {
+          ...base, id: newId(), obtainedSeq: p.seq + 1,
+          ...(grade ? { atq: gradedStats(base.atq, base.def, grade).atq, def: gradedStats(base.atq, base.def, grade).def, grade } : {}),
+        };
         commit({ ...live.current, player: { ...p, seq: p.seq + 1, cards: [...p.cards, c] } });
       },
       openTestBooster: (rarity) => {
@@ -591,7 +595,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         commit({ player: { ...p, boosters: [...p.boosters, b] }, opening: { boosterId: id, kind: "shop", phase: "closed", cardIds: [], revealed: [], index: 0 } });
       },
       resetTutorial: () => { const p = live.current.player; if (p.extra) commit({ ...live.current, player: { ...p, extra: { ...p.extra, tutorialDone: false } } }); },
-      finishGradings: () => commit({ ...live.current, player: finishAll(live.current.player, clock().getTime()) }),
+      finishGradings: (grade) => {
+        const p = live.current.player;
+        // option de test : forcer la note des expertises en cours (pour voir les médailles 9 et 10)
+        const q = grade ? { ...p, grading: (p.grading ?? []).map((j) => ({ ...j, grade })) } : p;
+        commit({ ...live.current, player: finishAll(q, clock().getTime()) });
+      },
       addDuels: (n) => {
         const p = live.current.player;
         const e = p.extra;

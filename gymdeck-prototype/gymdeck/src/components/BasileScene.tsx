@@ -7,63 +7,19 @@ import { GRADE_LABEL, gradeColor, gradeMedal } from "@/lib/config";
 import type { CardData } from "@/lib/engine";
 
 /**
- * Atelier de Basile : décor fixe, un seul personnage complet affiché à la fois, poses recalées dans un repère commun
- * (tools/basile_frames.py), carte réelle couchée sur le tapis. Lecture image par image (~12 images/s), sans fondu :
- * chaque pose remplace la précédente, comme un dessin animé.
- *
- * Séquence : repos (clignement toutes les 3 à 6 s) → la loupe monte à l'œil → il se penche → inspection → il se
- * redresse → signe de tête et médaille de la note → repos.
+ * Atelier de Basile : une image fixe tant qu'il attend, puis de courtes vidéos (30 images/s, images intermédiaires
+ * calculées entre les poses dessinées, décor intégré) quand on lui confie une carte et pendant l'expertise.
+ * Chaque vidéo commence et finit exactement sur l'image fixe : aucun saut. Fabriquées par tools/basile_video.py.
  */
 
-interface Atlas { src: string; cols: number; rows: number; names: string[] }
-const IDLE: Atlas = { src: "/assets/atelier/basile-repos.webp", cols: 3, rows: 2, names: ["A0", "A1", "A2", "J1", "J2", "J3"] };
-const EVAL: Atlas = {
-  src: "/assets/atelier/basile-expertise.webp", cols: 6, rows: 4,
-  names: ["B0", "B1", "B2", "B3", "C0", "C1", "C2", "C3", "D0", "D1", "D2", "D3", "E0", "E1", "E2", "E3", "G1", "G2", "G3", "H1", "H2", "H3", "I1", "I2"],
-};
-const DECOR = "/assets/atelier/atelier-decor.webp";
+const STILL = "/assets/atelier/basile-repos.webp";
+const VIDEO = {
+  evaluate: { src: "/assets/atelier/basile-expertise", cues: { inspect: 1.3, stamp: 4.32 } },
+  nod: { src: "/assets/atelier/basile-signe", cues: {} as Record<string, number> },
+} as const;
+type Clip = keyof typeof VIDEO;
 
-interface Frame { a: Atlas; i: number }
 export type Cue = "inspect" | "stamp" | "end";
-interface Step { f: Frame; ms: number; cue?: Cue }
-const FRAME: Record<string, Frame> = {};
-for (const a of [IDLE, EVAL]) a.names.forEach((n, i) => { FRAME[n] = { a, i }; });
-/** Écrit une suite de poses : "B0:90 B1 B2 …" (durée en ms, 85 par défaut) ; "!inspect" / "!stamp" posent un repère. */
-const seq = (txt: string): Step[] => txt.trim().split(/\s+/).map((tok) => {
-  const [body = "", cue] = tok.split("!");
-  const [n = "", ms] = body.split(":");
-  const f = FRAME[n];
-  if (!f) throw new Error(`pose inconnue : ${n}`);
-  return { f, ms: ms ? Number(ms) : 85, ...(cue ? { cue: cue as Cue } : {}) };
-});
-
-const REST = FRAME.A0 as Frame;
-/** Clignement (jamais en boucle continue). */
-const BLINK = seq("A1:55 A2:80 A1:55");
-/** Expertise complète (≈ 4,2 s). */
-const EVALUATE = seq(`
-  B0:95 B1 B2 B3 C0 C1 C2 C3:95 D0 D1 D2 D3:95!inspect
-  E0:115 E1:110 E2:120 E3:170 E2:105 E1:105 E0:130 E1:100 E2:110 E3:180 E2:100 E1:100 E0:130
-  G1:90 G2:90 G3:100 H1:90 H2 I1 H3 I2:95 A0:170
-  J1:80 J2:80 J3:300!stamp J2:90 J1:90
-`);
-/** Petit signe de tête (carte confiée). */
-const NOD = seq("J1:80 J2:80 J3:260 J2:90 J1:90");
-
-const bgPos = (f: Frame) => {
-  const c = f.i % f.a.cols, r = Math.floor(f.i / f.a.cols);
-  return `${f.a.cols > 1 ? (c / (f.a.cols - 1)) * 100 : 0}% ${f.a.rows > 1 ? (r / (f.a.rows - 1)) * 100 : 0}%`;
-};
-
-function load(src: string): Promise<void> {
-  return new Promise((ok, ko) => {
-    const im = new Image();
-    im.onload = () => { void (im.decode ? im.decode().catch(() => undefined) : Promise.resolve()).then(() => ok()); };
-    im.onerror = () => ko(new Error(src));
-    im.src = src;
-  });
-}
-
 export interface SceneRun { id: number; kind: "evaluate" | "nod" }
 
 export function BasileScene({
@@ -75,79 +31,61 @@ export function BasileScene({
   stamp: number | null;
   onCue?: (cue: Cue) => void;
 }) {
-  const [frame, setFrame] = useState<Frame>(REST);
-  const [status, setStatus] = useState<"loading" | "idle" | "full" | "error">("loading");
+  const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
+  /** Vidéo affichée par-dessus l'image fixe (elle reste visible sur sa dernière image, identique à l'image fixe). */
+  const [shown, setShown] = useState<Clip | null>(null);
   const [inspect, setInspect] = useState(false);
   const quake = useAnimationControls();
+  const vids = useRef<Record<Clip, HTMLVideoElement | null>>({ evaluate: null, nod: null });
   const raf = useRef(0);
-  const timers = useRef<number[]>([]);
-  const busy = useRef(false);
-  const fullReady = useRef<Promise<void> | null>(null);
   const cueRef = useRef(onCue);
   cueRef.current = onCue;
   const reduced = useRef(false);
+  const token = useRef(0);
 
-  const clear = () => { cancelAnimationFrame(raf.current); timers.current.forEach((t) => window.clearTimeout(t)); timers.current = []; };
-  const show = (f: Frame) => setFrame((cur) => (cur === f ? cur : f));
-
-  // préchargement : décor + repos d'abord (affichage immédiat), puis les poses d'expertise en arrière-plan
   useEffect(() => {
     reduced.current = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    let alive = true;
-    Promise.all([load(DECOR), load(IDLE.src)])
-      .then(() => { if (alive) setStatus("idle"); })
-      .catch(() => { if (alive) setStatus("error"); });
-    fullReady.current = load(EVAL.src).then(() => { if (alive) setStatus((s) => (s === "error" ? s : "full")); });
-    fullReady.current.catch(() => undefined);
-    return () => { alive = false; clear(); };
+    const im = new Image();
+    im.onload = () => setStatus("ready");
+    im.onerror = () => setStatus("error");
+    im.src = STILL;
+    return () => cancelAnimationFrame(raf.current);
   }, []);
 
-  /** Joue une suite de poses à l'horloge de l'écran (requestAnimationFrame) : pas de dérive, pas d'à-coups. */
-  const play = (steps: Step[], end: () => void, blink = false) => {
-    clear();
-    busy.current = !blink;
-    const starts: number[] = [];
-    let total = 0;
-    for (const st of steps) { starts.push(total); total += st.ms; }
-    let t0 = 0;
-    let last = -1;
-    const tick = (now: number) => {
-      if (!t0) t0 = now;
-      const t = now - t0;
-      if (t >= total) { show(REST); busy.current = false; end(); return; }
-      const at = (j: number) => steps[j] as Step;
-      let k = last < 0 ? 0 : last;
-      while (k + 1 < steps.length && (starts[k + 1] ?? Infinity) <= t) k++;
-      if (k !== last) {
-        // repères de toutes les poses franchies (même si l'écran a sauté une image)
-        for (let j = last + 1; j <= k; j++) {
-          const cue = at(j).cue;
-          if (cue === "inspect") { setInspect(true); timers.current.push(window.setTimeout(() => setInspect(false), 1700)); }
-          if (cue === "stamp") { void quake.start({ x: [0, -3, 3, -2, 2, 0], y: [0, 2, -1, 1, 0], transition: { duration: 0.32 } }); cueRef.current?.("stamp"); }
-        }
-        last = k;
-        show(at(k).f);
+  /** Lance une vidéo depuis le début ; les repères (loupe, tampon) suivent le temps réel de la vidéo. */
+  const play = async (clip: Clip, onEnd: () => void): Promise<boolean> => {
+    const v = vids.current[clip];
+    if (!v) return false;
+    cancelAnimationFrame(raf.current);
+    const me = ++token.current;
+    try {
+      v.currentTime = 0;
+      await v.play();
+    } catch {
+      return false;
+    }
+    if (me !== token.current) { v.pause(); return false; } // abandonnée entre-temps (trop lente à charger)
+    setShown(clip);
+    const cues = Object.entries(VIDEO[clip].cues) as [Cue, number][];
+    const fired = new Set<string>();
+    const tick = () => {
+      for (const [cue, at] of cues) {
+        if (fired.has(cue) || v.currentTime < at) continue;
+        fired.add(cue);
+        if (cue === "inspect") { setInspect(true); window.setTimeout(() => setInspect(false), 1700); }
+        if (cue === "stamp") { void quake.start({ x: [0, -3, 3, -2, 2, 0], y: [0, 2, -1, 1, 0], transition: { duration: 0.32 } }); cueRef.current?.("stamp"); }
+      }
+      if (v.ended) {
+        // repères pas encore donnés (onglet en arrière-plan…) : on les donne quand même
+        if (!fired.has("stamp") && cues.some(([c]) => c === "stamp")) cueRef.current?.("stamp");
+        onEnd();
+        return;
       }
       raf.current = requestAnimationFrame(tick);
     };
     raf.current = requestAnimationFrame(tick);
+    return true;
   };
-
-  // clignement toutes les 3 à 6 secondes, seulement au repos
-  useEffect(() => {
-    if (status === "loading" || status === "error" || reduced.current) return;
-    let alive = true;
-    let t: number;
-    const schedule = () => {
-      t = window.setTimeout(() => {
-        if (!alive) return;
-        if (!busy.current && document.visibilityState === "visible") play(BLINK, () => undefined, true);
-        schedule();
-      }, 3000 + Math.random() * 3000);
-    };
-    schedule();
-    return () => { alive = false; window.clearTimeout(t); };
-  }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // lancement d'une séquence demandée par la page
   useEffect(() => {
@@ -155,39 +93,36 @@ export function BasileScene({
     let cancelled = false;
     const finish = () => { if (!cancelled) cueRef.current?.("end"); };
     if (run.kind === "nod") {
-      if (reduced.current || status === "loading" || status === "error") return;
-      void (fullReady.current ?? Promise.resolve()).then(() => { if (!cancelled) play(NOD, () => undefined); });
+      if (!reduced.current && status !== "error") void play("nod", () => undefined);
       return () => { cancelled = true; };
     }
-    // expertise : sans animation (mouvement réduit ou images indisponibles) → résultat direct
+    // expertise : sans animation (mouvement réduit, vidéo indisponible) → résultat direct
     const instant = () => { window.setTimeout(() => { if (cancelled) return; cueRef.current?.("stamp"); window.setTimeout(finish, 400); }, 250); };
     if (reduced.current || status === "error") { instant(); return () => { cancelled = true; }; }
-    const timeout = new Promise<"late">((ok) => window.setTimeout(() => ok("late"), 5000));
-    void Promise.race([(fullReady.current ?? Promise.resolve()).then(() => "ok" as const), timeout])
-      .then((r) => { if (cancelled) return; if (r === "late") instant(); else play(EVALUATE, finish); })
-      .catch(() => { if (!cancelled) instant(); });
+    const late = new Promise<false>((ok) => window.setTimeout(() => ok(false), 6000));
+    void Promise.race([play("evaluate", finish), late]).then((ok) => { if (!cancelled && !ok) { token.current++; vids.current.evaluate?.pause(); setShown(null); instant(); } });
     return () => { cancelled = true; };
   }, [run?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <motion.div className="scene" animate={quake}>
-      <img className="scene-decor" src={DECOR} alt="" draggable={false} />
-      <div className="golem" role="img" aria-label="Basile, le golem expert, derrière son bureau">
-        {/* deux calques (un par atlas), toujours peints : passer de l'un à l'autre ne fait jamais clignoter */}
-        {[IDLE, EVAL].map((a) => (
-          <div
-            key={a.src}
-            className="golem-frame"
-            style={{
-              backgroundImage: status === "loading" || (a === EVAL && status !== "full") ? undefined : `url(${a.src})`,
-              backgroundSize: `${a.cols * 100}% ${a.rows * 100}%`,
-              backgroundPosition: frame.a === a ? bgPos(frame) : "0% 0%",
-              opacity: frame.a === a ? 1 : 0,
-            }}
-          />
-        ))}
-      </div>
-      <span className="desk-shadow" aria-hidden />
+      <img className="scene-still" src={STILL} alt="Basile, le golem expert, derrière son bureau" draggable={false} />
+      {(Object.keys(VIDEO) as Clip[]).map((c) => (
+        <video
+          key={c}
+          ref={(el) => { vids.current[c] = el; if (el) el.muted = true; }}
+          className="scene-video"
+          muted
+          playsInline
+          preload="auto"
+          disablePictureInPicture
+          aria-hidden
+          style={{ opacity: shown === c ? 1 : 0 }}
+        >
+          <source src={`${VIDEO[c].src}.mp4`} type="video/mp4" />
+          <source src={`${VIDEO[c].src}.webm`} type="video/webm" />
+        </video>
+      ))}
       <AnimatePresence>
         {card && (
           <motion.div

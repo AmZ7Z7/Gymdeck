@@ -31,7 +31,10 @@ export function TestPanel() {
             <button className="btn ghost small" onClick={() => run(() => t.giveCard("UR"), "Carte UR de test ajoutée")}>Carte UR</button>
             <button className="btn ghost small" onClick={() => run(() => t.giveCard("LR"), "Carte LR de test ajoutée")}>Carte LR</button>
             <button className="btn ghost small" onClick={() => run(() => t.resetTutorial(), "Le tutoriel se relancera sur l’accueil")}>Tutoriel</button>
+            <button className="btn ghost small" onClick={() => run(() => t.giveCard("UR", 9), "Carte UR notée 9 ajoutée")}>Carte notée 9</button>
+            <button className="btn ghost small" onClick={() => run(() => t.giveCard("LR", 10), "Carte LR notée 10 ajoutée")}>Carte notée 10</button>
             <button className="btn ghost small" onClick={() => run(() => t.finishGradings(), "Expertises terminées")}>Finir expertises</button>
+            <button className="btn ghost small" onClick={() => run(() => t.finishGradings(10), "Expertises terminées : note 10")}>Finir (note 10)</button>
             <button className="btn ghost small" onClick={() => run(() => t.addDuels(3), "+3 duels aujourd’hui")}>+3 duels</button>
           </div>
           <button className="btn ghost small" onClick={() => { setOpen(false); setResetAsk(true); }}>Tout réinitialiser…</button>
