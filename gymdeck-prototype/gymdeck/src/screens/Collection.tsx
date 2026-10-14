@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { Card, CardBack, Tilt, passiveLabel } from "@/components/Card";
 import { Extensions } from "@/screens/Missions";
@@ -9,10 +10,16 @@ import { useGame } from "@/components/GameProvider";
 import { IconBack, IconNext, IconSearch } from "@/components/Icons";
 import { Sheet } from "@/components/Sheet";
 import { sfx } from "@/lib/sound";
-import { DISCARD_GC, EXERCISES, RARITIES, RARITY_COLOR, RARITY_RANK, exerciseBySlug, type Rarity } from "@/lib/config";
+import { DISCARD_GC, EXERCISES, GRADE_LABEL, GRADE_PRICE, RARITIES, RARITY_COLOR, RARITY_RANK, exerciseBySlug, gradeColor, type Rarity } from "@/lib/config";
+import { atWorkshop } from "@/lib/game";
+import type { OpenPage } from "@/app/page";
+import { formatDuration } from "@/components/Bits";
 import { completion, duplicateIds, type OwnedCard } from "@/lib/game";
 
 type Sort = "recent" | "rarity" | "atq" | "def";
+/** Minuscules sans accents : « developpe » trouve « Développé ». */
+const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+
 const SORTS: { id: Sort; label: string }[] = [
   { id: "recent", label: "Récentes" },
   { id: "rarity", label: "Rareté" },
@@ -22,7 +29,7 @@ const SORTS: { id: Sort; label: string }[] = [
 
 const bestFirst = (a: OwnedCard, b: OwnedCard) => RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity] || b.atq + b.def - (a.atq + a.def);
 
-export function Collection() {
+export function Collection({ openPage }: { openPage: OpenPage }) {
   const g = useGame();
   const [q, setQ] = useState("");
   const [rarity, setRarity] = useState<Rarity | null>(null);
@@ -37,9 +44,9 @@ export function Collection() {
   const dups = useMemo(() => duplicateIds(player), [player]);
   const dupGain = dups.reduce((s, id) => s + DISCARD_GC[cards.find((c) => c.id === id)!.rarity], 0);
 
-  const needle = q.trim().toLowerCase();
+  const needle = norm(q);
   const filtered = useMemo(
-    () => cards.filter((c) => (!rarity || c.rarity === rarity) && (!needle || exerciseBySlug(c.exerciseSlug).name.toLowerCase().includes(needle))),
+    () => cards.filter((c) => (!rarity || c.rarity === rarity) && (!needle || norm(exerciseBySlug(c.exerciseSlug).name).includes(needle))),
     [cards, rarity, needle],
   );
 
@@ -55,7 +62,7 @@ export function Collection() {
   // Une case par exercice : la meilleure carte (de la rareté choisie le cas échéant), ou une case « à découvrir ».
   const slots = useMemo(() => {
     return EXERCISES
-      .filter((e) => !needle || e.name.toLowerCase().includes(needle))
+      .filter((e) => !needle || norm(e.name).includes(needle))
       .map((e) => {
         const list = filtered.filter((c) => c.exerciseSlug === e.slug).sort(bestFirst);
         return { slug: e.slug, name: e.name, best: list[0] ?? null, count: list.length };
@@ -107,12 +114,15 @@ export function Collection() {
         <Extensions />
       ) : cards.length === 0 ? (
         <div className="empty">Ta collection est vide. Ouvre un booster depuis l’accueil !</div>
+      ) : view === "exercise" && slots.length === 0 ? (
+        <div className="empty">Aucun exercice ne correspond à « {q.trim()} ».</div>
       ) : view === "exercise" ? (
         <div className="cgrid">
           {slots.map((s) => s.best ? (
             <button className="ccell" key={s.slug} onClick={() => setDetail({ slug: s.slug, id: s.best!.id })}>
               <Card card={s.best} count={s.count} />
               {inDeck(s.best.id) && <span className="deckbadge">DECK</span>}
+              {atWorkshop(player, s.best.id) && <span className="deckbadge lab">CHEZ BASILE</span>}
             </button>
           ) : (
             <div className="ccell ghost" key={s.slug} aria-label={`${s.name} : pas encore obtenu`}>
@@ -130,6 +140,7 @@ export function Collection() {
             <button className="ccell" key={c.id} onClick={() => setDetail({ slug: c.exerciseSlug, id: c.id })}>
               <Card card={c} />
               {inDeck(c.id) && <span className="deckbadge">DECK</span>}
+              {atWorkshop(player, c.id) && <span className="deckbadge lab">CHEZ BASILE</span>}
             </button>
           ))}
         </div>
@@ -141,7 +152,7 @@ export function Collection() {
         </button>
       )}
 
-      {detail && <Detail slug={detail.slug} startId={detail.id} onClose={() => setDetail(null)} />}
+      {detail && <Detail slug={detail.slug} startId={detail.id} onClose={() => setDetail(null)} onGrade={(id) => { setDetail(null); openPage("atelier", id); }} />}
 
       {cleaning && (
         <Sheet onClose={() => setCleaning(false)} label="Nettoyer les doublons">
@@ -164,7 +175,7 @@ export function Collection() {
 }
 
 /** Détail : navigation entre les exemplaires d'un même exercice, deck et défausse. */
-function Detail({ slug, startId, onClose }: { slug: string; startId: string; onClose: () => void }) {
+function Detail({ slug, startId, onClose, onGrade }: { slug: string; startId: string; onClose: () => void; onGrade: (cardId: string) => void }) {
   const g = useGame();
   const copies = useMemo(
     () => g.player.cards.filter((c) => c.exerciseSlug === slug).sort(bestFirst),
@@ -179,13 +190,19 @@ function Detail({ slug, startId, onClose }: { slug: string; startId: string; onC
   const inDeck = g.player.deck.includes(card.id);
   const swapWith = !inDeck ? g.deckCards.find((c) => c.exerciseSlug === slug) : undefined;
   const deckFull = g.player.deck.length >= 5;
+  const job = g.grading.find((j) => j.cardId === card.id);
+  const lab = !!job;
 
   return (
     <Sheet onClose={onClose} variant="center" label={exerciseBySlug(slug).name}>
-      <div className="cardwrap"><Tilt><Card card={card} /></Tilt></div>
+      <motion.div key={card.id} className="cardwrap" initial={{ rotateY: -28, scale: 0.9, opacity: 0 }} animate={{ rotateY: 0, scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 260, damping: 22 }} style={{ transformPerspective: 900 }}>
+        <Tilt><Card card={card} /></Tilt>
+      </motion.div>
       <div style={{ textAlign: "center", fontSize: 15, color: "#cfd6e8" }}>
         {exerciseBySlug(card.exerciseSlug).name} · <b style={{ color: RARITY_COLOR[card.rarity] }}>{card.rarity}</b>
         {card.passive && <div style={{ color: "var(--lime)", marginTop: 4 }}>Passif : {passiveLabel(card.passive)}</div>}
+        {card.grade ? <div style={{ marginTop: 4 }}>Note de Basile : <b style={{ color: gradeColor(card.grade) }}>{card.grade}/10 · {GRADE_LABEL[card.grade]}</b></div> : null}
+        {job && <div style={{ marginTop: 4, color: "#ffd27a" }}>Chez Basile : {g.gameNow() >= job.readyAt ? "note prête !" : `note dans ${formatDuration(job.readyAt - g.gameNow())}`}</div>}
       </div>
       <div className="acts">
         {copies.length > 1 && (
@@ -202,7 +219,12 @@ function Detail({ slug, startId, onClose }: { slug: string; startId: string; onC
         >
           {inDeck ? "Retirer de mon deck" : swapWith ? "Remplacer dans mon deck" : deckFull ? "Deck complet" : "Mettre dans mon deck"}
         </button>
-        {inDeck ? (
+        {!card.grade && (
+          <button className="btn ghost small" onClick={() => onGrade(card.id)}>{lab ? "Voir à l’atelier" : `Faire expertiser · ${GRADE_PRICE[card.rarity]} GC`}</button>
+        )}
+        {lab ? (
+          <div className="hint" style={{ margin: 0 }}>Pendant l’expertise, la carte ne peut pas être défaussée.</div>
+        ) : inDeck ? (
           <div className="hint" style={{ margin: 0 }}>Retire cette carte du deck pour pouvoir la défausser.</div>
         ) : confirm ? (
           <button className="btn primary small" onClick={() => {

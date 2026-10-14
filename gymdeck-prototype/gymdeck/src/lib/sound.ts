@@ -69,6 +69,12 @@ export function setLevel(l: SoundLevel) {
 }
 export const setMuted = (m: boolean) => setLevel(m ? "off" : "low");
 
+/** Petite vibration (Android) pour les grands moments ; rien si les sons sont coupés. */
+export function haptic(pattern: number | number[]) {
+  if (level === "off") return;
+  try { navigator.vibrate?.(pattern); } catch { /* ignoré */ }
+}
+
 interface NoiseOpts { type?: BiquadFilterType; f0: number; f1?: number; q?: number; dur: number; gain: number; at?: number; attack?: number }
 function noise(o: NoiseOpts) {
   const c = ensure(); if (!c || !bus || !noiseBuf) return;
@@ -186,6 +192,62 @@ export const sfx = {
       tone({ f0: 70 + i * 5, f1: 45, dur: 0.16, gain: 0.2, at: t, attack: 0.02 });
     });
   },
+  /** Suspense avant une LÉGENDAIRE (~1,9 s) : grondement grave qui monte, cœur qui s'emballe, cloches de plus en plus haut. */
+  legendCharge() {
+    tone({ f0: 52, f1: 90, dur: 1.9, gain: 0.16, attack: 1.5 });
+    tone({ f0: 104, f1: 180, type: "triangle", dur: 1.9, gain: 0.05, attack: 1.6 });
+    pad([48, 55, 60], 0, 2.1, 0.05);
+    pad([64, 67, 71], 0.5, 1.6, 0.035);
+    [0, 0.4, 0.75, 1.05, 1.3, 1.5, 1.68, 1.82].forEach((t, i) => {
+      tone({ f0: 74 + i * 4, f1: 45, dur: 0.16, gain: 0.14 + i * 0.012, at: t, attack: 0.02 });
+    });
+    [79, 81, 84, 86, 88, 91, 93, 96].forEach((n, i) => bell(n, 0.55 + i * 0.17, 0.02 + i * 0.006, 0.7));
+    noise({ type: "lowpass", f0: 200, f1: 3000, q: 0.6, dur: 1.9, gain: 0.05, attack: 1.7 });
+  },
+  /** Explosion légendaire : chute de basse, souffle, cascade de cloches sur deux octaves, puis accord final tenu. */
+  legendary() {
+    tone({ f0: 100, f1: 30, dur: 1.4, gain: 0.3, attack: 0.01 });
+    tone({ f0: 200, f1: 60, type: "triangle", dur: 0.7, gain: 0.08, attack: 0.01 });
+    noise({ type: "lowpass", f0: 400, f1: 4200, q: 0.5, dur: 1.2, gain: 0.1, attack: 0.04 });
+    arpeggio([60, 64, 67, 72, 76, 79, 84, 88, 91, 96], 0.065, 0.09, 0.08, 1.8);
+    pad([48, 55, 60, 64, 67, 72], 0.15, 3.4, 0.035);
+    [84, 88, 91, 96].forEach((n, i) => bell(n, 0.85 + i * 0.03, 0.065, 2.4));
+    arpeggio([72, 76, 79, 84], 0.2, 0.04, 1.5, 1.6);
+  },
+  /** Basile pose sa loupe : petit cliquetis de verre, très discret. */
+  loupe() { bell(96, 0, 0.018, 0.25); bell(100, 0.06, 0.012, 0.22); },
+  /** Coup de tampon : « poum » sourd + papier, puis une note selon la qualité. */
+  stamp(grade: number) {
+    tone({ f0: 150, f1: 55, dur: 0.22, gain: 0.26, attack: 0.004 });
+    noise({ type: "lowpass", f0: 900, f1: 300, q: 0.7, dur: 0.16, gain: 0.12, attack: 0.004 });
+    if (grade >= 10) { arpeggio([72, 76, 79, 84, 88, 91], 0.07, 0.08, 0.12, 1.4); pad([60, 64, 67, 72], 0.2, 2.2, 0.03); }
+    else if (grade >= 8) arpeggio([72, 76, 79, 84], 0.08, 0.07, 0.12, 1);
+    else if (grade >= 5) arpeggio([72, 77], 0.09, 0.06, 0.12, 0.8);
+    else { tone({ f0: 330, dur: 0.22, gain: 0.05, at: 0.14 }); tone({ f0: 262, dur: 0.3, gain: 0.05, at: 0.26 }); }
+  },
+  /** Une carte se pose (deck, ordre de combat). */
+  place() { noise({ f0: 1200, f1: 2400, q: 0.7, dur: 0.07, gain: 0.035, attack: 0.01 }); tone({ f0: 180, f1: 120, dur: 0.06, gain: 0.05 }); },
+  /** Duel : l'adversaire apparaît. */
+  versus() {
+    tone({ f0: 90, f1: 60, dur: 0.5, gain: 0.16 });
+    noise({ type: "lowpass", f0: 300, f1: 2400, q: 0.5, dur: 0.45, gain: 0.06, attack: 0.25 });
+    bell(67, 0.32, 0.05, 0.6); bell(74, 0.38, 0.04, 0.7);
+  },
+  /** Duel : deux cartes s'entrechoquent. */
+  hit(strong = false) {
+    tone({ f0: strong ? 130 : 160, f1: 50, dur: 0.2, gain: strong ? 0.24 : 0.18, attack: 0.003 });
+    noise({ type: "bandpass", f0: 1400, f1: 500, q: 0.8, dur: 0.12, gain: strong ? 0.1 : 0.07, attack: 0.003 });
+  },
+  /** Manche gagnée / perdue. */
+  roundWin() { arpeggio([76, 83], 0.07, 0.06, 0, 0.6); },
+  roundLose() { tone({ f0: 247, dur: 0.16, gain: 0.05 }); tone({ f0: 196, dur: 0.24, gain: 0.05, at: 0.09 }); },
+  /** Fin de duel. */
+  victory() {
+    tone({ f0: 98, f1: 49, dur: 0.6, gain: 0.18 });
+    arpeggio([67, 72, 76, 79, 84], 0.085, 0.09, 0.05, 1.3);
+    pad([55, 60, 64, 67], 0.25, 2, 0.032);
+  },
+  defeat() { pad([57, 60, 64], 0, 1.4, 0.03); tone({ f0: 220, f1: 165, dur: 0.7, gain: 0.05, at: 0.1 }); },
   /** Pièce (GC gagnés, enchère posée) : un « ting » clair et court. */
   coin() { bell(86, 0, 0.05, 0.35); bell(91, 0.07, 0.05, 0.5); },
   good() { arpeggio([72, 79], 0.08, 0.07, 0, 0.6); },

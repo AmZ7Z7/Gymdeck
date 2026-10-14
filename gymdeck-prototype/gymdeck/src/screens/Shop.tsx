@@ -6,13 +6,15 @@ import { useGame } from "@/components/GameProvider";
 import { IconCart, IconChevron } from "@/components/Icons";
 import { Sheet } from "@/components/Sheet";
 import { sfx } from "@/lib/sound";
-import { BOOSTER_PRICE_GC, DAILY_LOGIN_GC, LOGIN_CYCLE, PITY_THRESHOLD, type BoosterKind } from "@/lib/config";
+import { BOOSTER_PRICE_GC, DAILY_LOGIN_GC, GRADE_PRICE, LOGIN_CYCLE, PITY_THRESHOLD, type BoosterKind } from "@/lib/config";
+import type { OpenPage } from "@/app/page";
+import { readyCount } from "@/lib/grading";
 
 const KIND_LABEL: Record<BoosterKind, string> = {
   welcome1: "Bienvenue", welcome2: "Bienvenue ✦", session: "Séance", login: "Connexion", shop: "Boutique",
 };
 
-export function Shop({ onMarket }: { onMarket: () => void }) {
+export function Shop({ onMarket, openPage }: { onMarket: () => void; openPage: OpenPage }) {
   const g = useGame();
   const { player } = g;
   const [odds, setOdds] = useState(false);
@@ -55,7 +57,7 @@ export function Shop({ onMarket }: { onMarket: () => void }) {
 
       <div className="panel reward" style={{ flexWrap: "wrap" }}>
         <span className="coin" />
-        <div className="t">Récompense quotidienne
+        <div className="t">Récompense du jour
           <span>{g.loginDoneToday ? "Déjà récupérée aujourd’hui." : `+${DAILY_LOGIN_GC} GC · booster dans ${untilBonus} connexion${untilBonus > 1 ? "s" : ""}`}</span>
         </div>
         <button
@@ -86,6 +88,12 @@ export function Shop({ onMarket }: { onMarket: () => void }) {
           ))}
         </div>
       )}
+
+      <button className="panel atelierpanel" onClick={() => openPage("atelier")}>
+        <span className="ap-img" aria-hidden />
+        <span className="t">Atelier de Basile<span className="sub">Fais noter tes cartes de 1 à 10 · de {GRADE_PRICE.C} à {GRADE_PRICE.LR} GC</span></span>
+        <span className={`soon ${readyCount(player, g.gameNow()) > 0 ? "live" : ""}`}>{readyCount(player, g.gameNow()) > 0 ? "Note prête" : g.grading.length > 0 ? `${g.grading.length} en cours` : "Entrer"} <IconChevron width={14} height={14} style={{ verticalAlign: "-2px" }} /></span>
+      </button>
 
       <button className="panel market" style={{ width: "100%", textAlign: "left" }} onClick={onMarket}>
         <IconCart />

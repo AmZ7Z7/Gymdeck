@@ -1,10 +1,11 @@
 import {
-  BOOSTER_PRICE_GC, BoosterKind, DAILY_LOGIN_GC, DECK_SIZE, DISCARD_GC, EXERCISES, LOGIN_CYCLE, PARIS_TZ, RARITIES,
+  BOOSTER_PRICE_GC, BoosterKind, DAILY_LOGIN_GC, DECK_SIZE, DISCARD_GC, EXERCISES, LOGIN_CYCLE, PARIS_TZ, RARITIES, type Rarity,
 } from "./config";
 import { CardData, bestDeckIds, openBooster, validateDeck } from "./engine";
 import type { Rng } from "./rng";
 import type { MarketState } from "./market";
 import type { Extra } from "./progress";
+import type { GradingJob } from "./grading";
 
 export interface OwnedCard extends CardData {
   id: string;
@@ -15,6 +16,8 @@ export interface OwnedCard extends CardData {
 export interface PendingBooster {
   id: string;
   kind: BoosterKind;
+  /** Booster de test uniquement : rareté garantie. */
+  force?: Rarity;
 }
 
 /** État sérialisable d'un joueur — c'est ce qui sera stocké en base. */
@@ -35,6 +38,8 @@ export interface PlayerState {
   market?: MarketState;
   /** Missions, série, succès, profil social, saison (créé au premier passage). */
   extra?: Extra;
+  /** Cartes confiées à Basile pour une expertise (24 h). */
+  grading?: GradingJob[];
 }
 
 export type Result<T> = ({ ok: true } & T) | { ok: false; error: string };
@@ -121,7 +126,7 @@ export function openPendingBooster(
 ): Result<{ state: PlayerState; cards: OwnedCard[]; pityTriggered: boolean; rPlusTriggered: boolean }> {
   const booster = s.boosters.find((b) => b.id === boosterId);
   if (!booster) return { ok: false, error: "Booster introuvable." };
-  const res = openBooster(rng, booster.kind, s.pityCounter);
+  const res = openBooster(rng, booster.kind, s.pityCounter, booster.force);
   let seq = s.seq;
   const cards: OwnedCard[] = res.cards.map((c) => ({ ...c, id: newId(), obtainedSeq: ++seq }));
   return {
@@ -144,6 +149,7 @@ export function discardCard(s: PlayerState, cardId: string): Result<{ state: Pla
   const card = s.cards.find((c) => c.id === cardId);
   if (!card) return { ok: false, error: "Carte introuvable." };
   if (s.deck.includes(cardId)) return { ok: false, error: "Retire d'abord cette carte de ton deck." };
+  if (atWorkshop(s, cardId)) return { ok: false, error: "Cette carte est chez Basile : attends la fin de l’expertise." };
   const gained = DISCARD_GC[card.rarity];
   return { ok: true, gained, state: { ...s, gc: s.gc + gained, cards: s.cards.filter((c) => c.id !== cardId) } };
 }
@@ -185,7 +191,8 @@ export function autoDeck(s: PlayerState): Result<{ state: PlayerState }> {
  */
 export function duplicateIds(s: PlayerState): string[] {
   const groups = new Map<string, OwnedCard[]>();
-  for (const c of s.cards) {
+  // les cartes expertisées (ou chez Basile) ne sont jamais proposées au nettoyage
+  for (const c of s.cards.filter((x) => !x.grade && !atWorkshop(s, x.id))) {
     const key = `${c.exerciseSlug}|${c.rarity}`;
     groups.set(key, [...(groups.get(key) ?? []), c]);
   }
@@ -201,12 +208,15 @@ export function duplicateIds(s: PlayerState): string[] {
 
 export function discardMany(s: PlayerState, ids: string[]): Result<{ state: PlayerState; gained: number; count: number }> {
   const set = new Set(ids);
-  const removable = s.cards.filter((c) => set.has(c.id) && !s.deck.includes(c.id));
+  const removable = s.cards.filter((c) => set.has(c.id) && !s.deck.includes(c.id) && !atWorkshop(s, c.id));
   if (removable.length === 0) return { ok: false, error: "Rien à défausser." };
   const gained = removable.reduce((sum, c) => sum + DISCARD_GC[c.rarity], 0);
   const gone = new Set(removable.map((c) => c.id));
   return { ok: true, gained, count: removable.length, state: { ...s, gc: s.gc + gained, cards: s.cards.filter((c) => !gone.has(c.id)) } };
 }
+
+/** Carte en cours d'expertise chez Basile (verrouillée : ni vente, ni échange, ni défausse). */
+export const atWorkshop = (s: PlayerState, cardId: string) => !!s.grading?.some((j) => j.cardId === cardId);
 
 /** Complétion : nombre de couples (exercice, rareté) possédés sur le total possible. */
 export function completion(s: PlayerState): { owned: number; total: number } {

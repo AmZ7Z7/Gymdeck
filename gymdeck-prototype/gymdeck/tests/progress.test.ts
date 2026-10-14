@@ -74,11 +74,11 @@ describe("extensions et succès", () => {
     expect(setProgress(s, "pecs", "C").done).toBe(false);
     s = { ...s, cards: [...s.cards, card(2, "developpe-incline", "R")] };
     expect(setProgress(s, "pecs", "C").done).toBe(false);
-    s = { ...s, cards: [...s.cards, card(3, "developpe-poitrine-machine", "R")] };
+    s = { ...s, cards: [...s.cards, card(3, "developpe-poitrine-machine", "R"), card(4, "developpe-couche-barre", "R"), card(5, "ecarte-poulie", "R")] };
     expect(setProgress(s, "pecs", "C").done).toBe(true);
     expect(setProgress(s, "pecs", "R").done).toBe(false);
     const r = claimSet(s, "pecs", "t1");
-    expect(r.ok && r.reward).toBe(15);
+    expect(r.ok && r.reward).toBe(3 * 5); // 3 GC par exercice × 5 exercices de pecs
     if (r.ok) expect(claimSet(r.state, "pecs", "t1").ok).toBe(false);
   });
   it("succès : débloqué puis récupéré une fois", () => {
@@ -136,32 +136,34 @@ describe("amis, vitrine, échanges", () => {
   });
 });
 
-describe("saison", () => {
-  const deckOf = (): PlayerState => {
-    const slugs = ["squat", "hip-thrust", "curl-biceps", "rowing-barre", "developpe-couche"];
-    const cards = slugs.map((sl, i) => card(i + 1, sl, "LR", 1700, 1700));
-    return { ...base(), cards, deck: cards.map((c) => c.id) };
+describe("saison (points de duel)", () => {
+  const withPoints = (pts: number): PlayerState => {
+    const s = base();
+    return { ...s, extra: { ...s.extra!, season: { ...s.extra!.season, points: pts, wins: 1 } } };
   };
-  it("un deck complet est classé et grimpe au classement", () => {
-    let s = deckOf();
-    s = track(s, "deck", rng, "2026-10-13", ranker);
-    expect(s.extra!.season.bestPower).toBeGreaterThan(0);
-    const lb = leaderboard(s, "2026-10-13");
-    expect(lb.find((r) => r.me)!.rank).toBeLessThanOrEqual(5);
+  it("on entre au classement au premier duel joué", () => {
+    expect(leaderboard(base(), "2026-10-13").some((r) => r.me)).toBe(false);
+    const lb = leaderboard(withPoints(3), "2026-10-13");
+    expect(lb.find((r) => r.me)).toBeTruthy();
     expect(lb).toHaveLength(BOTS.length + 1);
   });
-  it("sans deck complet : pas classé", () => {
-    expect(leaderboard(base(), "2026-10-13").some((r) => r.me)).toBe(false);
+  it("beaucoup de points : haut du classement", () => {
+    const lb = leaderboard(withPoints(5000), "2026-10-13");
+    expect(lb.find((r) => r.me)!.rank).toBe(1);
   });
   it("changement de mois : la récompense de la saison passée est proposée puis récupérée", () => {
-    let s = deckOf();
-    s = track(s, "deck", rng, "2026-10-13", ranker);
+    const s = withPoints(400);
     const n = normalize(s, rng, "2026-11-02", ranker);
     expect(n.extra!.pendingSeason?.id).toBe("2026-10");
     expect(n.extra!.pendingSeason!.reward).toBeGreaterThan(0);
+    expect(n.extra!.season.points).toBe(0);
     const r = claimSeason(n);
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.state.extra!.pendingSeason).toBeNull();
+  });
+  it("sans duel dans le mois : pas de récompense", () => {
+    const n = normalize(base(), rng, "2026-11-02", ranker);
+    expect(n.extra!.pendingSeason).toBeNull();
   });
 });
 

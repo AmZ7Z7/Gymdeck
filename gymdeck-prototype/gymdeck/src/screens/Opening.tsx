@@ -9,6 +9,7 @@ import { useGame } from "@/components/GameProvider";
 import { IconBack } from "@/components/Icons";
 import { RARITIES, RARITY_COLOR, RARITY_RANK, type Rarity } from "@/lib/config";
 import { sfx, unlockAudio } from "@/lib/sound";
+import { LegendaryFX, LegendSparkles } from "@/components/LegendaryFX";
 import { bestDeckIds, deckPower, isTop } from "@/lib/engine";
 import type { OwnedCard } from "@/lib/game";
 import type { Tab } from "@/app/page";
@@ -236,6 +237,7 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
   const [idx, setIdx] = useState(Math.min(o.index, Math.max(0, n - 1)));
   const [shown, setShown] = useState<boolean[]>(o.revealed);
   const [charging, setCharging] = useState<number | null>(null);
+  const [legend, setLegend] = useState<"charge" | "boom" | null>(null); // cinématique d'une carte LR
   const [fx, setFx] = useState<{ i: number; key: number } | null>(null);
   const [intro, setIntro] = useState(dealt);
   const [dragX, setDragX] = useState(0);
@@ -270,10 +272,17 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
     setFx({ i, key: Date.now() });
     const r = cards[i]!.rarity;
     sfx.flip();
-    window.setTimeout(() => sfx.reveal(r), isTop(r) ? 260 : 130);
+    if (r === "LR") {
+      sfx.legendary();
+      setLegend("boom");
+      window.setTimeout(() => setLegend(null), 3000);
+    } else {
+      window.setTimeout(() => sfx.reveal(r), isTop(r) ? 260 : 130);
+    }
     if (isTop(r)) {
       try { navigator.vibrate?.([40, 40, 80]); } catch { /* ignoré */ }
-      void shakeCtl.start({ x: [0, -9, 9, -7, 7, -4, 4, 0], transition: { duration: 0.5 } }); // l'écran tremble
+      const big = r === "LR";
+      void shakeCtl.start({ x: big ? [0, -16, 16, -13, 13, -9, 9, -5, 5, 0] : [0, -9, 9, -7, 7, -4, 4, 0], y: big ? [0, 7, -7, 5, -5, 2, 0] : 0, transition: { duration: big ? 0.8 : 0.5 } }); // l'écran tremble
     }
   };
 
@@ -281,10 +290,12 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
     if (charging !== null || shown[i]) return;
     g.reveal(i); // enregistré tout de suite : si on quitte, la carte reste révélée
     if (isTop(cards[i]!.rarity)) {
+      const lr = cards[i]!.rarity === "LR";
+      const ms = lr ? 1900 : 1050;
       setCharging(i);
-      sfx.heartbeat();
-      try { navigator.vibrate?.([30, 60, 30, 60, 30]); } catch { /* ignoré */ }
-      window.setTimeout(() => { setCharging(null); flipNow(i); }, 1050);
+      if (lr) { setLegend("charge"); sfx.legendCharge(); } else sfx.heartbeat();
+      try { navigator.vibrate?.(lr ? [30, 60, 30, 60, 30, 60, 40, 40, 40, 40, 80] : [30, 60, 30, 60, 30]); } catch { /* ignoré */ }
+      window.setTimeout(() => { setCharging(null); flipNow(i); }, ms);
     } else {
       flipNow(i);
     }
@@ -449,7 +460,7 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
             >
               {/* halo de rareté */}
               <motion.span
-                className="aura"
+                className={`aura ${c.rarity === "LR" ? "rainbow" : ""}`}
                 style={{ background: color }}
                 animate={{
                   opacity: charging === i ? [0.2, 0.95, 0.4, 1]
@@ -458,14 +469,14 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
                   scale: charging === i ? [1, 1.25, 1.1, 1.35] : holding === i && !isShown ? [1.04, 1.14, 1.04] : 1,
                 }}
                 transition={
-                  charging === i ? { duration: 1, ease: "easeIn" }
+                  charging === i ? { duration: c.rarity === "LR" ? 1.9 : 1, ease: "easeIn" }
                     : (isShown && top) || (holding === i && !isShown) ? { duration: holding === i && !isShown ? 0.9 : 2.2, repeat: Infinity, ease: "easeInOut" }
                       : { duration: 0.5 }
                 }
               />
               {isCur && isShown && top && (
                 <motion.span
-                  className="rays"
+                  className={`rays ${c.rarity === "LR" ? "rainbow" : ""}`}
                   style={{ ["--rc" as string]: color }}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 0.55, rotate: 360 }}
@@ -477,10 +488,12 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
                 className="shake"
                 style={{ transformPerspective: 900 }}
                 animate={
-                  charging === i ? { x: [0, -5, 5, -7, 7, -9, 9, -5, 5, 0], y: -8, scale: 1.1, rotateX: 0, rotateY: 0 }
+                  charging === i ? (c.rarity === "LR"
+                    ? { x: [0, -3, 3, -4, 4, -6, 6, -8, 8, -10, 10, -12, 12, -6, 6, 0], y: [0, -4, -8, -12], scale: [1, 1.04, 1.1, 1.18], rotateX: 0, rotateY: 0 }
+                    : { x: [0, -5, 5, -7, 7, -9, 9, -5, 5, 0], y: -8, scale: 1.1, rotateX: 0, rotateY: 0 })
                     : { x: 0, y: 0, scale: isCur && holding !== null ? 1.04 : 1, rotateY: isCur ? tilt.x * 14 : 0, rotateX: isCur ? -tilt.y * 14 : 0 }
                 }
-                transition={charging === i ? { duration: 1.05, ease: "easeIn" } : { type: "spring", stiffness: 260, damping: 20 }}
+                transition={charging === i ? { duration: c.rarity === "LR" ? 1.9 : 1.05, ease: "easeIn" } : { type: "spring", stiffness: 260, damping: 20 }}
               >
                 <motion.div
                   className="flipper"
@@ -494,6 +507,7 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
               </motion.div>
 
               {fx?.i === i && <Burst key={fx.key} rarity={c.rarity} size={cardW * 0.8} />}
+              {isCur && isShown && c.rarity === "LR" && <LegendSparkles cardW={cardW} />}
 
               {isCur && isShown && o.isNew?.[i] !== undefined && (
                 <motion.span
@@ -512,6 +526,9 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
         {/* l'écran s'assombrit pendant le suspense d'une UR / LR */}
         <motion.div className="dimmer" initial={false} animate={{ opacity: charging !== null ? 1 : 0 }} transition={{ duration: 0.4 }} />
 
+        {/* cinématique de la carte légendaire */}
+        <LegendaryFX phase={legend} cardW={cardW} />
+
         {/* flash de couleur plein écran pour les UR / LR */}
         {fx && isTop(cards[fx.i]!.rarity) && (
           <motion.div
@@ -528,7 +545,7 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
       <div className="rarityline">
         {curShown && cur && (
           <motion.span key={cur.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} style={{ color: RARITY_COLOR[cur.rarity] }}>
-            {curTop ? `✦ Carte ${cur.rarity} · passif débloqué ✦` : `Carte ${cur.rarity}`}
+            {cur.rarity === "LR" ? <span className="rbw">✦ LÉGENDAIRE · passif débloqué ✦</span> : curTop ? `✦ Carte ${cur.rarity} · passif débloqué ✦` : `Carte ${cur.rarity}`}
           </motion.span>
         )}
       </div>

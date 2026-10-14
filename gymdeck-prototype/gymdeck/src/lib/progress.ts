@@ -1,4 +1,5 @@
-import { EXERCISES, GROUPS, RARITIES, RARITY_RANK, type MuscleGroup, type Rarity } from "./config";
+import { DUEL, EXERCISES, GROUPS, RARITIES, RARITY_RANK, type MuscleGroup, type Rarity } from "./config";
+import type { DuelDay, DuelRecord } from "./duel";
 import { deckPower } from "./engine";
 import { parisDay, type PlayerState, type Result } from "./game";
 import type { Rng } from "./rng";
@@ -9,7 +10,7 @@ import type { Rng } from "./rng";
  * Les montants de récompense sont tous ici : un seul endroit à modifier pour équilibrer.
  */
 
-export type EventKind = "session" | "open" | "bid" | "list" | "deck" | "buy" | "login" | "won" | "sold" | "trade" | "discard";
+export type EventKind = "session" | "open" | "bid" | "list" | "deck" | "buy" | "login" | "won" | "sold" | "trade" | "discard" | "duel" | "duelWin" | "grade";
 export type Counters = Partial<Record<EventKind, number>>;
 
 export interface SeasonResult { id: string; rank: number; total: number; reward: number }
@@ -32,7 +33,8 @@ export interface Extra {
   friends: string[];
   /** Nombre d'échanges déjà faits avec chaque ami (renouvelle ses cartes proposées). */
   tradeNonce: Record<string, number>;
-  season: { id: string; bestPower: number };
+  /** Saison mensuelle : points de duel (victoire 3, égalité 1, défaite 1) et bilan. */
+  season: { id: string; bestPower: number; points?: number; wins?: number; losses?: number; draws?: number };
   pendingSeason: SeasonResult | null;
   reminder: { days: number[]; time: string } | null;
   /** Jours de séance validés dans l'app (calendrier). */
@@ -41,6 +43,10 @@ export interface Extra {
   declared?: string[];
   /** Jours ajoutés à l'horloge (outil de test uniquement). */
   dayShift?: number;
+  /** Duels du jour (3 + 2 si séance validée). */
+  duel?: DuelDay;
+  /** Derniers duels joués. */
+  duels?: DuelRecord[];
 }
 
 // ───────────── Dates (jour de Paris) ─────────────
@@ -81,7 +87,7 @@ export function newExtra(rng: Rng, day: string): Extra {
     day, daily: {}, dailyClaimed: [], week: weekOf(day), weekly: {}, weeklyClaimed: [], life: {},
     streak: { current: 0, best: 0, lastDay: null, claimed: [] },
     achClaimed: [], setsClaimed: [], showcase: [], friends: [], tradeNonce: {},
-    season: { id: seasonOf(day), bestPower: 0 }, pendingSeason: null, reminder: null, history: [], declared: [],
+    season: { id: seasonOf(day), bestPower: 0, points: 0, wins: 0, losses: 0, draws: 0 }, pendingSeason: null, reminder: null, history: [], declared: [],
   };
 }
 
@@ -101,6 +107,7 @@ export function normalize(s: PlayerState, rng: Rng, day: string, ranker: (season
   let e: Extra = { ...e0 };
   if (!e.history || !e.declared) e = { ...e, history: e.history ?? (s.lastSessionDay ? [s.lastSessionDay] : []), declared: e.declared ?? [] };
   if (e.day !== day) { e = { ...e, day, daily: {}, dailyClaimed: [] }; }
+  if (!e.duel || e.duel.day !== day) e = { ...e, duel: { day, used: 0, bonus: s.lastSessionDay === day ? DUEL.perSession : 0 } };
   const wk = weekOf(day);
   if (e.week !== wk) e = { ...e, week: wk, weekly: {}, weeklyClaimed: [] };
   if (e.streak.lastDay && daysBetween(e.streak.lastDay, day) > 2 && e.streak.current > 0) {
@@ -108,11 +115,12 @@ export function normalize(s: PlayerState, rng: Rng, day: string, ranker: (season
   }
   const sid = seasonOf(day);
   if (e.season.id !== sid) {
-    if (e.season.bestPower > 0 && !e.pendingSeason) {
-      const { rank, total } = ranker(e.season.id, e.season.bestPower);
+    // classement de fin de saison : aux points de duel (il faut avoir combattu au moins une fois)
+    if ((e.season.points ?? 0) > 0 && !e.pendingSeason) {
+      const { rank, total } = ranker(e.season.id, e.season.points ?? 0);
       e = { ...e, pendingSeason: { id: e.season.id, rank, total, reward: seasonReward(rank) } };
     }
-    e = { ...e, season: { id: sid, bestPower: 0 } };
+    e = { ...e, season: { id: sid, bestPower: 0, points: 0, wins: 0, losses: 0, draws: 0 } };
   }
   const power = rankedPower({ ...s, extra: e });
   if (power > e.season.bestPower) e = { ...e, season: { ...e.season, bestPower: power } };
@@ -157,7 +165,9 @@ export function track(s: PlayerState, kind: EventKind, rng: Rng, day: string, ra
   }
   let history = e.history ?? [];
   if (kind === "session" && !history.includes(day)) history = [...history, day].sort().slice(-1500);
-  const next: Extra = { ...e, daily: inc(e.daily, kind, n), weekly: inc(e.weekly, kind, n), life: inc(e.life, kind, n), streak, history };
+  // séance validée : 2 duels de plus aujourd'hui
+  const duel = kind === "session" && e.duel?.day === day ? { ...e.duel, bonus: DUEL.perSession } : e.duel;
+  const next: Extra = { ...e, daily: inc(e.daily, kind, n), weekly: inc(e.weekly, kind, n), life: inc(e.life, kind, n), streak, history, duel };
   const out = { ...base, extra: next };
   // la puissance du deck a pu changer
   const power = rankedPower(out);
@@ -213,6 +223,7 @@ const DAILY_POOL: MissionDef[] = [
   { id: "d-deck", label: "Modifie ou optimise ton deck", kinds: ["deck"], target: 1, reward: 4 },
   { id: "d-login", label: "Récupère ta récompense de connexion", kinds: ["login"], target: 1, reward: 3 },
   { id: "d-discard", label: "Défausse une carte en double", kinds: ["discard"], target: 1, reward: 3 },
+  { id: "d-duel", label: "Fais un duel", kinds: ["duel"], target: 1, reward: 4 },
 ];
 const DAILY_SESSION: MissionDef = { id: "d-session", label: "Valide ta séance du jour", kinds: ["session"], target: 1, reward: 6 };
 
@@ -235,6 +246,7 @@ export const WEEKLY: MissionDef[] = [
   { id: "w-sessions", label: "Valide 3 séances cette semaine", kinds: ["session"], target: 3, reward: 25 },
   { id: "w-open", label: "Ouvre 5 boosters", kinds: ["open"], target: 5, reward: 15 },
   { id: "w-market", label: "Fais 3 actions sur le Marché", kinds: ["bid", "list"], target: 3, reward: 15 },
+  { id: "w-duels", label: "Gagne 5 duels", kinds: ["duelWin"], target: 5, reward: 20 },
 ];
 
 export const countOf = (c: Counters, kinds: EventKind[]) => kinds.reduce((a, k) => a + (c[k] ?? 0), 0);
@@ -281,14 +293,18 @@ export function claimStreak(s: PlayerState, days: number, day: string): Result<{
 
 // ───────────── Extensions par groupe musculaire ─────────────
 
-export interface SetTier { id: string; label: string; minRarity: Rarity; reward: number }
+/** Paliers d'extension : la récompense est payée PAR EXERCICE du groupe (un grand groupe rapporte plus). */
+export interface SetTier { id: string; label: string; minRarity: Rarity; perExercise: number }
 export const SET_TIERS: SetTier[] = [
-  { id: "t1", label: "Découverte : une carte de chaque exercice", minRarity: "C", reward: 15 },
-  { id: "t2", label: "Maîtrise : chaque exercice en R ou mieux", minRarity: "R", reward: 40 },
-  { id: "t3", label: "Élite : chaque exercice en SR ou mieux", minRarity: "SR", reward: 120 },
+  { id: "t1", label: "Découverte : une carte de chaque exercice", minRarity: "C", perExercise: 3 },
+  { id: "t2", label: "Maîtrise : chaque exercice en R ou mieux", minRarity: "R", perExercise: 8 },
+  { id: "t3", label: "Élite : chaque exercice en SR ou mieux", minRarity: "SR", perExercise: 24 },
 ];
 
 export function groupExercises(g: MuscleGroup) { return EXERCISES.filter((e) => e.group === g); }
+
+/** Récompense d'un palier pour un groupe : GC par exercice × nombre d'exercices du groupe. */
+export const setReward = (g: MuscleGroup, t: SetTier) => t.perExercise * groupExercises(g).length;
 
 /** Combien d'exercices du groupe sont possédés au moins à la rareté demandée. */
 export function setProgress(s: PlayerState, g: MuscleGroup, minRarity: Rarity) {
@@ -312,7 +328,8 @@ export function claimSet(s: PlayerState, g: MuscleGroup, tierId: string): Result
   const key = `${g}:${tierId}`;
   if (e.setsClaimed.includes(key)) return { ok: false, error: "Déjà récupéré." };
   if (!setProgress(s, g, tier.minRarity).done) return { ok: false, error: "Extension incomplète." };
-  return { ok: true, reward: tier.reward, state: { ...s, gc: s.gc + tier.reward, extra: { ...e, setsClaimed: [...e.setsClaimed, key] } } };
+  const reward = setReward(g, tier);
+  return { ok: true, reward, state: { ...s, gc: s.gc + reward, extra: { ...e, setsClaimed: [...e.setsClaimed, key] } } };
 }
 
 export const groupName = (g: MuscleGroup) => GROUPS.find((x) => x.id === g)!.name;
@@ -341,6 +358,10 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "a-sold", name: "Premier deal", desc: "Vends une carte aux enchères", reward: 10, target: 1, value: life("sold") },
   { id: "a-trade", name: "Échangiste", desc: "Fais un échange avec un ami", reward: 10, target: 1, value: life("trade") },
   { id: "a-friend", name: "Jamais seul", desc: "Ajoute un ami", reward: 5, target: 1, value: (s) => s.extra?.friends.length ?? 0 },
+  { id: "a-duel-1", name: "Première victoire", desc: "Gagne ton premier duel", reward: 10, target: 1, value: life("duelWin") },
+  { id: "a-duel-10", name: "Gladiateur", desc: "Gagne 10 duels", reward: 30, target: 10, value: life("duelWin") },
+  { id: "a-grade-1", name: "Œil de pierre", desc: "Fais expertiser une carte par Basile", reward: 5, target: 1, value: life("grade") },
+  { id: "a-grade-10", name: "Perfection", desc: "Obtiens la note 10 à une expertise", reward: 50, target: 1, value: (s) => (s.cards.some((c) => c.grade === 10) ? 1 : 0) },
 ];
 
 export function claimAchievement(s: PlayerState, id: string): Result<{ state: PlayerState; reward: number }> {

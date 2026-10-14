@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { FRAME_LAYOUT, RARITY_COLOR, exerciseBySlug, type Rarity } from "@/lib/config";
+import { FRAME_LAYOUT, GRADE_LABEL, RARITY_COLOR, exerciseBySlug, gradeColor, type Rarity } from "@/lib/config";
 import type { CardData, Passive } from "@/lib/engine";
 import { Shield, Swords } from "./Icons";
 
@@ -43,7 +43,7 @@ export function Card({ card, count, holo = true }: { card: CardData; count?: num
           ...(ex.fit ? { transform: `translate(${ex.fit.x ?? 0}%, ${ex.fit.y ?? 0}%) scale(${ex.fit.s ?? 1})` } : {}),
         }}
       />
-      <span className="brand">GYMDECK</span>
+      <img className="brand" src="/assets/ui/wordmark.webp" alt="" draggable={false} decoding="async" />
       <span className="badge" style={{ color }}>{card.rarity}</span>
       <div
         className="nameband"
@@ -75,8 +75,23 @@ export function Card({ card, count, holo = true }: { card: CardData; count?: num
           </>
         )}
       </div>
+      {card.grade ? <GradeSeal grade={card.grade} /> : null}
       {count && count > 1 ? <span className="count">×{count}</span> : null}
     </div>
+  );
+}
+
+/** Tampon de Basile posé sur une carte expertisée (note de 1 à 10). */
+export function GradeSeal({ grade, big = false }: { grade: number; big?: boolean }) {
+  return (
+    <span
+      className={`seal ${grade >= 10 ? "perfect" : ""} ${big ? "big" : ""}`}
+      style={{ ["--gc" as string]: gradeColor(grade) }}
+      aria-label={`Note de Basile : ${grade} sur 10 (${GRADE_LABEL[grade]})`}
+      title={`Note ${grade}/10 · ${GRADE_LABEL[grade]}`}
+    >
+      <b>{grade}</b>
+    </span>
   );
 }
 

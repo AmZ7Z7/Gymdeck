@@ -102,9 +102,9 @@ describe("booster", () => {
   });
 
   it("le 2e booster de bienvenue utilise les probabilités améliorées", () => {
-    // Tirage 2900 : amélioré → R (2900 ≥ 2840) ; normal → C (2900 < 4200).
+    // Tirage 5000 : amélioré → R (5000 ≥ 4500) ; normal → C (5000 < 6200).
     // On lit la carte n°2 : la carte n°1 peut être remplacée par la garantie R+ en normal (5 C).
-    const rng: Rng = { int: (min, max) => (max === 9999 ? 2900 : min) };
+    const rng: Rng = { int: (min, max) => (max === 9999 ? 5000 : min) };
     expect(openBooster(rng, "welcome2", 0).cards[1]!.rarity).toBe("R");
     expect(openBooster(rng, "shop", 0).cards[1]!.rarity).toBe("C");
   });
@@ -141,4 +141,15 @@ describe("deck", () => {
 
 it("montants de défausse", () => {
   expect(DISCARD_GC).toEqual({ C: 1, R: 2, SR: 4, SSR: 6, UR: 12, LR: 25 });
+});
+
+describe("booster de test (rareté garantie)", () => {
+  it("contient toujours une LR et ne touche pas au pity", () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const res = openBooster(seededRng(seed), "shop", 4, "LR");
+      expect(res.cards).toHaveLength(5);
+      expect(res.cards.some((c) => c.rarity === "LR")).toBe(true);
+      expect(res.pityAfter).toBe(4);
+    }
+  });
 });

@@ -3,7 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { Card } from "@/components/Card";
 import { Tutorial } from "@/components/Tutorial";
-import type { Page, Tab } from "@/app/page";
+import type { OpenPage, Tab } from "@/app/page";
 import { DAY_LABELS, downloadIcs } from "@/lib/reminder";
 import { claimableCount } from "@/lib/progress";
 import { GcPill, OddsSheet, Wordmark } from "@/components/Bits";
@@ -11,9 +11,11 @@ import { useGame } from "@/components/GameProvider";
 import { Sheet } from "@/components/Sheet";
 import { LOGIN_CYCLE, PITY_THRESHOLD } from "@/lib/config";
 import { completion } from "@/lib/game";
+import { readyCount } from "@/lib/grading";
+import { recordShort } from "@/lib/duel";
 import { getLevel, setLevel, subscribeSound, type SoundLevel } from "@/lib/sound";
 
-export function Profile({ openPage, go }: { openPage: (p: Page) => void; go: (t: Tab) => void }) {
+export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => void }) {
   const g = useGame();
   const p = g.player;
   const comp = completion(p);
@@ -21,7 +23,6 @@ export function Profile({ openPage, go }: { openPage: (p: Page) => void; go: (t:
   const [name, setName] = useState(p.name ?? "");
   const [err, setErr] = useState<string | null>(null);
   const [odds, setOdds] = useState(false);
-  const [resetAsk, setResetAsk] = useState(false);
   const [picker, setPicker] = useState(false);
   const [rem, setRem] = useState(false);
   const [tuto, setTuto] = useState(false);
@@ -32,6 +33,9 @@ export function Profile({ openPage, go }: { openPage: (p: Page) => void; go: (t:
   const level = useSyncExternalStore(subscribeSound, getLevel, () => "low" as SoundLevel);
   const cycle = p.loginCount % LOGIN_CYCLE;
   const tops = p.cards.filter((c) => c.rarity === "UR" || c.rarity === "LR").length;
+  const graded = p.cards.filter((c) => c.grade).length;
+  const gradeReady = readyCount(p, g.gameNow());
+  const se = e.season;
 
   const saveName = () => {
     const e = g.setName(name);
@@ -56,6 +60,8 @@ export function Profile({ openPage, go }: { openPage: (p: Page) => void; go: (t:
         <div className="kv"><span>Cartes possédées</span><b>{p.cards.length}</b></div>
         <div className="kv"><span>Collection (uniques)</span><b>{comp.owned} / {comp.total}</b></div>
         <div className="kv"><span>Cartes UR / LR</span><b>{tops}</b></div>
+        <div className="kv"><span>Cartes expertisées</span><b>{graded}</b></div>
+        <div className="kv"><span>Duels de la saison (victoires · défaites)</span><b>{recordShort(se)}</b></div>
         <div className="kv"><span>Connexions (cycle de {LOGIN_CYCLE})</span><b>{cycle} / {LOGIN_CYCLE}</b></div>
         <div className="kv" style={{ borderBottom: 0 }}><span>Boosters depuis la dernière UR/LR</span><b>{p.pityCounter} / {PITY_THRESHOLD - 1}</b></div>
       </div>
@@ -75,6 +81,7 @@ export function Profile({ openPage, go }: { openPage: (p: Page) => void; go: (t:
         <button className="linkrow" onClick={() => openPage("calendar")}><span>Calendrier des séances</span><span>›</span></button>
         <button className="linkrow" onClick={() => openPage("friends")}><span>Amis et échanges</span><span>{e.friends.length > 0 ? e.friends.length : "›"}</span></button>
         <button className="linkrow" onClick={() => go("combats")}><span>Combats et classement de saison</span><span>›</span></button>
+        <button className="linkrow" onClick={() => openPage("atelier")}><span>Atelier de Basile (expertise)</span><span>{gradeReady > 0 ? <span className="tabbadge" style={{ position: "static", display: "inline-grid" }}>{gradeReady}</span> : g.grading.length > 0 ? `${g.grading.length} en cours` : "›"}</span></button>
         <button className="linkrow" onClick={() => setRem(true)}><span>Rappel de séance</span><span>{e.reminder ? `${e.reminder.time}` : "›"}</span></button>
         <button className="linkrow" onClick={() => setTuto(true)}><span>Revoir le tutoriel</span><span>›</span></button>
         <button className="linkrow" onClick={() => setLevel(level === "off" ? "low" : level === "low" ? "on" : "off")}><span>Sons du jeu</span><span>{level === "off" ? "Coupés" : level === "low" ? "Doux" : "Normal"}</span></button>
@@ -87,21 +94,6 @@ export function Profile({ openPage, go }: { openPage: (p: Page) => void; go: (t:
       </div>
       <p className="warn">GymDeck est gratuit. Les cartes et les GymCoins n’ont aucune valeur en argent et ne peuvent pas être convertis. {g.account?.cloud ? "Tes progrès sont sauvegardés en ligne." : "Les progrès sont enregistrés sur cet appareil pendant le prototype."}</p>
 
-      <details className="tools">
-        <summary>Outils de test</summary>
-        <div className="panel" style={{ display: "grid", gap: 10 }}>
-          <button className="btn ghost small" onClick={() => { g.tools.nextDay(); g.say("Jour suivant simulé"); }}>Simuler le jour suivant</button>
-          <button className="btn ghost small" onClick={() => { g.tools.advanceDays(10); g.say("+10 jours simulés"); }}>Avancer de 10 jours</button>
-          <button className="btn ghost small" onClick={() => { g.tools.advanceDays(31); g.say("+31 jours : saison terminée"); }}>Avancer d’un mois (fin de saison)</button>
-          <button className="btn ghost small" onClick={() => { g.tools.giveCard("UR"); g.say("Carte UR de test ajoutée"); }}>Ajouter une carte UR</button>
-          <button className="btn ghost small" onClick={() => { g.tools.giveCard("LR"); g.say("Carte LR de test ajoutée"); }}>Ajouter une carte LR</button>
-          <button className="btn ghost small" onClick={() => { g.tools.resetTutorial(); g.say("Le tutoriel se relancera sur l’accueil"); }}>Relancer le tutoriel</button>
-          <button className="btn ghost small" onClick={() => { g.tools.addGc(75); g.say("+75 GC"); }}>+75 GC</button>
-          <button className="btn ghost small" onClick={() => { g.tools.advanceHours(6); g.say("Marché avancé de 6 h"); }}>Avancer le Marché de 6 h</button>
-          <button className="btn ghost small" onClick={() => setResetAsk(true)}>Tout réinitialiser</button>
-        </div>
-        <p className="warn">Ces outils n’existent que dans le prototype.</p>
-      </details>
 
       {edit && (
         <Sheet onClose={() => setEdit(false)} label="Changer de pseudo">
@@ -139,14 +131,6 @@ export function Profile({ openPage, go }: { openPage: (p: Page) => void; go: (t:
           <p>{g.account?.cloud ? "Ta partie est sauvegardée en ligne : tu la retrouveras en te reconnectant." : "Mode test : ta partie n’est pas sauvegardée en ligne, elle sera effacée de ce téléphone."}</p>
           <button className="btn primary" onClick={() => { void g.signOut(); setOut(false); }}>Oui, me déconnecter</button>
           <button className="btn ghost small" onClick={() => setOut(false)}>Annuler</button>
-        </Sheet>
-      )}
-      {resetAsk && (
-        <Sheet onClose={() => setResetAsk(false)} label="Tout réinitialiser">
-          <div className="sheet-title">Tout effacer ?</div>
-          <p>Cartes, GC, boosters et deck seront remis à zéro, avec les 2 boosters de bienvenue.</p>
-          <button className="btn primary" onClick={() => { g.tools.reset(); setResetAsk(false); g.say("Prototype réinitialisé"); }}>Oui, tout effacer</button>
-          <button className="btn ghost small" onClick={() => setResetAsk(false)}>Annuler</button>
         </Sheet>
       )}
     </div>

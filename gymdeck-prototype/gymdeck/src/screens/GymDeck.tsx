@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { Card, passiveLabel } from "@/components/Card";
 import { GcPill, Wordmark } from "@/components/Bits";
@@ -10,6 +11,10 @@ import { DECK_SIZE, EXERCISES, RARITY_COLOR, RARITY_RANK, exerciseBySlug } from 
 import { bestDeckIds, deckPower, deckTotals } from "@/lib/engine";
 import type { OwnedCard } from "@/lib/game";
 import type { Tab } from "@/app/page";
+import { BonusLine, GroupTag } from "@/components/Duel";
+import { combatPower } from "@/lib/duel";
+import { DUEL } from "@/lib/config";
+import { sfx } from "@/lib/sound";
 
 const fmtPct = (v: number) => `${v.toFixed(1).replace(".", ",")} %`;
 const fmt = (n: number) => n.toLocaleString("fr-FR");
@@ -56,9 +61,11 @@ export function GymDeckTab({ go }: { go: (t: Tab) => void }) {
         {Array.from({ length: DECK_SIZE }, (_, i) => {
           const c = deck[i];
           return c ? (
-            <button key={c.id} className="slot" aria-label={`Changer ${exerciseBySlug(c.exerciseSlug).name}`} onClick={() => setPicker(true)}>
+            <motion.button key={c.id} layout initial={{ opacity: 0, scale: 0.85, y: 10 }} animate={{ opacity: 1, scale: 1, y: 0 }} transition={{ type: "spring", stiffness: 320, damping: 26 }}
+              className="slot" aria-label={`Changer ${exerciseBySlug(c.exerciseSlug).name}`} onClick={() => setPicker(true)}>
               <Card card={c} />
-            </button>
+              <GroupTag card={c} />
+            </motion.button>
           ) : (
             <button key={`e${i}`} className="slot empty" aria-label="Ajouter une carte" onClick={() => setPicker(true)}>
               <div><span>+</span><small>Ajouter</small></div>
@@ -104,12 +111,23 @@ export function GymDeckTab({ go }: { go: (t: Tab) => void }) {
         )}
       </div>
 
-      <div className="panel combats">
-        <Swords />
-        <div className="t">Combats<span>Affronte d’autres joueurs avec ton deck.</span></div>
-        <span className="soon">Bientôt disponible</span>
+      <div className="row-head"><h2 className="section" style={{ fontSize: 26 }}>Bonus de combat</h2></div>
+      <div className="panel">
+        {deck.length >= 5 ? (
+          <>
+            <BonusLine cards={deck} />
+            <div className="passrow" style={{ borderBottom: 0, marginTop: 6 }}><span>Puissance de combat</span><b>{fmt(combatPower(deck))}</b></div>
+          </>
+        ) : (
+          <div style={{ color: "var(--muted)", fontSize: 15, lineHeight: 1.4 }}>En combat, deux cartes du même groupe se renforcent (+{DUEL.synergyPct[2]} % à +{DUEL.synergyPct[5]} %), et cinq groupes différents donnent +{DUEL.allGroupsPct} % à tout le deck.</div>
+        )}
       </div>
-      <button className="linkrow" style={{ marginTop: 10 }} onClick={() => go("combats")}><span>🏆 Combats et classement</span><span>›</span></button>
+
+      <button className="panel combats" style={{ width: "100%", textAlign: "left" }} onClick={() => go("combats")} aria-label="Ouvrir Combats et classement">
+        <Swords />
+        <div className="t">Combats et classement<span>{deck.length >= 5 ? `${g.duelsLeft} duel${g.duelsLeft > 1 ? "s" : ""} disponible${g.duelsLeft > 1 ? "s" : ""} aujourd’hui.` : "Complète ton deck pour affronter les autres joueurs."}</span></div>
+        <span className={`soon ${deck.length >= 5 && g.duelsLeft > 0 ? "live" : ""}`}>Jouer ›</span>
+      </button>
 
       {picker && <DeckPicker onClose={() => setPicker(false)} />}
       {help && (
@@ -121,7 +139,7 @@ export function GymDeckTab({ go }: { go: (t: Tab) => void }) {
             <li>Les <b>UR</b> et <b>LR</b> ont un passif : un bonus en % appliqué à <b>tout le deck</b>, carte porteuse comprise.</li>
             <li>Les bonus s’additionnent sur les stats de base.</li>
             <li>Une carte placée dans ton deck ne peut pas être défaussée.</li>
-            <li>Les combats arrivent après le lancement : ton deck sera prêt.</li>
+            <li>En combat, ton deck gagne des <b>synergies</b> : 2 cartes du même groupe +{DUEL.synergyPct[2]} %, 3 → +{DUEL.synergyPct[3]} %, 4 → +{DUEL.synergyPct[4]} %, 5 → +{DUEL.synergyPct[5]} % ; cinq groupes différents +{DUEL.allGroupsPct} %.</li>
           </ul>
           <button className="btn ghost small" onClick={() => setHelp(false)}>Compris</button>
         </Sheet>
@@ -155,6 +173,7 @@ function DeckPicker({ onClose }: { onClose: () => void }) {
     const same = draftCards.find((d) => d.exerciseSlug === c.exerciseSlug);
     if (same) { setDraft(draft.map((id) => (id === same.id ? c.id : id))); return; }
     if (draft.length >= DECK_SIZE) { g.say("Deck complet : retire d’abord une carte."); return; }
+    sfx.place();
     setDraft([...draft, c.id]);
   };
 

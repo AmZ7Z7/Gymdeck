@@ -3,10 +3,13 @@
 Ta séance, ton booster.
 
 ## Ce qui est en place
-- Moteur de tirage (`src/lib/engine.ts`) et règles de compte (`src/lib/game.ts`) conformes à la fiche, couverts par 25 tests (`npm test`).
-- Simulation des taux : `npm run simulate` (voir `RAPPORT_SIMULATION.txt`).
-- Écrans : Accueil, ouverture de booster, Collection (recherche, filtres, détail, défausse), Boutique (achat, connexion quotidienne, Marché « Bientôt disponible »), Profil (avec outils de test).
-- À venir : onglet GymDeck (deck), comptes et sauvegarde serveur.
+- Boosters (taux affichés, garanties R+ et UR), collection de 32 exercices × 6 raretés, deck de 5 cartes avec passifs UR/LR.
+- Missions, séries de séances, succès, extensions par groupe musculaire (récompense par exercice), calendrier, rappels.
+- Marché aux enchères (joueurs simulés), amis, vitrine, échanges, image de partage.
+- Combats : duels asynchrones (ordre caché, synergies de groupe, triangle, ± 10 % de hasard, écart plafonné à 350), 3 duels par jour + 2 avec la séance, classement mensuel aux points.
+- Atelier de Basile : expertise des cartes (note de 1 à 10, prix selon la rareté, 24 h, effet −1 % à +4 % sur ATQ/DEF).
+- Toutes les règles et tous les chiffres sont dans `src/lib/config.ts` ; la logique est pure et testée (`npm test`).
+- Images de Basile : `tools/basile_frames.py` découpe et recale les planches de `assets-src/golem` (non livrées dans les zips).
 
 ## Lancer en local
 ```
@@ -15,8 +18,9 @@ npm run dev      # http://localhost:3000
 ```
 
 ## Mise en ligne (Vercel)
-Importer le dépôt GitHub dans Vercel : aucun réglage à changer (framework détecté : Next.js).
+Importer le dépôt GitHub dans Vercel (dossier racine : `gymdeck-prototype/gymdeck`).
+Pour cacher le bouton 🧪 des outils de test : variable d'environnement `NEXT_PUBLIC_HIDE_TEST_TOOLS=1`.
 
 ## Limite du prototype
-Les tirages sont faits dans le navigateur et la sauvegarde est locale à l'appareil (localStorage).
+Les tirages, notes et duels sont calculés dans le navigateur et la sauvegarde est locale à l'appareil (localStorage).
 Pour la vraie version (comptes, GC, tirages inviolables), les mêmes règles passeront côté serveur (Supabase).

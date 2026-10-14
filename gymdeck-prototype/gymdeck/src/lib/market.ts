@@ -1,6 +1,7 @@
 import { STAT_RANGE, exerciseBySlug, type Rarity } from "./config";
 import { CardData, drawRarity, makeCard, type Weights } from "./engine";
-import { newId, type OwnedCard, type PlayerState, type Result } from "./game";
+import { atWorkshop, newId, type OwnedCard, type PlayerState, type Result } from "./game";
+import { drawGrade, gradedStats } from "./grading";
 import type { Rng } from "./rng";
 
 /**
@@ -63,7 +64,13 @@ const valueFactor = (c: CardData) => {
   const f = ((c.atq + c.def) / 2 - r.min) / (r.max - r.min);
   return 0.85 + 0.3 * Math.max(0, Math.min(1, f));
 };
-export const fairValue = (c: CardData) => Math.max(1, Math.round(FAIR_VALUE[c.rarity] * valueFactor(c)));
+/**
+ * Les joueurs (ici simulés) paient plus cher une carte bien notée par Basile : ce n'est pas un prix fixé par le jeu,
+ * c'est la façon dont les acheteurs simulés estiment la carte.
+ */
+export const gradeAppeal = (grade?: number) =>
+  !grade ? 1 : grade >= 10 ? 1.8 : grade === 9 ? 1.35 : grade === 8 ? 1.12 : grade >= 5 ? 1 : 0.88;
+export const fairValue = (c: CardData) => Math.max(1, Math.round(FAIR_VALUE[c.rarity] * valueFactor(c) * gradeAppeal(c.grade)));
 export const suggestedStart = (c: CardData) => Math.max(1, Math.round(fairValue(c) * 0.5));
 
 export const priceShown = (a: Auction) => (a.bidder ? a.currentBid : a.startPrice);
@@ -79,7 +86,13 @@ const rnd = (rng: Rng, min: number, max: number) => min + (rng.int(0, 10000) / 1
 
 function npcAuction(rng: Rng, now: number): Auction {
   const rarity = drawRarity(rng, MARKET_WEIGHTS);
-  const card = makeCard(rng, rarity);
+  let card = makeCard(rng, rarity);
+  // environ une annonce sur six est une carte déjà expertisée
+  if (rng.int(0, 99) < 16) {
+    const grade = drawGrade(rng);
+    const g = gradedStats(card.atq, card.def, grade);
+    card = { ...card, atq: g.atq, def: g.def, grade };
+  }
   const fair = fairValue(card);
   const duration = Math.round(rnd(rng, 0.4, 24) * HOUR);
   return {
@@ -185,6 +198,7 @@ export function listCard(s: PlayerState, rng: Rng, cardId: string, price: number
   const card = s.cards.find((c) => c.id === cardId);
   if (!card) return { ok: false, error: "Carte introuvable." };
   if (s.deck.includes(cardId)) return { ok: false, error: "Retire d’abord cette carte de ton deck." };
+  if (atWorkshop(s, cardId)) return { ok: false, error: "Cette carte est chez Basile : attends la fin de l’expertise." };
   if (!Number.isInteger(price) || price < 1 || price > MARKET.maxPrice) return { ok: false, error: `Prix de départ : de 1 à ${MARKET.maxPrice} GC.` };
   if (!(MARKET.durationsH as readonly number[]).includes(hours)) return { ok: false, error: "Durée invalide." };
   const m = s.market ?? emptyMarket();

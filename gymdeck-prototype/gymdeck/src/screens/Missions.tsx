@@ -6,7 +6,7 @@ import { useGame } from "@/components/GameProvider";
 import { IconBack } from "@/components/Icons";
 import { GROUPS, RARITIES, RARITY_COLOR } from "@/lib/config";
 import {
-  ACHIEVEMENTS, SET_TIERS, STREAK_MILESTONES, WEEKLY, dailyMissions, groupCompletion, groupExercises, missionProgress, setProgress, streakNow,
+  ACHIEVEMENTS, SET_TIERS, STREAK_MILESTONES, WEEKLY, dailyMissions, groupCompletion, groupExercises, missionProgress, setProgress, setReward, streakNow,
   type MissionDef,
 } from "@/lib/progress";
 import { sfx } from "@/lib/sound";
@@ -142,7 +142,7 @@ export function Extensions() {
                   const p = setProgress(g.player, gr.id, t.minRarity);
                   const claimed = e.setsClaimed.includes(`${gr.id}:${t.id}`);
                   return (
-                    <Row key={t.id} label={t.label} value={p.have} target={p.total} reward={t.reward} done={p.done} claimed={claimed}
+                    <Row key={t.id} label={t.label} sub={`${t.perExercise} GC × ${ex.length} exercice${ex.length > 1 ? "s" : ""}`} value={p.have} target={p.total} reward={setReward(gr.id, t)} done={p.done} claimed={claimed}
                       onClaim={() => { const r = g.claimSet(gr.id, t.id); if (typeof r === "number") { sfx.coin(); g.say(`Extension ${gr.name} : +${r} GC`); } else g.say(r); }} />
                   );
                 })}
@@ -151,7 +151,7 @@ export function Extensions() {
           </div>
         );
       })}
-      <p className="warn">Plus d’exercices arrivent bientôt : chaque nouvel exercice rejoint son extension.</p>
+      <p className="warn">Les récompenses dépendent de la taille de l’extension : chaque exercice du groupe rapporte des GC. Plus d’exercices arrivent bientôt : chaque nouvel exercice rejoint son extension.</p>
     </div>
   );
 }

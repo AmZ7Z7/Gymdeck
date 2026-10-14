@@ -19,6 +19,8 @@ export interface CardData {
   atq: number;
   def: number;
   passive: Passive | null;
+  /** Note de l'expertise de Basile (1 à 10), une fois révélée. Elle suit la carte partout (Marché, échanges). */
+  grade?: number;
 }
 
 export type Weights = Record<Rarity, number>;
@@ -91,9 +93,15 @@ function lowestIndex(rarities: Rarity[]): number {
  *  4. génération des exemplaires (exercice, stats, passif).
  * Un booster contenant au moins une UR/LR remet le compteur à zéro, sinon il l'incrémente.
  */
-export function openBooster(rng: Rng, kind: BoosterKind, pityBefore: number): BoosterResult {
+export function openBooster(rng: Rng, kind: BoosterKind, pityBefore: number, force?: Rarity): BoosterResult {
   const weights = weightsFor(kind);
   const rarities: Rarity[] = Array.from({ length: CARDS_PER_BOOSTER }, () => drawRarity(rng, weights));
+
+  // Booster de test : une carte de la rareté demandée est garantie, le compteur de pity ne bouge pas.
+  if (force) {
+    rarities[rng.int(0, rarities.length - 1)] = force;
+    return { cards: rarities.map((r) => makeCard(rng, r)), pityAfter: pityBefore, pityTriggered: false, rPlusTriggered: false };
+  }
 
   let pityTriggered = false;
   if (pityBefore >= PITY_THRESHOLD - 1 && !rarities.some(isTop)) {

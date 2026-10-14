@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   autoDeck as autoDeckFn, buyBooster, newId, claimLogin, createAccount, discardCard, discardMany as discardManyFn,
   openPendingBooster, parisDay, setDeck as setDeckFn, setName as setNameFn, validateSession,
-  type OwnedCard, type PlayerState,
+  type OwnedCard, type PendingBooster, type PlayerState,
 } from "@/lib/game";
 import { cancelAuction as cancelAuctionFn, emptyMarket, listCard as listCardFn, marketNow, placeBid, syncMarket, HOUR, type MarketState } from "@/lib/market";
 import { secureRng } from "@/lib/rng";
@@ -15,7 +15,9 @@ import {
 import {
   addFriend as addFriendFn, finalRank, normalizeState, proposeTrade, removeFriend as removeFriendFn, toggleShowcase as toggleShowcaseFn, botById,
 } from "@/lib/social";
-import { makeCard } from "@/lib/engine";
+import { deckPower, makeCard, type CardData } from "@/lib/engine";
+import { finishAll, revealGrading as revealGradingFn, submitGrading as submitGradingFn, type GradeReveal, type GradingJob } from "@/lib/grading";
+import { duelsLeft as duelsLeftFn, makeOpponent, playDuel, type DuelRecord, type DuelResult, type Opponent } from "@/lib/duel";
 import {
   cloudEnabled, cloudLoad, cloudResetPassword, cloudSave, cloudSession, cloudSignIn, cloudSignOut, cloudSignUp,
 } from "@/lib/cloud";
@@ -104,7 +106,22 @@ interface Game {
   setReminder: (r: Extra["reminder"]) => void;
   /** Coche / décoche un jour passé au calendrier. Renvoie un message d'erreur ou null. */
   toggleTrainingDay: (day: string) => string | null;
-  tools: { nextDay: () => void; addGc: (n: number) => void; reset: () => void; advanceHours: (h: number) => void; giveCard: (r: Rarity) => void; advanceDays: (n: number) => void; resetTutorial: () => void };
+  /** Heure du jeu en ms (heure réelle + jours ajoutés par les outils de test). */
+  gameNow: () => number;
+  /** Cartes chez Basile. */
+  grading: GradingJob[];
+  /** Confier une carte à Basile : renvoie un message d'erreur ou null. */
+  submitGrading: (cardId: string) => string | null;
+  /** Révéler une expertise terminée (la note est appliquée à la carte). */
+  revealGrading: (cardId: string) => GradeReveal | { error: string };
+  /** Duels restants aujourd'hui. */
+  duelsLeft: number;
+  findOpponent: (avoid?: string[]) => Opponent | { error: string };
+  fight: (order: string[], opp: Opponent) => { result: DuelResult; theirOrder: CardData[]; record: DuelRecord } | { error: string };
+  tools: {
+    nextDay: () => void; addGc: (n: number) => void; reset: () => void; advanceHours: (h: number) => void; giveCard: (r: Rarity) => void;
+    openTestBooster: (r: Rarity) => void; advanceDays: (n: number) => void; resetTutorial: () => void; finishGradings: () => void; addDuels: (n: number) => void;
+  };
 }
 
 const Ctx = createContext<Game | null>(null);
@@ -404,6 +421,37 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     extra: player.extra ?? ({} as Extra),
     day: today,
 
+    gameNow: () => clock().getTime(),
+    grading: player.grading ?? [],
+    submitGrading: (cardId) => {
+      const r = submitGradingFn(live.current.player, cardId, secureRng, clock().getTime());
+      if (!r.ok) return r.error;
+      commit({ ...live.current, player: trk(r.state, "grade") });
+      return null;
+    },
+    revealGrading: (cardId) => {
+      const r = revealGradingFn(live.current.player, cardId, clock().getTime());
+      if (!r.ok) return { error: r.error };
+      commit({ ...live.current, player: r.state });
+      return { card: r.card, grade: r.grade, pct: r.pct, before: r.before };
+    },
+    duelsLeft: duelsLeftFn(player, today),
+    findOpponent: (avoid) => {
+      const p = live.current.player;
+      const deck = p.deck.map((id) => p.cards.find((c) => c.id === id)).filter((c): c is OwnedCard => !!c);
+      if (deck.length < DECK_SIZE) return { error: "Il te faut un deck de 5 cartes pour combattre." };
+      return makeOpponent(secureRng, deckPower(deck), avoid);
+    },
+    fight: (order, opp) => {
+      const day = parisDay(clock());
+      const r = playDuel(live.current.player, order, opp, secureRng, day, clock().getTime());
+      if (!r.ok) return { error: r.error };
+      let st = trk(r.state, "duel");
+      if (r.result.outcome === "win") st = trk(st, "duelWin");
+      commit({ ...live.current, player: st });
+      return { result: r.result, theirOrder: r.theirOrder, record: r.record };
+    },
+
     signUp: async (email, password, name) => {
       const nm = setNameFn(live.current.player, name);
       if (!nm.ok) return nm.error;
@@ -535,7 +583,22 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         const c: OwnedCard = { ...makeCard(secureRng, rarity), id: newId(), obtainedSeq: p.seq + 1 };
         commit({ ...live.current, player: { ...p, seq: p.seq + 1, cards: [...p.cards, c] } });
       },
+      openTestBooster: (rarity) => {
+        const p = live.current.player;
+        const id = newId();
+        const b: PendingBooster = { id, kind: "shop", force: rarity };
+        commit({ player: { ...p, boosters: [...p.boosters, b] }, opening: { boosterId: id, kind: "shop", phase: "closed", cardIds: [], revealed: [], index: 0 } });
+      },
       resetTutorial: () => { const p = live.current.player; if (p.extra) commit({ ...live.current, player: { ...p, extra: { ...p.extra, tutorialDone: false } } }); },
+      finishGradings: () => commit({ ...live.current, player: finishAll(live.current.player, clock().getTime()) }),
+      addDuels: (n) => {
+        const p = live.current.player;
+        const e = p.extra;
+        if (!e) return;
+        const day = parisDay(clock());
+        const d = e.duel?.day === day ? e.duel : { day, used: 0, bonus: 0 };
+        commit({ ...live.current, player: { ...p, extra: { ...e, duel: { ...d, bonus: d.bonus + n } } } });
+      },
       addGc: (n) => commit({ ...live.current, player: { ...live.current.player, gc: live.current.player.gc + n } }),
       reset: () => commit({ player: normalizeState({ ...createAccount(), name: live.current.player.name }, secureRng, parisDay(new Date())), opening: null }),
     },

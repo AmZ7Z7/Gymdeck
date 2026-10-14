@@ -9,7 +9,9 @@ const STEPS: { emoji: string; title: string; text: string; img?: string }[] = [
   { emoji: "🃏", title: "Ouvre ton booster", text: "5 cartes à découvrir. Touche une carte pour la retourner, ou la carte d’à côté pour avancer. Un appui long sur une carte cachée fait briller sa couleur de rareté.", img: "/assets/ui/dos-carte.webp" },
   { emoji: "📚", title: "Complète ta collection", text: "Chaque exercice existe en 6 raretés : C, R, SR, SSR, UR et LR. Les extensions par muscle te récompensent quand tu les complètes." },
   { emoji: "🛡️", title: "Compose ton GymDeck", text: "Un deck de 5 cartes, une par exercice. Les cartes UR et LR ont un passif qui booste tout ton deck." },
-  { emoji: "🪙", title: "Dépense tes GC", text: "Les GymCoins servent à acheter des boosters ou à enchérir sur le Marché. Les doublons se défaussent contre des GC." },
+  { emoji: "🪙", title: "Dépense tes GC", text: "Les GymCoins servent à acheter des boosters ou à enchérir sur le Marché. Les doublons se défaussent contre des GC.", img: "/assets/ui/gc-coin.webp" },
+  { emoji: "⚔️", title: "Combats", text: "3 duels par jour, 2 de plus quand tu valides ta séance. Range tes 5 cartes, profite des synergies de groupe et grimpe au classement du mois." },
+  { emoji: "🔍", title: "L’atelier de Basile", text: "Basile, le golem expert, note tes cartes de 1 à 10 en 24 h. Une belle note renforce un peu la carte et se voit au Marché.", img: "/assets/atelier/basile-avatar.webp" },
   { emoji: "🔥", title: "Missions et séries", text: "Chaque jour : des missions et une série de séances. Plus tu es régulier, plus tu gagnes de GC." },
 ];
 

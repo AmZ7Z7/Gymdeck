@@ -5,7 +5,8 @@ import { Card, passiveLabel } from "@/components/Card";
 import { GcPill, Wordmark, formatDuration, useNow } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
 import { Sheet } from "@/components/Sheet";
-import { RARITIES, RARITY_COLOR, RARITY_RANK, exerciseBySlug, type Rarity } from "@/lib/config";
+import { GRADE_LABEL, RARITIES, RARITY_COLOR, RARITY_RANK, exerciseBySlug, gradeColor, type Rarity } from "@/lib/config";
+import { atWorkshop } from "@/lib/game";
 import {
   FAIR_VALUE, MARKET, ME, bidStep, fairValue, minNextBid, priceShown, suggestedStart,
   type Auction, type MarketEntry,
@@ -41,7 +42,7 @@ export function Market() {
   const myBids = all.filter((a) => a.bidder === ME && a.seller !== ME);
   const mySales = all.filter((a) => a.seller === ME);
   const openAuction = all.find((a) => a.id === open) ?? null;
-  const sellable = g.player.cards.filter((c) => !g.player.deck.includes(c.id));
+  const sellable = g.player.cards.filter((c) => !g.player.deck.includes(c.id) && !atWorkshop(g.player, c.id));
   const sellCard = g.player.cards.find((c) => c.id === selling) ?? null;
 
   return (
@@ -107,7 +108,7 @@ export function Market() {
       {tab === "sell" && (
         <>
           <p className="fine" style={{ margin: "4px 0 10px" }}>
-            Choisis une carte à vendre. Elle quitte ta collection jusqu’à la fin de l’enchère, et te revient si personne n’enchérit. Les cartes de ton deck ne peuvent pas être vendues.
+            Choisis une carte à vendre. Elle quitte ta collection jusqu’à la fin de l’enchère, et te revient si personne n’enchérit. Les cartes de ton deck et celles chez Basile ne peuvent pas être vendues.
           </p>
           {sellable.length === 0 ? <div className="empty">Aucune carte à vendre pour l’instant.</div> : (
             <div className="cgrid">
@@ -169,6 +170,7 @@ function AuctionSheet({ a, now, onClose }: { a: Auction; now: number; onClose: (
       <div style={{ textAlign: "center", fontSize: 15, color: "#cfd6e8" }}>
         {exerciseBySlug(a.card.exerciseSlug).name} · <b style={{ color: RARITY_COLOR[a.card.rarity] }}>{a.card.rarity}</b>
         {a.card.passive && <div style={{ color: "var(--lime)", marginTop: 3 }}>Passif : {passiveLabel(a.card.passive)}</div>}
+        {a.card.grade ? <div style={{ marginTop: 3 }}>Note de Basile : <b style={{ color: gradeColor(a.card.grade) }}>{a.card.grade}/10 · {GRADE_LABEL[a.card.grade]}</b></div> : null}
       </div>
       <div className="panel" style={{ width: "100%", padding: "4px 14px" }}>
         <div className="kv"><span>Vendeur</span><b>{mineSale ? "Toi" : a.seller}</b></div>
@@ -213,6 +215,7 @@ function SellSheet({ card, onClose, onDone }: { card: OwnedCard; onClose: () => 
       <div className="cardwrap" style={{ width: "min(46vw, 190px)" }}><Card card={card} /></div>
       <div style={{ textAlign: "center", fontSize: 15, color: "#cfd6e8" }}>
         {exerciseBySlug(card.exerciseSlug).name} · <b style={{ color: RARITY_COLOR[card.rarity] }}>{card.rarity}</b>
+        {card.grade ? <div style={{ marginTop: 3 }}>Note de Basile : <b style={{ color: gradeColor(card.grade) }}>{card.grade}/10</b> · elle s’affiche dans l’annonce</div> : null}
         <div className="fine" style={{ marginTop: 3 }}>Valeur indicative d’une {card.rarity} : ~{FAIR_VALUE[card.rarity]} GC</div>
       </div>
       <div style={{ width: "100%" }}>

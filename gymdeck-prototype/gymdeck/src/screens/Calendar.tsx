@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { GcPill, Wordmark } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
 import { IconBack, IconChevron } from "@/components/Icons";
-import { CALENDAR_MAX_PAST_DAYS, daysBetween, monthStats, trainingDays } from "@/lib/progress";
+import { CALENDAR_MAX_PAST_DAYS, daysBetween, monthStats, streakNow, trainingDays } from "@/lib/progress";
 
 const WEEK = ["L", "M", "M", "J", "V", "S", "D"];
 const pad = (n: number) => String(n).padStart(2, "0");
@@ -60,7 +60,7 @@ export function Calendar({ back }: { back: () => void }) {
       <div className="calstats">
         <div><b>{stats.count}</b><span>ce mois</span></div>
         <div><b>{stats.best}</b><span>jours d’affilée</span></div>
-        <div><b>{e.streak.current}</b><span>série en cours</span></div>
+        <div><b>{streakNow(e, g.day)}</b><span>série en cours</span></div>
         <div><b>{total}</b><span>au total</span></div>
       </div>
 

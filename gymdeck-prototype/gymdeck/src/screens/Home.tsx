@@ -8,15 +8,17 @@ import { useGame } from "@/components/GameProvider";
 import { IconChevron } from "@/components/Icons";
 import { sfx } from "@/lib/sound";
 import { Sheet } from "@/components/Sheet";
-import { DAILY_LOGIN_GC, DECK_SIZE, LOGIN_CYCLE } from "@/lib/config";
+import { DAILY_LOGIN_GC, DECK_SIZE, DUEL, LOGIN_CYCLE } from "@/lib/config";
+import { readyCount } from "@/lib/grading";
+import { IconCombat } from "@/components/Icons";
 import { deckTotals } from "@/lib/engine";
 import { completion, msUntilParisMidnight } from "@/lib/game";
-import type { Page, Tab } from "@/app/page";
+import type { OpenPage, Tab } from "@/app/page";
 import { Tutorial } from "@/components/Tutorial";
 import { claimableCount, dailyMissions, missionProgress, streakNow, trainingDays, weekOf } from "@/lib/progress";
 import { reminderDue } from "@/lib/reminder";
 
-export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: (p: Page) => void }) {
+export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: OpenPage }) {
   const g = useGame();
   const { player } = g;
   const now = useNow();
@@ -37,6 +39,8 @@ export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: (p: Pag
   const cycle = player.loginCount % LOGIN_CYCLE;
   const untilBonus = LOGIN_CYCLE - cycle;
   const countdown = formatDuration(msUntilParisMidnight(now));
+  const graded = readyCount(player, g.gameNow());
+  const deckReady = g.deckCards.length >= DECK_SIZE;
 
   const trainSet = new Set(trainingDays(e));
   const wk0 = weekOf(g.day);
@@ -136,6 +140,20 @@ export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: (p: Pag
         {ready > 0 ? <span className="tabbadge" style={{ position: "static" }}>{ready}</span> : <span className="link">›</span>}
       </button>
 
+      {graded > 0 && (
+        <motion.button className="panel basilebanner" onClick={() => openPage("atelier")} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
+          <span className="bb-ico" aria-hidden>🔍</span>
+          <span className="bb-t">Basile a terminé !<span>{graded > 1 ? `${graded} notes t’attendent à l’atelier.` : "Une note t’attend à l’atelier."}</span></span>
+          <span className="link">Voir ›</span>
+        </motion.button>
+      )}
+
+      <button className="panel duelcard" onClick={() => go("combats")}>
+        <IconCombat />
+        <span className="dc-t">Combats<span>{!deckReady ? "Complète ton deck de 5 cartes pour combattre." : g.duelsLeft > 0 ? `${g.duelsLeft} duel${g.duelsLeft > 1 ? "s" : ""} disponible${g.duelsLeft > 1 ? "s" : ""} aujourd’hui` : g.sessionDoneToday ? "Plus de duel aujourd’hui. Reviens demain !" : `Valide ta séance : +${DUEL.perSession} duels`}</span></span>
+        <span className={`soon ${deckReady && g.duelsLeft > 0 ? "live" : ""}`}>{deckReady && g.duelsLeft > 0 ? "Jouer ›" : "›"}</span>
+      </button>
+
       <button className="panel weekcard" onClick={() => openPage("calendar")} aria-label="Ouvrir le calendrier des séances">
         <div className="wk-head">
           <div className="mc-t">Cette semaine</div>
@@ -143,7 +161,7 @@ export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: (p: Pag
         </div>
         <div className="wk-days">
           {weekDays.map((d, i) => (
-            <div key={d} className={`wk ${trainSet.has(d) ? "on" : ""} ${d === g.day ? "today" : ""} ${d > g.day ? "future" : ""}`}>
+            <div key={d} aria-label={`${["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"][i]}${trainSet.has(d) ? " : séance faite" : d > g.day ? "" : d === g.day ? " : aujourd’hui" : " : pas de séance"}`} className={`wk ${trainSet.has(d) ? "on" : ""} ${d === g.day ? "today" : ""} ${d > g.day ? "future" : ""}`}>
               <span>{["L", "M", "M", "J", "V", "S", "D"][i]}</span>
               <i>{trainSet.has(d) ? <svg viewBox="0 0 24 24" aria-hidden><path d="m5 12.5 4.5 4.5L19 7.5" /></svg> : null}</i>
             </div>

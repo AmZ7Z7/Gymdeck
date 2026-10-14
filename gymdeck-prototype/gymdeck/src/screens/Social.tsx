@@ -12,6 +12,7 @@ import { fairValue } from "@/lib/market";
 import { SEASON_TIERS, seasonEndsIn, seasonOf } from "@/lib/progress";
 import { FRIEND_SUGGESTIONS, botById, botOffers, botPower, botShowcase, leaderboard, type Bot } from "@/lib/social";
 import { TRADE_DAILY_MAX } from "@/lib/social";
+import { recordShort } from "@/lib/duel";
 import { sfx } from "@/lib/sound";
 
 const Coin = ({ s = 16 }: { s?: number }) => <span className="coin" style={{ width: s, height: s, display: "inline-block", verticalAlign: "-3px", marginRight: 4 }} />;
@@ -141,7 +142,7 @@ function TradeSheet({ bot, onClose }: { bot: Bot; onClose: () => void }) {
   const [want, setWant] = useState<number | null>(null);
   const [give, setGive] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const mineAll = [...g.player.cards].filter((c) => !g.player.deck.includes(c.id)).sort((a, b) => RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity] || b.atq + b.def - (a.atq + a.def));
+  const mineAll = [...g.player.cards].filter((c) => !g.player.deck.includes(c.id) && !g.grading.some((j) => j.cardId === c.id)).sort((a, b) => RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity] || b.atq + b.def - (a.atq + a.def));
   const giveCard = mineAll.find((c) => c.id === give) ?? null;
   const wantCard = want !== null ? offers[want] : null;
   const left = TRADE_DAILY_MAX - (g.extra.daily.trade ?? 0);
@@ -169,7 +170,7 @@ function TradeSheet({ bot, onClose }: { bot: Bot; onClose: () => void }) {
           ))}
         </div>
         <h2 className="section" style={{ fontSize: 20, margin: "14px 0 8px" }}>2 · Je donne…</h2>
-        {mineAll.length === 0 ? <div className="empty" style={{ padding: 12 }}>Aucune carte disponible (les cartes du deck ne s’échangent pas).</div> : (
+        {mineAll.length === 0 ? <div className="empty" style={{ padding: 12 }}>Aucune carte disponible (les cartes du deck et celles chez Basile ne s’échangent pas).</div> : (
           <div className="cgrid four">
             {mineAll.map((c) => (
               <button key={c.id} className={`ccell pick ${give === c.id ? "sel" : ""}`} onClick={() => { setGive(c.id); setMsg(null); }}>
@@ -204,6 +205,7 @@ export function RankingBody() {
   const me = rows.find((r) => r.me);
   const top = rows.slice(0, 15);
   const pend = e.pendingSeason;
+  const se = e.season;
 
   return (
     <>
@@ -218,21 +220,25 @@ export function RankingBody() {
       )}
 
       {me ? (
-        <div className="panel myrank"><div className="r">#{me.rank}</div><div className="d">Ta puissance<b>{me.power}</b></div></div>
+        <div className="panel myrank">
+          <div className="r">#{me.rank}</div>
+          <div className="d">Tes points<b>{me.points}</b></div>
+          <div className="d rec">{recordShort(se)}<small>victoires · défaites</small></div>
+        </div>
       ) : (
-        <div className="panel"><p style={{ margin: 0 }}>Compose un <b>deck de 5 cartes</b> pour entrer au classement.</p></div>
+        <div className="panel"><p style={{ margin: 0 }}>Fais ton <b>premier duel</b> pour entrer au classement de la saison.</p></div>
       )}
 
       <div className="board">
         {top.map((r) => (
           <div className={`brow ${r.me ? "me" : ""}`} key={r.name + r.rank}>
-            <span className="rk">{r.rank}</span><span className="bn">{r.me ? `${r.name} (toi)` : r.name}</span><span className="bp">{r.power}</span>
+            <span className="rk">{r.rank}</span><span className="bn">{r.me ? `${r.name} (toi)` : r.name}</span><span className="bp">{r.points} pts</span>
           </div>
         ))}
         {me && me.rank > 15 && (
           <>
             <div className="brow dots">…</div>
-            <div className="brow me"><span className="rk">{me.rank}</span><span className="bn">{me.name} (toi)</span><span className="bp">{me.power}</span></div>
+            <div className="brow me"><span className="rk">{me.rank}</span><span className="bn">{me.name} (toi)</span><span className="bp">{me.points} pts</span></div>
           </>
         )}
       </div>
@@ -241,8 +247,7 @@ export function RankingBody() {
       <div className="panel">
         {SEASON_TIERS.map((t, i) => <div className="kv" key={t.label} style={i === SEASON_TIERS.length - 1 ? { borderBottom: 0 } : undefined}><span>{t.label}</span><b><Coin s={16} />{t.reward} GC</b></div>)}
       </div>
-      <p className="warn">Le classement compare la puissance de ton deck (ATQ + DEF, passifs compris). Les autres joueurs sont fictifs pendant le prototype, et la puissance monte au fil du mois. Les combats viendront s’ajouter plus tard.</p>
+      <p className="warn">Points de saison : victoire +3, égalité +1, défaite +1. Le classement repart à zéro chaque mois. Les autres joueurs sont fictifs pendant le prototype.</p>
     </>
   );
 }
-

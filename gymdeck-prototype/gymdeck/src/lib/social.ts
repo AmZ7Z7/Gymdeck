@@ -1,7 +1,7 @@
 import { CardData, deckPower, makeCard, drawRarity, type Weights } from "./engine";
 import { fairValue } from "./market";
-import { newId, type OwnedCard, type PlayerState, type Result } from "./game";
-import { normalize, seasonProgress, seasonOf } from "./progress";
+import { atWorkshop, newId, type OwnedCard, type PlayerState, type Result } from "./game";
+import { normalize, seasonOf } from "./progress";
 import { seededRng, type Rng } from "./rng";
 
 /**
@@ -121,6 +121,7 @@ export function proposeTrade(
   const mine = s.cards.find((c) => c.id === myCardId);
   if (!mine) return { ok: false, error: "Carte introuvable." };
   if (s.deck.includes(myCardId)) return { ok: false, error: "Retire d'abord cette carte de ton deck." };
+  if (atWorkshop(s, myCardId)) return { ok: false, error: "Cette carte est chez Basile : attends la fin de l’expertise." };
   const nonce = e.tradeNonce[botId] ?? 0;
   const theirs = botOffers(bot, nonce)[offerIndex];
   if (!theirs) return { ok: false, error: "Carte introuvable." };
@@ -136,30 +137,40 @@ export function proposeTrade(
   };
 }
 
-// ───────────── Classement de saison ─────────────
+// ───────────── Classement de saison (points de duel) ─────────────
 
-export interface Standing { name: string; power: number; me: boolean; rank: number }
+export interface Standing { name: string; points: number; me: boolean; rank: number }
 
-/** Puissance d'un joueur fictif pendant la saison : elle monte au fil du mois (0,8 → 1). */
-export const botSeasonPower = (bot: Bot, seasonId: string, progress: number) => {
-  const jitter = 0.9 + (hash(bot.id + seasonId) % 21) / 100; // 0,90–1,10
-  return Math.round(botPower(bot) * jitter * (0.8 + 0.2 * progress));
+const daysInMonth = (seasonId: string) => {
+  const [y, m] = seasonId.split("-").map(Number) as [number, number];
+  return new Date(Date.UTC(y, m, 0)).getUTCDate();
+};
+
+/**
+ * Points d'un joueur fictif : il combat tous les jours, à un rythme qui dépend de son niveau (≈ 2 à 10 points par jour).
+ * Un joueur qui valide ses séances (5 duels par jour) et gagne souvent peut viser le haut du classement.
+ */
+export const botSeasonPoints = (bot: Bot, seasonId: string, dayOfMonth: number) => {
+  const rate = 2 + bot.level * 1.6 + (hash(bot.id + seasonId) % 32) / 10;
+  return Math.round(rate * Math.max(0, dayOfMonth));
 };
 
 export function leaderboard(s: PlayerState, day: string): Standing[] {
   const sid = seasonOf(day);
-  const prog = seasonProgress(day);
-  const rows: Omit<Standing, "rank">[] = BOTS.map((b) => ({ name: b.name, power: botSeasonPower(b, sid, prog), me: false }));
-  const myPower = s.extra?.season.bestPower ?? 0;
-  if (myPower > 0) rows.push({ name: s.name ?? "Moi", power: myPower, me: true });
-  rows.sort((a, b) => b.power - a.power);
+  const dom = Number(day.slice(8, 10));
+  const rows: Omit<Standing, "rank">[] = BOTS.map((b) => ({ name: b.name, points: botSeasonPoints(b, sid, dom), me: false }));
+  const myPts = s.extra?.season.id === sid ? s.extra.season.points ?? 0 : 0;
+  if (myPts > 0) rows.push({ name: s.name ?? "Moi", points: myPts, me: true });
+  // à égalité de points, le joueur passe devant (il a combattu pour de vrai)
+  rows.sort((a, b) => b.points - a.points || Number(b.me) - Number(a.me));
   return rows.map((r, i) => ({ ...r, rank: i + 1 }));
 }
 
-/** Rang final d'une saison terminée (les joueurs fictifs sont à leur maximum). */
-export function finalRank(seasonId: string, power: number): { rank: number; total: number } {
-  const bots = BOTS.map((b) => botSeasonPower(b, seasonId, 1));
-  return { rank: 1 + bots.filter((p) => p > power).length, total: bots.length + 1 };
+/** Rang final d'une saison terminée (les joueurs fictifs ont joué tout le mois). */
+export function finalRank(seasonId: string, points: number): { rank: number; total: number } {
+  const last = daysInMonth(seasonId);
+  const bots = BOTS.map((b) => botSeasonPoints(b, seasonId, last));
+  return { rank: 1 + bots.filter((p) => p > points).length, total: bots.length + 1 };
 }
 
 /** Raccourci : normalise l'état avec le calcul de classement de ce module. */
