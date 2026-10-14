@@ -15,7 +15,7 @@ import {
 import {
   addFriend as addFriendFn, finalRank, normalizeState, proposeTrade, removeFriend as removeFriendFn, toggleShowcase as toggleShowcaseFn, botById,
 } from "@/lib/social";
-import { deckPower, makeCard, type CardData } from "@/lib/engine";
+import { deckPower, makeCard, revealOrder, type CardData } from "@/lib/engine";
 import { finishAll, revealGrading as revealGradingFn, submitGrading as submitGradingFn, type GradeReveal, type GradingJob } from "@/lib/grading";
 import { duelsLeft as duelsLeftFn, makeOpponent, playDuel, type DuelRecord, type DuelResult, type Opponent } from "@/lib/duel";
 import {
@@ -274,14 +274,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (!o || o.phase !== "closed") return;
       const r = openPendingBooster(p, o.boosterId, secureRng);
       if (!r.ok) return;
+      // la plus rare en dernier (affichage seulement)
+      const shown = revealOrder(r.cards).map((i) => r.cards[i]!);
+      const known = new Set(p.cards.map((c) => `${c.exerciseSlug}|${c.rarity}`));
+      const fresh = shown.map((c: OwnedCard) => { const k = `${c.exerciseSlug}|${c.rarity}`; const n = !known.has(k); known.add(k); return n; });
       commit({
         player: trk(r.state, "open"),
         opening: {
-          ...o, phase: "cards", cardIds: r.cards.map((c: OwnedCard) => c.id), revealed: r.cards.map(() => false), index: 0,
-          isNew: (() => {
-            const known = new Set(p.cards.map((c) => `${c.exerciseSlug}|${c.rarity}`));
-            return r.cards.map((c: OwnedCard) => { const k = `${c.exerciseSlug}|${c.rarity}`; const n = !known.has(k); known.add(k); return n; });
-          })(),
+          ...o, phase: "cards", cardIds: shown.map((c) => c.id), revealed: r.cards.map(() => false), index: 0,
+          isNew: fresh,
           pityTriggered: r.pityTriggered,
         },
       });

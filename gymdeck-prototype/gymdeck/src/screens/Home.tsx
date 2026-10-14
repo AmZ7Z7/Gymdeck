@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Card } from "@/components/Card";
 import { GcPill, LoginDots, Wordmark, formatDuration, useNow } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
-import { IconChevron } from "@/components/Icons";
+import { IconCheck, IconChevron, IconClock, IconFlame } from "@/components/Icons";
 import { sfx } from "@/lib/sound";
 import { Sheet } from "@/components/Sheet";
 import { DAILY_LOGIN_GC, DECK_SIZE, DUEL, LOGIN_CYCLE } from "@/lib/config";
@@ -100,7 +100,7 @@ export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: OpenPag
         </>
       ) : (
         <>
-          <button className="btn ghost" disabled>Séance du jour validée ✓</button>
+          <button className="btn ghost" disabled><IconCheck className="ico-in" /> Séance du jour validée</button>
           <p className="hint">Prochain booster de séance dans {countdown}</p>
         </>
       )}
@@ -129,20 +129,20 @@ export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: OpenPag
       )}
 
       {showReminder && (
-        <div className="panel remindbanner" role="status">⏰ C’est l’heure de ta séance ! Valide-la pour gagner ton booster.</div>
+        <div className="panel remindbanner" role="status"><IconClock className="ico" /> C’est l’heure de ta séance ! Valide-la pour gagner ton booster.</div>
       )}
 
       <button className="panel missioncard" onClick={() => openPage("missions")}>
         <div className="mc-l">
           <div className="mc-t">Objectifs du jour</div>
-          <div className="mc-s">{mDone} / {missions.length} missions{streak > 0 ? ` · 🔥 ${streak} séance${streak > 1 ? "s" : ""} d’affilée` : ""}</div>
+          <div className="mc-s">{mDone} / {missions.length} missions{streak > 0 && <> · <IconFlame className="ico-in" /> {streak} séance{streak > 1 ? "s" : ""} d’affilée</>}</div>
         </div>
         {ready > 0 ? <span className="tabbadge" style={{ position: "static" }}>{ready}</span> : <span className="link">›</span>}
       </button>
 
       {graded > 0 && (
         <motion.button className="panel basilebanner" onClick={() => openPage("atelier")} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-          <span className="bb-ico" aria-hidden>🔍</span>
+          <span className="bb-ico" aria-hidden />
           <span className="bb-t">Basile a terminé !<span>{graded > 1 ? `${graded} notes t’attendent à l’atelier.` : "Une note t’attend à l’atelier."}</span></span>
           <span className="link">Voir ›</span>
         </motion.button>

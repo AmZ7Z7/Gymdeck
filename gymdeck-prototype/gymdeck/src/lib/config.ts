@@ -64,14 +64,14 @@ export type BoosterKind = "welcome1" | "welcome2" | "session" | "login" | "shop"
 export type MuscleGroup = "pecs" | "epaules" | "dos" | "bras" | "jambes" | "abdos" | "cardio";
 
 /** Extensions (séries) : une par groupe musculaire. Les nouveaux exercices s'y ajoutent via le champ `group`. */
-export const GROUPS: { id: MuscleGroup; name: string; short: string; emoji: string }[] = [
-  { id: "pecs", name: "Pectoraux", short: "Pecs", emoji: "🔥" },
-  { id: "epaules", name: "Épaules", short: "Épaules", emoji: "⚡" },
-  { id: "dos", name: "Dos", short: "Dos", emoji: "🦅" },
-  { id: "bras", name: "Bras", short: "Bras", emoji: "💪" },
-  { id: "jambes", name: "Jambes & fessiers", short: "Jambes", emoji: "🦵" },
-  { id: "abdos", name: "Abdos & gainage", short: "Abdos", emoji: "🎯" },
-  { id: "cardio", name: "Cardio", short: "Cardio", emoji: "❤️‍🔥" },
+export const GROUPS: { id: MuscleGroup; name: string; short: string }[] = [
+  { id: "pecs", name: "Pectoraux", short: "Pecs" },
+  { id: "epaules", name: "Épaules", short: "Épaules" },
+  { id: "dos", name: "Dos", short: "Dos" },
+  { id: "bras", name: "Bras", short: "Bras" },
+  { id: "jambes", name: "Jambes & fessiers", short: "Jambes" },
+  { id: "abdos", name: "Abdos & gainage", short: "Abdos" },
+  { id: "cardio", name: "Cardio", short: "Cardio" },
 ];
 export const groupInfo = (g: MuscleGroup) => GROUPS.find((x) => x.id === g)!;
 
@@ -186,9 +186,15 @@ export const GRADE_LABEL: Record<number, string> = {
   5: "Correcte", 4: "Moyenne", 3: "Usée", 2: "Très usée", 1: "Abîmée",
 };
 
-/** Couleur du tampon selon la note. */
+/** Médaille de la note : bronze (1-4), argent (5-7), or (8), or étincelant (9), platine noir (10). */
+export type GradeMedal = "bronze" | "silver" | "gold" | "gold2" | "platinum";
+export const gradeMedal = (grade: number): GradeMedal =>
+  grade >= 10 ? "platinum" : grade === 9 ? "gold2" : grade === 8 ? "gold" : grade >= 5 ? "silver" : "bronze";
+export const medalSrc = (grade: number) => `/assets/medals/${gradeMedal(grade)}.webp`;
+
+/** Couleur du texte de la note (accordée à la médaille). */
 export const gradeColor = (grade: number): string =>
-  grade >= 10 ? "#ffd23b" : grade === 9 ? "#c8f31d" : grade === 8 ? "#2dff8a" : grade >= 5 ? "#9fb6ff" : "#ff8a6b";
+  ({ bronze: "#e8a06a", silver: "#d3dae8", gold: "#ffcf3f", gold2: "#ffe07a", platinum: "#f1d28a" })[gradeMedal(grade)];
 
 // ───────────── Combats (règles validées le 14 oct. 2026) ─────────────
 

@@ -3,10 +3,10 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BasileScene, type Cue, type SceneRun } from "@/components/BasileScene";
-import { Card } from "@/components/Card";
+import { Card, Medal } from "@/components/Card";
 import { GcPill, formatDuration, useNow } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
-import { IconBack } from "@/components/Icons";
+import { IconBack, IconHourglass } from "@/components/Icons";
 import { Sheet } from "@/components/Sheet";
 import {
   GRADES, GRADE_HOURS, GRADE_LABEL, GRADE_PRICE, GRADE_SLOTS, GRADE_WEIGHTS, RARITIES, RARITY_COLOR, RARITY_RANK,
@@ -152,7 +152,7 @@ export function Atelier({ back, initialCardId }: { back: () => void; initialCard
         <motion.div className="panel gradeout" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} onAnimationStart={() => outRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })} ref={outRef}>
           <div className="go-card"><Card card={result.card} /></div>
           <div className="go-info">
-            <div className="go-grade" style={{ color: gradeColor(result.grade) }}>{result.grade}<small>/10</small> · {GRADE_LABEL[result.grade]}</div>
+            <div className="go-grade" style={{ color: gradeColor(result.grade) }}><Medal grade={result.grade} className="md" /><span>{result.grade}<small>/10</small> · {GRADE_LABEL[result.grade]}</span></div>
             <div className="go-name">{exerciseBySlug(result.card.exerciseSlug).name} <b style={{ color: RARITY_COLOR[result.card.rarity] }}>{result.card.rarity}</b></div>
             <div className="go-stats">
               <span>ATQ {result.before.atq} → <b>{result.card.atq}</b></span>
@@ -212,7 +212,7 @@ export function Atelier({ back, initialCardId }: { back: () => void; initialCard
               <span className="binfo">{exerciseBySlug(c.exerciseSlug).name} <b style={{ color: RARITY_COLOR[c.rarity] }}>{c.rarity}</b>
                 <small className={r ? "ok" : ""}>{r ? "Note prête !" : `Prête dans ${formatDuration(j.readyAt - now)}`}</small>
               </span>
-              <span className="bstate">{r ? "›" : "⏳"}</span>
+              <span className="bstate">{r ? "›" : <IconHourglass />}</span>
             </button>
           );
         })}
@@ -280,7 +280,7 @@ export function GradeRules({ onClose }: { onClose: () => void }) {
         <div className="odds-row head g3"><span>Note</span><span>Chance</span><span>Effet</span></div>
         {GRADES.map((n) => (
           <div className="odds-row g3" key={n}>
-            <span><i className="gdot" style={{ ["--gc" as string]: gradeColor(n) }}>{n}</i>{GRADE_LABEL[n]}</span>
+            <span><Medal grade={n} className="sm" />{GRADE_LABEL[n]}</span>
             <span>{pctTxt(GRADE_WEIGHTS[n]!)}</span>
             <span>{gradeStatPct(n) > 0 ? `+${gradeStatPct(n)} %` : gradeStatPct(n) < 0 ? `${gradeStatPct(n)} %` : "—"}</span>
           </div>

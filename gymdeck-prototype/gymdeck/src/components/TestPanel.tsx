@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { useGame } from "./GameProvider";
 import { Sheet } from "./Sheet";
+import { IconFlask } from "./Icons";
 
-/** Bouton 🧪 discret + panneau d'outils de test (le seul endroit). Masqué en mettant NEXT_PUBLIC_HIDE_TEST_TOOLS=1 sur Vercel. */
+/** Bouton discret (fiole) + panneau d'outils de test (le seul endroit). Masqué en mettant NEXT_PUBLIC_HIDE_TEST_TOOLS=1 sur Vercel. */
 export function TestPanel() {
   const g = useGame();
   const [open, setOpen] = useState(false);
@@ -14,10 +15,10 @@ export function TestPanel() {
   const t = g.tools;
   return (
     <>
-      <button className="testfab" aria-label="Outils de test" onClick={() => setOpen(true)}>🧪</button>
+      <button className="testfab" aria-label="Outils de test" onClick={() => setOpen(true)}><IconFlask /></button>
       {open && (
         <Sheet onClose={() => setOpen(false)} label="Outils de test">
-          <div className="sheet-title">🧪 Outils de test</div>
+          <div className="sheet-title">Outils de test</div>
           <p className="fine" style={{ margin: "0 0 8px" }}>Ces outils n’existent que dans le prototype.</p>
           <div className="testgrid">
             <button className="btn primary" style={{ gridColumn: "1 / -1" }} onClick={() => run(() => t.openTestBooster("LR"))}>Booster avec une LÉGENDAIRE</button>

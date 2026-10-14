@@ -201,3 +201,19 @@ export function bestDeckIds<T extends CardData & { id: string }>(cards: T[], siz
   }
   return picked.map((c) => c.id);
 }
+
+/**
+ * Ordre d'affichage d'un booster : la carte la plus rare est toujours révélée en dernier (5e).
+ * À rareté égale, la plus forte (ATQ + DEF). Les autres gardent l'ordre du tirage.
+ * Cela ne change que l'affichage : les cartes et leurs probabilités restent identiques.
+ */
+export function revealOrder(cards: Pick<CardData, "rarity" | "atq" | "def">[]): number[] {
+  if (cards.length === 0) return [];
+  let best = 0;
+  cards.forEach((c, i) => {
+    const b = cards[best]!;
+    const d = RARITY_RANK[c.rarity] - RARITY_RANK[b.rarity];
+    if (d > 0 || (d === 0 && c.atq + c.def > b.atq + b.def)) best = i;
+  });
+  return [...cards.keys()].filter((i) => i !== best).concat(best);
+}

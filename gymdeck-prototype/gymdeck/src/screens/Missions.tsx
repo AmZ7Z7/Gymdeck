@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { GcPill, Wordmark } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
-import { IconBack } from "@/components/Icons";
+import { GroupIcon, IconBack, IconFlame } from "@/components/Icons";
 import { GROUPS, RARITIES, RARITY_COLOR } from "@/lib/config";
 import {
   ACHIEVEMENTS, SET_TIERS, STREAK_MILESTONES, WEEKLY, dailyMissions, groupCompletion, groupExercises, missionProgress, setProgress, setReward, streakNow,
@@ -75,7 +75,7 @@ export function Missions({ back }: { back: () => void }) {
       {tab === "streak" && (
         <>
           <div className="panel streakhero">
-            <div className="flame" aria-hidden>🔥</div>
+            <div className="flame" aria-hidden><IconFlame /></div>
             <div className="big">{streak}</div>
             <div className="lab">{streak > 1 ? "séances d’affilée" : "séance d’affilée"}</div>
             <div className="sub">Record : {e.streak.best} · 1 jour de repos autorisé entre deux séances</div>
@@ -117,7 +117,7 @@ export function Extensions() {
         return (
           <div className="panel ext" key={gr.id}>
             <button className="exthead" onClick={() => setOpen(isOpen ? null : gr.id)} aria-expanded={isOpen}>
-              <span className="emo" aria-hidden>{gr.emoji}</span>
+              <span className="emo" aria-hidden><GroupIcon id={gr.id} /></span>
               <span className="en">{gr.name}<small>{ex.length} exercice{ex.length > 1 ? "s" : ""} · {comp.owned} / {comp.total} cartes</small></span>
               {ready > 0 && <span className="tabbadge" style={{ position: "static" }}>{ready}</span>}
               <span className="chev">{isOpen ? "▾" : "▸"}</span>

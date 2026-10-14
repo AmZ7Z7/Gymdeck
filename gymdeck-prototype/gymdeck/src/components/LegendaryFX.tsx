@@ -6,31 +6,23 @@ import { useMemo } from "react";
 const hue = (h: number, l = 62) => `hsl(${h} 100% ${l}%)`;
 const RAINBOW = "conic-gradient(from 0deg, #ff3b6b, #ffb020, #f6ff3b, #2dff8a, #3cc4ff, #8a5bff, #ff4fa3, #ff3b6b)";
 
-/** Rend une fissure irrégulière qui part du centre, en coordonnées d'un carré de 200 × 200. */
-function crackPath(angle: number, len: number, seed: number) {
-  const pts: string[] = ["100,100"];
-  let a = angle;
-  let r = 0;
-  for (let k = 1; k <= 5; k++) {
-    r += len / 5;
-    a += Math.sin(seed * 7.3 + k * 2.1) * 0.28;
-    pts.push(`${(100 + Math.cos(a) * r).toFixed(1)},${(100 + Math.sin(a) * r).toFixed(1)}`);
-  }
-  return `M${pts.join(" L")}`;
-}
-
 /**
- * Cinématique « légendaire » : suspense (fissures prismatiques, vignette) puis explosion
+ * Cinématique « légendaire » : montée en puissance (la lumière arc-en-ciel est aspirée depuis les bords,
+ * des anneaux se resserrent de plus en plus vite autour de la carte qui s'élève) puis explosion
  * (flash, ondes arc-en-ciel, pilier de lumière, éclats, bandeau LÉGENDAIRE).
  */
 export function LegendaryFX({ phase, cardW }: { phase: "charge" | "boom" | null; cardW: number }) {
-  const cracks = useMemo(
-    () => Array.from({ length: 9 }, (_, k) => ({
-      d: crackPath((k / 9) * Math.PI * 2 + 0.3, 70 + ((k * 37) % 30), k + 1),
-      delay: 0.25 + k * 0.14,
-    })),
+  // traits de lumière aspirés depuis les bords : de plus en plus nombreux et rapides
+  const streaks = useMemo(
+    () => Array.from({ length: 26 }, (_, k) => {
+      const a = ((k * 137.5) % 360) * (Math.PI / 180);
+      const t = k / 26; // 0 → 1 : début → fin de la charge
+      return { a, h: (k * 47) % 360, delay: 0.1 + 1.45 * Math.pow(t, 0.8), dur: 0.62 - 0.32 * t, len: 44 + ((k * 31) % 30) };
+    }),
     [],
   );
+  // anneaux qui se resserrent, à un rythme qui accélère (comme un cœur qui s'emballe)
+  const pulses = [0.05, 0.62, 1.04, 1.34, 1.55, 1.7, 1.81];
   const shards = useMemo(
     () => Array.from({ length: 18 }, (_, k) => {
       const a = (k / 18) * Math.PI * 2 + (k % 3) * 0.12;
@@ -55,28 +47,29 @@ export function LegendaryFX({ phase, cardW }: { phase: "charge" | "boom" | null;
             animate={{ opacity: [0, 0.35, 0.6, 1], scale: [0.3, 0.8, 1, 1.5] }}
             transition={{ duration: 1.9, ease: "easeIn" }}
           />
-          <svg className="lg-cracks" viewBox="0 0 200 200" style={{ width: size, height: size }}>
-            <defs>
-              <linearGradient id="lgcrack" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stopColor="#ff3b6b" /><stop offset=".25" stopColor="#ffd23b" /><stop offset=".5" stopColor="#2dff8a" />
-                <stop offset=".75" stopColor="#3cc4ff" /><stop offset="1" stopColor="#c05bff" />
-              </linearGradient>
-            </defs>
-            {cracks.map((c, i) => (
-              <motion.path
-                key={i}
-                d={c.d}
-                fill="none"
-                stroke="url(#lgcrack)"
-                strokeWidth={1.6}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                initial={{ pathLength: 0, opacity: 0 }}
-                animate={{ pathLength: 1, opacity: [0, 1, 1] }}
-                transition={{ duration: 0.45, delay: c.delay, ease: "easeOut" }}
+          {streaks.map((st, k) => {
+            const far = Math.max(cardW * 2.6, 380);
+            return (
+              <motion.i
+                key={k}
+                className="lg-streak"
+                style={{ height: st.len, rotate: `${(st.a * 180) / Math.PI + 90}deg`, background: `linear-gradient(180deg, transparent, ${hue(st.h, 70)}, #fff)`, boxShadow: `0 0 10px ${hue(st.h)}` }}
+                initial={{ x: Math.cos(st.a) * far, y: Math.sin(st.a) * far, opacity: 0 }}
+                animate={{ x: Math.cos(st.a) * cardW * 0.35, y: Math.sin(st.a) * cardW * 0.35, opacity: [0, 1, 0] }}
+                transition={{ duration: st.dur, delay: st.delay, ease: "easeIn" }}
               />
-            ))}
-          </svg>
+            );
+          })}
+          {pulses.map((d, k) => (
+            <motion.i
+              key={k}
+              className="lg-pulse"
+              style={{ width: cardW * 1.25, borderColor: hue(k * 52 + 20, 66), boxShadow: `0 0 18px ${hue(k * 52 + 20)}, inset 0 0 14px ${hue(k * 52 + 20)}` }}
+              initial={{ scale: 2.4, opacity: 0 }}
+              animate={{ scale: 0.55, opacity: [0, 0.9, 0] }}
+              transition={{ duration: Math.max(0.28, 0.6 - k * 0.05), delay: d, ease: "easeIn" }}
+            />
+          ))}
         </>
       )}
 

@@ -24,7 +24,7 @@ export function buildIcs(days: number[], time: string, now = new Date()): string
     "BEGIN:VEVENT", "UID:gymdeck-rappel-seance@gymdeck", `DTSTAMP:${stamp}`,
     `DTSTART;TZID=Europe/Paris:${start}`, "DURATION:PT1H",
     `RRULE:FREQ=WEEKLY;BYDAY=${days.map((x) => BYDAY[x]).join(",")}`,
-    "SUMMARY:Séance GymDeck 💪", "DESCRIPTION:Fais ta séance puis valide-la dans GymDeck pour gagner ton booster !",
+    "SUMMARY:Séance GymDeck", "DESCRIPTION:Fais ta séance puis valide-la dans GymDeck pour gagner ton booster !",
     "BEGIN:VALARM", "TRIGGER:PT0M", "ACTION:DISPLAY", "DESCRIPTION:Séance GymDeck", "END:VALARM",
     "END:VEVENT", "END:VCALENDAR",
   ].join("\r\n");

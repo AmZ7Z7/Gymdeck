@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Card, passiveLabel } from "@/components/Card";
+import { Card, Medal, passiveLabel } from "@/components/Card";
+import { IconClock } from "@/components/Icons";
 import { GcPill, Wordmark, formatDuration, useNow } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
 import { Sheet } from "@/components/Sheet";
@@ -78,13 +79,14 @@ export function Market() {
           {browse.length === 0 ? <div className="empty">Aucune enchère pour ce filtre.</div> : (
             <div className="agrid">
               {browse.map((a) => (
-                <button className="acell" key={a.id} onClick={() => setOpen(a.id)} aria-label={`${exerciseBySlug(a.card.exerciseSlug).name} ${a.card.rarity}`}>
-                  <div className="acard"><Card card={cardOf(a)} />{a.bidder === ME && <span className="atag lead">EN TÊTE</span>}</div>
-                  <div className="ameta">
+                <button className={`acell ${a.bidder === ME ? "lead" : ""}`} key={a.id} onClick={() => setOpen(a.id)} aria-label={`${exerciseBySlug(a.card.exerciseSlug).name} ${a.card.rarity}, ${a.bidder ? "offre actuelle" : "mise de départ"} ${priceShown(a)} GC, fin dans ${left(a, now)}`}>
+                  {a.bidder === ME && <span className="atag lead">EN TÊTE</span>}
+                  <div className="acard"><Card card={cardOf(a)} /></div>
+                  <div className="afoot">
+                    <span className="aby">{a.bidder ? "Offre actuelle" : "Mise de départ"}</span>
                     <span className="price"><Coin />{priceShown(a)}</span>
-                    <span className="time">{left(a, now)}</span>
+                    <span className="time"><IconClock />{left(a, now)}</span>
                   </div>
-                  <div className="aby">{a.bidder ? "Offre actuelle" : "Mise de départ"}</div>
                 </button>
               ))}
             </div>
@@ -170,7 +172,7 @@ function AuctionSheet({ a, now, onClose }: { a: Auction; now: number; onClose: (
       <div style={{ textAlign: "center", fontSize: 15, color: "#cfd6e8" }}>
         {exerciseBySlug(a.card.exerciseSlug).name} · <b style={{ color: RARITY_COLOR[a.card.rarity] }}>{a.card.rarity}</b>
         {a.card.passive && <div style={{ color: "var(--lime)", marginTop: 3 }}>Passif : {passiveLabel(a.card.passive)}</div>}
-        {a.card.grade ? <div style={{ marginTop: 3 }}>Note de Basile : <b style={{ color: gradeColor(a.card.grade) }}>{a.card.grade}/10 · {GRADE_LABEL[a.card.grade]}</b></div> : null}
+        {a.card.grade ? <div style={{ marginTop: 3 }}><Medal grade={a.card.grade} className="sm" />Note de Basile : <b style={{ color: gradeColor(a.card.grade) }}>{a.card.grade}/10 · {GRADE_LABEL[a.card.grade]}</b></div> : null}
       </div>
       <div className="panel" style={{ width: "100%", padding: "4px 14px" }}>
         <div className="kv"><span>Vendeur</span><b>{mineSale ? "Toi" : a.seller}</b></div>
@@ -215,7 +217,7 @@ function SellSheet({ card, onClose, onDone }: { card: OwnedCard; onClose: () => 
       <div className="cardwrap" style={{ width: "min(46vw, 190px)" }}><Card card={card} /></div>
       <div style={{ textAlign: "center", fontSize: 15, color: "#cfd6e8" }}>
         {exerciseBySlug(card.exerciseSlug).name} · <b style={{ color: RARITY_COLOR[card.rarity] }}>{card.rarity}</b>
-        {card.grade ? <div style={{ marginTop: 3 }}>Note de Basile : <b style={{ color: gradeColor(card.grade) }}>{card.grade}/10</b> · elle s’affiche dans l’annonce</div> : null}
+        {card.grade ? <div style={{ marginTop: 3 }}><Medal grade={card.grade} className="sm" />Note de Basile : <b style={{ color: gradeColor(card.grade) }}>{card.grade}/10</b> · elle s’affiche dans l’annonce</div> : null}
         <div className="fine" style={{ marginTop: 3 }}>Valeur indicative d’une {card.rarity} : ~{FAIR_VALUE[card.rarity]} GC</div>
       </div>
       <div style={{ width: "100%" }}>

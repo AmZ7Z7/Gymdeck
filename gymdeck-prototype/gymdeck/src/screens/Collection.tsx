@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
-import { Card, CardBack, Tilt, passiveLabel } from "@/components/Card";
+import { Card, Medal, CardBack, Tilt, passiveLabel } from "@/components/Card";
 import { Extensions } from "@/screens/Missions";
 import { shareCards } from "@/lib/share";
 import { GcPill, Wordmark } from "@/components/Bits";
@@ -201,7 +201,7 @@ function Detail({ slug, startId, onClose, onGrade }: { slug: string; startId: st
       <div style={{ textAlign: "center", fontSize: 15, color: "#cfd6e8" }}>
         {exerciseBySlug(card.exerciseSlug).name} · <b style={{ color: RARITY_COLOR[card.rarity] }}>{card.rarity}</b>
         {card.passive && <div style={{ color: "var(--lime)", marginTop: 4 }}>Passif : {passiveLabel(card.passive)}</div>}
-        {card.grade ? <div style={{ marginTop: 4 }}>Note de Basile : <b style={{ color: gradeColor(card.grade) }}>{card.grade}/10 · {GRADE_LABEL[card.grade]}</b></div> : null}
+        {card.grade ? <div style={{ marginTop: 4 }}><Medal grade={card.grade} className="sm" />Note de Basile : <b style={{ color: gradeColor(card.grade) }}>{card.grade}/10 · {GRADE_LABEL[card.grade]}</b></div> : null}
         {job && <div style={{ marginTop: 4, color: "#ffd27a" }}>Chez Basile : {g.gameNow() >= job.readyAt ? "note prête !" : `note dans ${formatDuration(job.readyAt - g.gameNow())}`}</div>}
       </div>
       <div className="acts">

@@ -489,9 +489,9 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
                 style={{ transformPerspective: 900 }}
                 animate={
                   charging === i ? (c.rarity === "LR"
-                    ? { x: [0, -3, 3, -4, 4, -6, 6, -8, 8, -10, 10, -12, 12, -6, 6, 0], y: [0, -4, -8, -12], scale: [1, 1.04, 1.1, 1.18], rotateX: 0, rotateY: 0 }
-                    : { x: [0, -5, 5, -7, 7, -9, 9, -5, 5, 0], y: -8, scale: 1.1, rotateX: 0, rotateY: 0 })
-                    : { x: 0, y: 0, scale: isCur && holding !== null ? 1.04 : 1, rotateY: isCur ? tilt.x * 14 : 0, rotateX: isCur ? -tilt.y * 14 : 0 }
+                    ? { x: 0, y: [0, -6, -16, -26], scale: [1, 1.04, 1.1, 1.2], rotate: [0, -3, 2.5, -1.5, 0], rotateY: [0, 10, -8, 0], rotateX: 0 }
+                    : { x: [0, -5, 5, -7, 7, -9, 9, -5, 5, 0], y: -8, scale: 1.1, rotate: 0, rotateX: 0, rotateY: 0 })
+                    : { x: 0, y: 0, rotate: 0, scale: isCur && holding !== null ? 1.04 : 1, rotateY: isCur ? tilt.x * 14 : 0, rotateX: isCur ? -tilt.y * 14 : 0 }
                 }
                 transition={charging === i ? { duration: c.rarity === "LR" ? 1.9 : 1.05, ease: "easeIn" } : { type: "spring", stiffness: 260, damping: 20 }}
               >

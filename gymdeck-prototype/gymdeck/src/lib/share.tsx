@@ -81,7 +81,7 @@ export async function shareCards(cards: CardData[], name: string): Promise<strin
     const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
     if (nav.canShare?.({ files: [file] })) {
       try {
-        await nav.share({ files: [file], title: "GymDeck", text: "Mon tirage GymDeck 💪" });
+        await nav.share({ files: [file], title: "GymDeck", text: "Mon tirage GymDeck" });
         return "Partagé !";
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return "Partage annulé.";

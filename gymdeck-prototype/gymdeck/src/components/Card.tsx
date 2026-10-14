@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { FRAME_LAYOUT, GRADE_LABEL, RARITY_COLOR, exerciseBySlug, gradeColor, type Rarity } from "@/lib/config";
+import { FRAME_LAYOUT, GRADE_LABEL, RARITY_COLOR, exerciseBySlug, gradeMedal, medalSrc, type Rarity } from "@/lib/config";
 import type { CardData, Passive } from "@/lib/engine";
 import { Shield, Swords } from "./Icons";
 
@@ -81,17 +81,22 @@ export function Card({ card, count, holo = true }: { card: CardData; count?: num
   );
 }
 
-/** Tampon de Basile posé sur une carte expertisée (note de 1 à 10). */
-export function GradeSeal({ grade, big = false }: { grade: number; big?: boolean }) {
+/** Médaille de Basile posée sur une carte expertisée (note de 1 à 10). */
+export function GradeSeal({ grade }: { grade: number }) {
   return (
-    <span
-      className={`seal ${grade >= 10 ? "perfect" : ""} ${big ? "big" : ""}`}
-      style={{ ["--gc" as string]: gradeColor(grade) }}
-      aria-label={`Note de Basile : ${grade} sur 10 (${GRADE_LABEL[grade]})`}
-      title={`Note ${grade}/10 · ${GRADE_LABEL[grade]}`}
-    >
-      <b>{grade}</b>
+    <span className="seal" aria-label={`Note de Basile : ${grade} sur 10 (${GRADE_LABEL[grade]})`} title={`Note ${grade}/10 · ${GRADE_LABEL[grade]}`}>
+      <Medal grade={grade} />
     </span>
+  );
+}
+
+/** Médaille seule (carte, atelier, règles, listes) : l'image et le chiffre gravé dessus. */
+export function Medal({ grade, className = "" }: { grade: number; className?: string }) {
+  return (
+    <i className={`medal m-${gradeMedal(grade)} ${className}`} aria-hidden>
+      <img src={medalSrc(grade)} alt="" draggable={false} decoding="async" />
+      <b>{grade}</b>
+    </i>
   );
 }
 

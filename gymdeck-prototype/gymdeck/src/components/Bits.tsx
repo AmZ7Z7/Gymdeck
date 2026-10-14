@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DISCARD_GC, NORMAL_WEIGHTS, PITY_THRESHOLD, RARITIES, RARITY_COLOR, STAT_RANGE } from "@/lib/config";
 import { Sheet } from "./Sheet";
+import { IconGift } from "./Icons";
 
 export function Wordmark() {
   return (
@@ -99,7 +100,7 @@ export function LoginDots({ done, total }: { done: number; total: number }) {
   return (
     <div className="logindots" aria-label={`${done} connexions sur ${total}`}>
       {Array.from({ length: total }, (_, i) => (
-        <i key={i} className={i < done ? "on" : ""}>{i === total - 1 ? "🎁" : ""}</i>
+        <i key={i} className={i < done ? "on" : ""}>{i === total - 1 ? <IconGift /> : null}</i>
       ))}
     </div>
   );

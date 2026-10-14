@@ -9,6 +9,7 @@ import { claimableCount } from "@/lib/progress";
 import { GcPill, OddsSheet, Wordmark } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
 import { Sheet } from "@/components/Sheet";
+import { IconPencil } from "@/components/Icons";
 import { LOGIN_CYCLE, PITY_THRESHOLD } from "@/lib/config";
 import { completion } from "@/lib/game";
 import { readyCount } from "@/lib/grading";
@@ -52,7 +53,7 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
       <div className="namerow">
         <div className="avatar" style={{ width: 84, height: 84, fontSize: 44, borderWidth: 5 }}>{(p.name ?? "?")[0]!.toUpperCase()}</div>
         <div className="nm">{p.name}</div>
-        <button className="iconbtn" aria-label="Changer de pseudo" onClick={() => { setName(p.name ?? ""); setEdit(true); }}>✎</button>
+        <button className="iconbtn" aria-label="Changer de pseudo" onClick={() => { setName(p.name ?? ""); setEdit(true); }}><IconPencil /></button>
       </div>
 
       <div className="panel">
