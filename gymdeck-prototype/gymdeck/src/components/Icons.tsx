@@ -49,3 +49,17 @@ export function GroupIcon({ id, ...p }: P & { id: string }) {
   const I = GROUP_ICON[id] ?? IconDumbbell;
   return <I {...p} />;
 }
+
+// ───────── Capacités de combat ─────────
+export const IconFist = (p: P) => (<svg {...base} {...p}><path d="M6.5 11.5V8a1.6 1.6 0 0 1 3.2 0v2.5M9.7 10V6.8a1.6 1.6 0 0 1 3.2 0V10M12.9 10V7.6a1.6 1.6 0 0 1 3.2 0V11M16.1 10.5a1.6 1.6 0 0 1 3.2 0v3.2a7 7 0 0 1-7 7h-.6a6.2 6.2 0 0 1-5.6-3.6L4.6 14.4a1.7 1.7 0 0 1 2.9-1.7l1.4 1.8" /></svg>);
+export const IconReturn = (p: P) => (<svg {...base} strokeWidth={2.4} {...p}><path d="M9.5 14.5 4 9l5.5-5.5M4 9h10.5a5.5 5.5 0 0 1 0 11H10" /></svg>);
+export const IconEye = (p: P) => (<svg {...base} {...p}><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" /><circle cx="12" cy="12" r="3.2" fill="currentColor" /></svg>);
+export const IconCombo = (p: P) => (<svg {...base} strokeWidth={2.4} {...p}><path d="m4 6 6 6-6 6M12 6l6 6-6 6" /><path d="M20.5 9v6" /></svg>);
+export const IconHeartPlus = (p: P) => (<svg {...base} {...p}><path d="M12 20.5s-8-4.7-8-10.6a4.3 4.3 0 0 1 8-2.2 4.3 4.3 0 0 1 8 2.2c0 5.9-8 10.6-8 10.6Z" /><path d="M12 9.5v6M9 12.5h6" /></svg>);
+export const IconBolt = (p: P) => (<svg {...base} {...p}><path d="M13.5 2 4.5 13.5h6.5L10 22l9.5-12H13l.5-8Z" fill="currentColor" /></svg>);
+export const IconWind = (p: P) => (<svg {...base} {...p}><path d="M3 8.5h10.5a3 3 0 1 0-3-3M3 12.5h15a3 3 0 1 1-3 3M3 16.5h7" /></svg>);
+export const IconLock = (p: P) => (<svg {...base} {...p}><rect x="5" y="10.5" width="14" height="10" rx="2" fill="currentColor" /><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" /></svg>);
+export const IconUsers = (p: P) => (<svg {...base} {...p}><circle cx="9" cy="8" r="3.2" /><path d="M3 20c0-3.6 2.7-6 6-6s6 2.4 6 6M16 4.8a3.2 3.2 0 0 1 0 6.4M18 14.3c1.9.8 3 2.8 3 5.7" /></svg>);
+export const IconTrophy = (p: P) => (<svg {...base} {...p}><path d="M7 4h10v5a5 5 0 0 1-10 0V4ZM7 6H4v1.5A3.5 3.5 0 0 0 7.5 11M17 6h3v1.5a3.5 3.5 0 0 1-3.5 3.5M12 14v3.5M8 21h8M9.5 17.5h5" /></svg>);
+export const IconChart = (p: P) => (<svg {...base} {...p}><path d="M4 20V4M4 20h16M8 16v-4M12 16V8M16 16v-6" /></svg>);
+export const IconShare = (p: P) => (<svg {...base} {...p}><path d="M12 15V3.5M7.5 8 12 3.5 16.5 8M5 12.5V19a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 19v-6.5" /></svg>);

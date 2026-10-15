@@ -11,8 +11,8 @@ import { DECK_SIZE, EXERCISES, RARITY_COLOR, RARITY_RANK, exerciseBySlug } from 
 import { bestDeckIds, deckPower, deckTotals } from "@/lib/engine";
 import type { OwnedCard } from "@/lib/game";
 import type { Tab } from "@/app/page";
-import { BonusLine, GroupTag } from "@/components/Duel";
-import { combatPower } from "@/lib/duel";
+import { BonusLine, GroupTag } from "@/components/CombatBits";
+import { CONSIGNES, teamHp } from "@/lib/duel";
 import { DUEL } from "@/lib/config";
 import { sfx } from "@/lib/sound";
 
@@ -116,11 +116,26 @@ export function GymDeckTab({ go }: { go: (t: Tab) => void }) {
         {deck.length >= 5 ? (
           <>
             <BonusLine cards={deck} />
-            <div className="passrow" style={{ borderBottom: 0, marginTop: 6 }}><span>Puissance de combat</span><b>{fmt(combatPower(deck))}</b></div>
+            <div className="passrow" style={{ borderBottom: 0, marginTop: 6 }}><span>PV de l’équipe en combat</span><b>{fmt(teamHp(deck))}</b></div>
           </>
         ) : (
           <div style={{ color: "var(--muted)", fontSize: 15, lineHeight: 1.4 }}>En combat, deux cartes du même groupe se renforcent (+{DUEL.synergyPct[2]} % à +{DUEL.synergyPct[5]} %), et cinq groupes différents donnent +{DUEL.allGroupsPct} % à tout le deck.</div>
         )}
+      </div>
+
+      <div className="row-head"><h2 className="section" style={{ fontSize: 26 }}>Consigne de défense</h2></div>
+      <div className="panel consignes">
+        <p className="fine" style={{ margin: "0 0 10px" }}>Quand d’autres joueurs attaquent ton deck, il se défend seul avec cette consigne. +{DUEL.defenseGc} GC par attaque repoussée.</p>
+        <div className="cons-row" role="radiogroup" aria-label="Consigne de défense">
+          {CONSIGNES.map((c) => {
+            const on = (g.extra.consigne ?? "equilibre") === c.id;
+            return (
+              <button key={c.id} role="radio" aria-checked={on} className={`cons ${on ? "on" : ""}`} onClick={() => { g.setConsigne(c.id); }}>
+                <b>{c.name}</b><small>{c.desc}</small>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       <button className="panel combats" style={{ width: "100%", textAlign: "left" }} onClick={() => go("combats")} aria-label="Ouvrir Combats et classement">

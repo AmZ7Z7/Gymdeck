@@ -8,7 +8,7 @@ import { IconGift } from "./Icons";
 export function Wordmark() {
   return (
     <div className="wordmark">
-      <img src="/assets/ui/wordmark.webp" alt="GymDeck" draggable={false} />
+      <img className="wm" src="/assets/ui/wordmark.webp" alt="GymDeck" draggable={false} />
     </div>
   );
 }

@@ -59,7 +59,7 @@ export const PASSIVE_TENTHS = {
   LR: { single: { min: 50, max: 70 }, both: { min: 25, max: 35 } },
 } as const;
 
-export type BoosterKind = "welcome1" | "welcome2" | "session" | "login" | "shop";
+export type BoosterKind = "welcome1" | "welcome2" | "session" | "login" | "shop" | "pass";
 
 export type MuscleGroup = "pecs" | "epaules" | "dos" | "bras" | "jambes" | "abdos" | "cardio";
 
@@ -196,31 +196,80 @@ export const medalSrc = (grade: number) => `/assets/medals/${gradeMedal(grade)}.
 export const gradeColor = (grade: number): string =>
   ({ bronze: "#e8a06a", silver: "#d3dae8", gold: "#ffcf3f", gold2: "#ffe07a", platinum: "#f1d28a" })[gradeMedal(grade)];
 
-// ───────────── Combats (règles validées le 14 oct. 2026) ─────────────
+// ───────────── Combats (règles validées le 15 oct. 2026) ─────────────
+
+export type Posture = "force" | "garde" | "technique";
+export const POSTURES: Posture[] = ["force", "technique", "garde"];
 
 export const DUEL = {
   /** Duels offerts chaque jour. */
-  daily: 3,
+  daily: 5,
   /** Duels en plus le jour où la séance est validée dans l'app. */
   perSession: 2,
-  winGc: 5,
-  /** Points de saison : victoire / égalité / défaite. */
+  /** GC par victoire. */
+  winGc: 10,
+  /** GC par attaque repoussée par ton deck en défense (3 attaques simulées par jour au maximum). */
+  defenseGc: 2,
+  defenseMaxPerDay: 3,
+  /** Points de classement : victoire / égalité / défaite. */
   winPts: 3,
   drawPts: 1,
   lossPts: 1,
-  /** Écart maximum compté sur une manche. */
-  cap: 350,
-  /** Hasard sur l'ATQ de chaque frappe : ± 10 %. */
-  noisePct: 10,
-  /** Bonus de la carte en avantage dans le triangle des groupes. */
+  /** Points du passe de saison : victoire / défaite (ou égalité). */
+  passWin: 15,
+  passLoss: 5,
+  rounds: 5,
+  /** Dégâts = max(ATQ − 50 % de la DEF adverse, 15 % de l'ATQ), plafonnés à 35 % des PV max adverses. */
+  defFactor: 0.5,
+  minHitPct: 15,
+  hitCapPct: 35,
+  /** Hasard sur l'ATQ de chaque frappe : ± 5 %. */
+  noisePct: 5,
+  /** Bonus d'attaque de la carte en avantage dans le triangle des groupes. */
   trianglePct: 20,
+  /** Postures : Force (ATQ ×1,3, DEF ×0,7), Garde (ATQ ×0,6, DEF ×1,5), Technique (×1,4 contre Force, ×0,7 contre Garde). */
+  posture: {
+    force: { atq: 1.3, def: 0.7 },
+    garde: { atq: 0.6, def: 1.5 },
+    technique: { atq: 1, def: 1 },
+  } as Record<Posture, { atq: number; def: number }>,
+  techVsForce: 1.4,
+  techVsGarde: 0.7,
+  /** Jauge de capacité : +22 % par manche, + 90 % des dégâts reçus (en part des PV max) ; ×1,3 avec une LR dans le deck. */
+  gaugeBase: 0.22,
+  gaugeDamage: 0.9,
+  gaugeLr: 1.3,
+  /** Second souffle (cartes C, R, SR) : dégâts ×1,25. */
+  secondWind: 1.25,
   /** Synergies : nombre de cartes du même groupe → bonus % (ATQ et DEF de ces cartes). */
   synergyPct: { 2: 3, 3: 8, 4: 14, 5: 20 } as Record<number, number>,
   /** Cinq groupes différents : bonus pour tout le deck. */
   allGroupsPct: 6,
-  /** Adversaire de puissance proche : ± 25 %. */
-  matchBand: 0.25,
+  /** Adversaire choisi pour une chance de victoire simulée proche de 50 % (45 à 58 %) (combats simulés). */
+  matchLo: 0.45,
+  matchHi: 0.58,
+  matchSims: 50,
+  matchTries: 12,
+  /** Part de choix au hasard de l'IA adverse. */
+  aiRandomPct: 25,
 } as const;
+
+export type CapKind = "power" | "counter" | "feint" | "combo" | "wall" | "heal" | "replay" | "second";
+
+export interface CapacityDef { kind: CapKind; name: string; color: string; values: { SSR: number; UR: number; LR: number } }
+
+/** Capacités des cartes SSR, UR et LR (une par groupe). Les valeurs affichées sont les valeurs réelles. */
+export const CAPACITIES: Record<MuscleGroup, CapacityDef> = {
+  pecs: { kind: "power", name: "Coup puissant", color: "#ff4d5e", values: { SSR: 1.4, UR: 1.7, LR: 2 } },
+  dos: { kind: "counter", name: "Contre-attaque", color: "#a66bff", values: { SSR: 0.3, UR: 0.45, LR: 0.6 } },
+  epaules: { kind: "feint", name: "Feinte", color: "#ffd23f", values: { SSR: 0, UR: 0.15, LR: 0.25 } },
+  bras: { kind: "combo", name: "Enchaînement", color: "#ff8a2a", values: { SSR: 0.65, UR: 0.75, LR: 0.85 } },
+  jambes: { kind: "wall", name: "Mur", color: "#3c9dff", values: { SSR: 0.4, UR: 0.6, LR: 0.75 } },
+  abdos: { kind: "heal", name: "Récupération", color: "#2ee87a", values: { SSR: 0.1, UR: 0.15, LR: 0.2 } },
+  cardio: { kind: "replay", name: "Endurance", color: "#27e1ff", values: { SSR: 0.7, UR: 0.85, LR: 1 } },
+};
+/** Capacité commune des cartes C, R et SR. */
+export const SECOND_WIND = { kind: "second" as CapKind, name: "Second souffle", color: "#c9d1de" };
 
 /** Triangle des groupes : chaque groupe bat le suivant. Les bras sont neutres. */
 export const BEATS: Partial<Record<MuscleGroup, MuscleGroup>> = {
@@ -232,3 +281,29 @@ export const BEATS: Partial<Record<MuscleGroup, MuscleGroup>> = {
   const sum = Object.values(GRADE_WEIGHTS).reduce((a, b) => a + b, 0);
   if (sum !== 10000) throw new Error(`Table des notes : somme ${sum} ≠ 10000`);
 }
+
+// ───────────── Passe de saison (mensuel, validé le 15 oct. 2026) ─────────────
+
+export const PASS = {
+  tiers: 30,
+  /** Points par palier. */
+  perTier: 130,
+  /** Points gagnés. */
+  session: 100,
+  dailyMission: 20,
+  duelWin: 15,
+  duelLoss: 5,
+  weeklyChallenge: 150,
+} as const;
+
+export interface PassReward { tier: number; gc: number; boosters: number }
+/** Récompenses : des GC à chaque palier, un booster tous les 5 paliers, 2 boosters au palier 30. */
+export const PASS_REWARDS: PassReward[] = Array.from({ length: PASS.tiers }, (_, i) => {
+  const tier = i + 1;
+  if (tier === 30) return { tier, gc: 0, boosters: 2 };
+  if (tier % 5 === 0) return { tier, gc: 0, boosters: 1 };
+  return { tier, gc: tier < 10 ? 10 : tier < 20 ? 15 : 20, boosters: 0 };
+});
+
+/** Défi communautaire de la semaine : un objectif pour tous les joueurs, une récompense pour chaque participant. */
+export const COMMUNITY_GC = 20;

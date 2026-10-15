@@ -22,7 +22,7 @@ const cardOf = (a: Auction) => ({ ...a.card });
 const Coin = ({ s = 16 }: { s?: number }) => <span className="coin" style={{ width: s, height: s, display: "inline-block", verticalAlign: "-3px", marginRight: 4 }} />;
 const left = (a: Auction, now: number) => formatDuration(a.endsAt - now);
 
-export function Market() {
+export function Market({ seg }: { seg?: React.ReactNode }) {
   const g = useGame();
   useNow(15000); // rafraîchit les comptes à rebours
   const now = g.marketClock();
@@ -52,7 +52,8 @@ export function Market() {
         <Wordmark />
         <GcPill gc={g.player.gc} />
       </div>
-      <h1 className="title" style={{ marginTop: 14, marginBottom: 4 }}>Marché</h1>
+      <h1 className="title" style={{ marginTop: 14, marginBottom: 4 }}>Boutique</h1>
+      {seg}
       <div style={{ color: "#cfd6e8", fontSize: 15, marginBottom: 10 }}>Enchères entre joueurs · aucune commission</div>
 
       <div className="seg three">

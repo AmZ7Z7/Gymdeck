@@ -1,7 +1,7 @@
-import { DUEL, EXERCISES, GROUPS, RARITIES, RARITY_RANK, type MuscleGroup, type Rarity } from "./config";
-import type { DuelDay, DuelRecord } from "./duel";
+import { COMMUNITY_GC, DUEL, EXERCISES, GROUPS, PASS, PASS_REWARDS, RARITIES, RARITY_RANK, type MuscleGroup, type Rarity } from "./config";
+import type { Consigne, DefenseRecord, DuelDay, DuelRecord } from "./duel";
 import { deckPower } from "./engine";
-import { parisDay, type PlayerState, type Result } from "./game";
+import { newId, parisDay, type PlayerState, type Result } from "./game";
 import type { Rng } from "./rng";
 
 /**
@@ -47,6 +47,17 @@ export interface Extra {
   duel?: DuelDay;
   /** Derniers duels joués. */
   duels?: DuelRecord[];
+  /** Consigne de défense du deck. */
+  consigne?: Consigne;
+  /** Dernier jour où les attaques contre ton deck ont été jouées, et leur historique. */
+  defenseDay?: string;
+  defenses?: DefenseRecord[];
+  /** Premier combat guidé terminé. */
+  combatTutoDone?: boolean;
+  /** Passe de saison du mois : points et paliers récupérés. */
+  pass?: { id: string; xp: number; claimed: number[] };
+  /** Semaine dont la récompense du défi communautaire a été récupérée. */
+  challengeClaimed?: string;
 }
 
 // ───────────── Dates (jour de Paris) ─────────────
@@ -122,6 +133,7 @@ export function normalize(s: PlayerState, rng: Rng, day: string, ranker: (season
     }
     e = { ...e, season: { id: sid, bestPower: 0, points: 0, wins: 0, losses: 0, draws: 0 } };
   }
+  if (!e.pass || e.pass.id !== sid) e = { ...e, pass: { id: sid, xp: 0, claimed: [] } };
   const power = rankedPower({ ...s, extra: e });
   if (power > e.season.bestPower) e = { ...e, season: { ...e.season, bestPower: power } };
   return s.extra && JSON.stringify(e) === JSON.stringify(s.extra) ? s : { ...s, extra: e };
@@ -167,7 +179,8 @@ export function track(s: PlayerState, kind: EventKind, rng: Rng, day: string, ra
   if (kind === "session" && !history.includes(day)) history = [...history, day].sort().slice(-1500);
   // séance validée : 2 duels de plus aujourd'hui
   const duel = kind === "session" && e.duel?.day === day ? { ...e.duel, bonus: DUEL.perSession } : e.duel;
-  const next: Extra = { ...e, daily: inc(e.daily, kind, n), weekly: inc(e.weekly, kind, n), life: inc(e.life, kind, n), streak, history, duel };
+  let next: Extra = { ...e, daily: inc(e.daily, kind, n), weekly: inc(e.weekly, kind, n), life: inc(e.life, kind, n), streak, history, duel };
+  if (kind === "session") next = addPassXp(next, PASS.session, day);
   const out = { ...base, extra: next };
   // la puissance du deck a pu changer
   const power = rankedPower(out);
@@ -266,7 +279,7 @@ export function claimMission(s: PlayerState, scope: "daily" | "weekly", id: stri
   const p = missionProgress(e, scope, m);
   if (p.claimed) return { ok: false, error: "Déjà récupérée." };
   if (!p.done) return { ok: false, error: "Mission pas encore terminée." };
-  const next: Extra = scope === "daily" ? { ...e, dailyClaimed: [...e.dailyClaimed, id] } : { ...e, weeklyClaimed: [...e.weeklyClaimed, id] };
+  const next: Extra = scope === "daily" ? addPassXp({ ...e, dailyClaimed: [...e.dailyClaimed, id] }, PASS.dailyMission, day) : { ...e, weeklyClaimed: [...e.weeklyClaimed, id] };
   return { ok: true, reward: m.reward, state: { ...s, gc: s.gc + m.reward, extra: next } };
 }
 
@@ -385,7 +398,96 @@ export function claimableCount(s: PlayerState, day: string): number {
   for (const a of ACHIEVEMENTS) if (!e.achClaimed.includes(a.id) && a.value(s) >= a.target) n++;
   for (const g of GROUPS) for (const t of SET_TIERS) if (!e.setsClaimed.includes(`${g.id}:${t.id}`) && setProgress(s, g.id, t.minRarity).done) n++;
   if (e.pendingSeason) n++;
+  n += passClaimable(e, day).length;
+  const ch = challengeState(e, day, Date.parse(`${day}T12:00:00Z`));
+  if (ch.claimable) n++;
   return n;
 }
 
 export const today = (now = new Date()) => parisDay(now);
+
+// ───────────── Passe de saison ─────────────
+
+export function passOf(e: Extra, day: string) {
+  return e.pass && e.pass.id === seasonOf(day) ? e.pass : { id: seasonOf(day), xp: 0, claimed: [] as number[] };
+}
+
+export function addPassXp(e: Extra, n: number, day: string): Extra {
+  if (n <= 0) return e;
+  const p = passOf(e, day);
+  return { ...e, pass: { ...p, xp: p.xp + n } };
+}
+
+/** Palier atteint (0 à 30), points dans le palier en cours. */
+export function passLevel(xp: number) {
+  const level = Math.min(PASS.tiers, Math.floor(xp / PASS.perTier));
+  const inTier = level >= PASS.tiers ? PASS.perTier : xp - level * PASS.perTier;
+  return { level, inTier, max: level >= PASS.tiers };
+}
+
+export function passClaimable(e: Extra, day: string): number[] {
+  const p = passOf(e, day);
+  const { level } = passLevel(p.xp);
+  return PASS_REWARDS.filter((r) => r.tier <= level && !p.claimed.includes(r.tier)).map((r) => r.tier);
+}
+
+/** Récupère un palier (ou tous les paliers disponibles si `tier` est absent). */
+export function claimPass(s: PlayerState, day: string, tier?: number): Result<{ state: PlayerState; gc: number; boosters: number }> {
+  const e = s.extra;
+  if (!e) return { ok: false, error: "Indisponible." };
+  const avail = passClaimable(e, day);
+  const list = tier ? avail.filter((t) => t === tier) : avail;
+  if (!list.length) return { ok: false, error: tier ? "Palier pas encore atteint." : "Rien à récupérer pour l’instant." };
+  let gc = 0, boosters = 0;
+  for (const t of list) { const r = PASS_REWARDS[t - 1]!; gc += r.gc; boosters += r.boosters; }
+  const p = passOf(e, day);
+  return {
+    ok: true, gc, boosters,
+    state: {
+      ...s, gc: s.gc + gc,
+      boosters: [...s.boosters, ...Array.from({ length: boosters }, () => ({ id: newId(), kind: "pass" as const }))],
+      extra: { ...e, pass: { ...p, claimed: [...p.claimed, ...list] } },
+    },
+  };
+}
+
+// ───────────── Défi communautaire de la semaine ─────────────
+
+export interface Challenge { id: string; label: string; kinds: EventKind[]; target: number; unit: string; mine: string }
+export const CHALLENGES: Challenge[] = [
+  { id: "c-sessions", label: "Valider 20 000 séances tous ensemble", kinds: ["session"], target: 20000, unit: "séances", mine: "Valide une séance pour participer" },
+  { id: "c-duels", label: "Gagner 30 000 duels tous ensemble", kinds: ["duelWin"], target: 30000, unit: "duels gagnés", mine: "Gagne un duel pour participer" },
+  { id: "c-open", label: "Ouvrir 40 000 boosters tous ensemble", kinds: ["open"], target: 40000, unit: "boosters ouverts", mine: "Ouvre un booster pour participer" },
+];
+
+export const challengeOf = (week: string) => CHALLENGES[hash(`defi:${week}`) % CHALLENGES.length]!;
+
+/**
+ * Progression du défi (les autres joueurs sont simulés pendant le prototype : la communauté avance au fil de la
+ * semaine et atteint l'objectif entre jeudi et dimanche).
+ */
+export function challengeState(e: Extra, day: string, nowMs: number) {
+  const week = weekOf(day);
+  const c = challengeOf(week);
+  const start = Date.parse(`${week}T00:00:00+02:00`);
+  const t = Math.max(0, Math.min(1, (nowMs - start) / (7 * DAY)));
+  const pace = 1.08 + (hash(`pace:${week}`) % 40) / 100; // 1,08 à 1,47 : objectif atteint avant la fin
+  const mine = e.week === week ? countOf(e.weekly, c.kinds) : 0;
+  const value = Math.min(c.target, Math.floor(c.target * pace * Math.pow(t, 0.92)) + mine);
+  const done = value >= c.target;
+  const claimed = e.challengeClaimed === week;
+  return { week, challenge: c, value, done, mine, claimed, claimable: done && mine > 0 && !claimed, reward: { xp: PASS.weeklyChallenge, gc: COMMUNITY_GC } };
+}
+
+export function claimChallenge(s: PlayerState, day: string, nowMs: number): Result<{ state: PlayerState; gc: number; xp: number }> {
+  const e = s.extra;
+  if (!e) return { ok: false, error: "Indisponible." };
+  const st = challengeState(e, day, nowMs);
+  if (st.claimed) return { ok: false, error: "Déjà récupéré." };
+  if (!st.done) return { ok: false, error: "Objectif pas encore atteint." };
+  if (st.mine <= 0) return { ok: false, error: st.challenge.mine + "." };
+  return {
+    ok: true, gc: COMMUNITY_GC, xp: PASS.weeklyChallenge,
+    state: { ...s, gc: s.gc + COMMUNITY_GC, extra: addPassXp({ ...e, challengeClaimed: st.week }, PASS.weeklyChallenge, day) },
+  };
+}

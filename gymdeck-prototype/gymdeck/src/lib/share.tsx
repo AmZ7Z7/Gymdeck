@@ -49,13 +49,13 @@ function ShareView({ cards, name }: { cards: CardData[]; name: string }) {
   );
 }
 
-async function render(cards: CardData[], name: string): Promise<Blob> {
+async function render(view: React.ReactNode): Promise<Blob> {
   const host = document.createElement("div");
   host.style.cssText = "position:fixed;left:-20000px;top:0;width:1080px;height:1920px;pointer-events:none;";
   document.body.appendChild(host);
   const root = createRoot(host);
   try {
-    root.render(<ShareView cards={cards} name={name} />);
+    root.render(view);
     await new Promise((r) => setTimeout(r, 60));
     const imgs = Array.from(host.querySelectorAll("img"));
     await Promise.all(imgs.map((i) => (i.complete ? Promise.resolve() : new Promise((r) => { i.onload = i.onerror = () => r(null); }))));
@@ -73,15 +73,14 @@ async function render(cards: CardData[], name: string): Promise<Blob> {
 }
 
 /** Partage via la feuille de partage du téléphone, sinon télécharge l'image. Renvoie un message pour l'utilisateur. */
-export async function shareCards(cards: CardData[], name: string): Promise<string> {
-  if (cards.length === 0) return "Rien à partager.";
+async function shareImage(view: React.ReactNode, file: string, text: string): Promise<string> {
   try {
-    const blob = await render(cards, name);
-    const file = new File([blob], "gymdeck-tirage.png", { type: "image/png" });
+    const blob = await render(view);
+    const f = new File([blob], file, { type: "image/png" });
     const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
-    if (nav.canShare?.({ files: [file] })) {
+    if (nav.canShare?.({ files: [f] })) {
       try {
-        await nav.share({ files: [file], title: "GymDeck", text: "Mon tirage GymDeck" });
+        await nav.share({ files: [f], title: "GymDeck", text });
         return "Partagé !";
       } catch (e) {
         if (e instanceof DOMException && e.name === "AbortError") return "Partage annulé.";
@@ -89,11 +88,59 @@ export async function shareCards(cards: CardData[], name: string): Promise<strin
     }
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = "gymdeck-tirage.png";
+    a.href = url; a.download = file;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 5000);
-    return "Image enregistrée : prête pour TikTok !";
+    return "Image enregistrée : prête pour ta story !";
   } catch {
     return "Impossible de créer l'image.";
   }
 }
+
+export async function shareCards(cards: CardData[], name: string): Promise<string> {
+  if (cards.length === 0) return "Rien à partager.";
+  return shareImage(<ShareView cards={cards} name={name} />, "gymdeck-tirage.png", "Mon tirage GymDeck");
+}
+
+// ───────────── Visuels de story : victoire, série ─────────────
+
+const frame: React.CSSProperties = { width: 1080, height: 1920, position: "relative", overflow: "hidden", color: "#fff", fontFamily: "'Barlow Condensed', sans-serif" };
+const center = (top: number, size: number, extra: React.CSSProperties = {}): React.CSSProperties => ({ position: "absolute", top, width: "100%", textAlign: "center", fontSize: size, fontWeight: 800, fontStyle: "italic", textTransform: "uppercase", ...extra });
+
+function Brand() {
+  return <img src="/assets/ui/logo.webp" alt="" style={{ position: "absolute", top: 70, left: 290, width: 500, mixBlendMode: "screen" }} />;
+}
+
+function VictoryView({ cards, name, opp, myHp, ko }: { cards: CardData[]; name: string; opp: string; myHp: number; ko: boolean }) {
+  return (
+    <div style={{ ...frame, background: "radial-gradient(ellipse 85% 40% at 50% 46%, rgba(200,243,29,.35), transparent 70%), radial-gradient(circle at 10% 10%, #4c1d95cc, transparent 45%), #070a12" }}>
+      <Brand />
+      <div style={center(420, 210, { color: "#c8f31d", textShadow: "0 0 60px rgba(200,243,29,.8)", letterSpacing: 4 })}>Victoire</div>
+      <div style={center(660, 64, { color: "#e4e9f8", fontStyle: "normal" })}>{ko ? "par KO" : `${myHp} % de PV restants`} contre <b style={{ color: "#fff" }}>{opp}</b></div>
+      <div style={{ position: "absolute", top: 820, left: 40, right: 40, display: "flex", gap: 18, justifyContent: "center" }}>
+        {cards.map((c, i) => <div key={i} style={{ width: 186, transform: `translateY(${Math.abs(i - 2) * 26}px) rotate(${(i - 2) * 5}deg)` }}><Card card={c} holo={false} /></div>)}
+      </div>
+      <div style={center(1420, 60, { fontStyle: "normal", textTransform: "none", fontWeight: 700, color: "#e4e9f8" })}>Le deck de <b style={{ color: "#c8f31d" }}>{name}</b></div>
+      <div style={center(1760, 44, { color: "#9aa3b8", fontStyle: "normal", fontWeight: 600, letterSpacing: 2 })}>Ta séance, ton booster.</div>
+    </div>
+  );
+}
+
+function StreakView({ days, sessions, name }: { days: number; sessions: number; name: string }) {
+  return (
+    <div style={{ ...frame, background: "radial-gradient(ellipse 80% 40% at 50% 45%, rgba(255,138,42,.45), transparent 70%), radial-gradient(circle at 90% 90%, #4c1d95aa, transparent 45%), #070a12" }}>
+      <Brand />
+      <div style={center(480, 420, { color: "#ffb020", textShadow: "0 0 80px rgba(255,138,42,.9)", lineHeight: 1 })}>{days}</div>
+      <div style={center(920, 110, { letterSpacing: 3 })}>séance{days > 1 ? "s" : ""} d’affilée</div>
+      <div style={center(1090, 60, { fontStyle: "normal", textTransform: "none", fontWeight: 700, color: "#e4e9f8" })}>{sessions} séance{sessions > 1 ? "s" : ""} validée{sessions > 1 ? "s" : ""} au total</div>
+      <div style={center(1420, 60, { fontStyle: "normal", textTransform: "none", fontWeight: 700, color: "#e4e9f8" })}>par <b style={{ color: "#c8f31d" }}>{name}</b></div>
+      <div style={center(1760, 44, { color: "#9aa3b8", fontStyle: "normal", fontWeight: 600, letterSpacing: 2 })}>Ta séance, ton booster.</div>
+    </div>
+  );
+}
+
+export const shareVictory = (p: { cards: CardData[]; name: string; opp: string; myHp: number; ko: boolean }) =>
+  shareImage(<VictoryView {...p} />, "gymdeck-victoire.png", "Victoire sur GymDeck");
+
+export const shareStreak = (p: { days: number; sessions: number; name: string }) =>
+  shareImage(<StreakView {...p} />, "gymdeck-serie.png", "Ma série GymDeck");

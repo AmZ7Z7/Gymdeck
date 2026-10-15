@@ -9,6 +9,7 @@ import { GcPill, Wordmark } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
 import { IconBack, IconNext, IconSearch } from "@/components/Icons";
 import { Sheet } from "@/components/Sheet";
+import { CombatInfo } from "@/components/CombatBits";
 import { sfx } from "@/lib/sound";
 import { DISCARD_GC, EXERCISES, GRADE_LABEL, GRADE_PRICE, RARITIES, RARITY_COLOR, RARITY_RANK, exerciseBySlug, gradeColor, type Rarity } from "@/lib/config";
 import { atWorkshop } from "@/lib/game";
@@ -204,6 +205,7 @@ function Detail({ slug, startId, onClose, onGrade }: { slug: string; startId: st
         {card.grade ? <div style={{ marginTop: 4 }}><Medal grade={card.grade} className="sm" />Note de Basile : <b style={{ color: gradeColor(card.grade) }}>{card.grade}/10 · {GRADE_LABEL[card.grade]}</b></div> : null}
         {job && <div style={{ marginTop: 4, color: "#ffd27a" }}>Chez Basile : {g.gameNow() >= job.readyAt ? "note prête !" : `note dans ${formatDuration(job.readyAt - g.gameNow())}`}</div>}
       </div>
+      <CombatInfo card={card} />
       <div className="acts">
         {copies.length > 1 && (
           <div className="navrow">

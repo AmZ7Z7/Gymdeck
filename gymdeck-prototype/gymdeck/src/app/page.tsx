@@ -3,7 +3,7 @@
 import { LayoutGroup, MotionConfig, motion } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GameProvider, useGame } from "@/components/GameProvider";
-import { IconCards, IconCart, IconCombat, IconDumbbell, IconHome, IconMarket, IconUser } from "@/components/Icons";
+import { IconCards, IconCart, IconCombat, IconDumbbell, IconHome, IconUser } from "@/components/Icons";
 import { Collection } from "@/screens/Collection";
 import { GymDeckTab } from "@/screens/GymDeck";
 import { Home } from "@/screens/Home";
@@ -19,33 +19,36 @@ import { claimableCount } from "@/lib/progress";
 import { readyCount } from "@/lib/grading";
 import { Profile } from "@/screens/Others";
 import { Shop } from "@/screens/Shop";
+import { Season } from "@/screens/Season";
+import { applyTheme } from "@/lib/theme";
 import { unlockAudio } from "@/lib/sound";
 import { TestPanel } from "@/components/TestPanel";
 import { Card } from "@/components/Card";
 import type { CardData } from "@/lib/engine";
 
 /** Pages ouvertes depuis un onglet (avec un bouton retour). */
-export type Page = "missions" | "friends" | "calendar" | "atelier";
-const PAGES: Page[] = ["missions", "friends", "calendar", "atelier"];
-const PAGE_HASH: Record<Page, string> = { missions: "missions", friends: "amis", calendar: "calendrier", atelier: "atelier" };
+export type Page = "missions" | "friends" | "calendar" | "atelier" | "season";
+const PAGES: Page[] = ["missions", "friends", "calendar", "atelier", "season"];
+const PAGE_HASH: Record<Page, string> = { missions: "missions", friends: "amis", calendar: "calendrier", atelier: "atelier", season: "saison" };
 
 export type Tab = "home" | "collection" | "gymdeck" | "shop" | "market" | "combats" | "profile";
 /** Ouvre une page ; pour l'atelier, on peut préciser la carte à confier à Basile. */
 export type OpenPage = (p: Page, cardId?: string) => void;
 
+/** 6 onglets au maximum : le Marché est dans la Boutique (« market » = Boutique, partie Marché). */
 const TABS: { id: Tab; label: string; Icon: typeof IconHome }[] = [
   { id: "home", label: "Accueil", Icon: IconHome },
   { id: "collection", label: "Collection", Icon: IconCards },
   { id: "gymdeck", label: "Deck", Icon: IconDumbbell },
-  { id: "shop", label: "Boutique", Icon: IconCart },
-  { id: "market", label: "Marché", Icon: IconMarket },
   { id: "combats", label: "Combats", Icon: IconCombat },
+  { id: "shop", label: "Boutique", Icon: IconCart },
   { id: "profile", label: "Profil", Icon: IconUser },
 ];
 /** Anciennes adresses : on les redirige vers le bon onglet. */
 const LEGACY: Record<string, Tab> = { marche: "market", classement: "combats" };
-const isTab = (v: string): v is Tab => TABS.some((t) => t.id === v);
-const tabIndex = (t: Tab) => TABS.findIndex((x) => x.id === t);
+const isTab = (v: string): v is Tab => v === "market" || TABS.some((t) => t.id === v);
+const barOf = (t: Tab): Tab => (t === "market" ? "shop" : t);
+const tabIndex = (t: Tab) => TABS.findIndex((x) => x.id === barOf(t));
 
 function Shell() {
   const g = useGame();
@@ -55,6 +58,7 @@ function Shell() {
   // sens de l'animation d'arrivée d'un écran (glisse depuis la gauche ou la droite)
   const [dir, setDir] = useState(0);
   const tabRef = useRef<Tab>("home");
+  useEffect(() => { applyTheme(); }, []);
 
   // L'onglet est gardé dans l'adresse (#collection…) : un rechargement ou le bouton retour ne renvoie plus à l'accueil.
   useEffect(() => {
@@ -85,13 +89,19 @@ function Shell() {
   };
   const closePage = () => { go(tab); setDir(-1); };
 
-  if (!g.ready) return <div className="app" id="app-root"><div className="boot"><img src="/assets/ui/wordmark.webp" alt="GymDeck" /></div></div>;
+  if (!g.ready) return <div className="app" id="app-root"><div className="boot"><img className="wm" src="/assets/ui/wordmark.webp" alt="GymDeck" /></div></div>;
 
   const needsName = !g.account || !g.player.name;
   const ready = claimableCount(g.player, g.day) + readyCount(g.player, g.gameNow());
   const stock = g.player.boosters.length;
   const canDuel = g.deckCards.length >= 5 && g.duelsLeft > 0;
   const fullPage = page === "atelier";
+  const shopSeg = (
+    <div className="seg shopseg" role="tablist">
+      <button role="tab" aria-selected={tab === "shop"} className={tab === "shop" ? "on" : ""} onClick={() => go("shop")}>Boosters</button>
+      <button role="tab" aria-selected={tab === "market"} className={tab === "market" ? "on" : ""} onClick={() => go("market")}>Marché</button>
+    </div>
+  );
 
   return (
     <div className="app" id="app-root" onPointerDownCapture={unlockAudio}>
@@ -106,14 +116,15 @@ function Shell() {
               : page === "friends" ? <Friends back={closePage} />
                 : page === "calendar" ? <Calendar back={closePage} />
                   : page === "atelier" ? <Atelier back={closePage} initialCardId={pageArg} />
+                  : page === "season" ? <Season back={closePage} openMissions={() => openPage("missions")} />
                     : (
                       <>
                         {tab === "home" && <Home go={go} openPage={openPage} />}
                         {tab === "collection" && <Collection openPage={openPage} />}
                         {tab === "gymdeck" && <GymDeckTab go={go} />}
-                        {tab === "shop" && <Shop onMarket={() => go("market")} openPage={openPage} />}
-                        {tab === "market" && <Market />}
-                        {tab === "combats" && <Combats go={go} />}
+                        {tab === "shop" && <Shop onMarket={() => go("market")} openPage={openPage} seg={shopSeg} />}
+                        {tab === "market" && <Market seg={shopSeg} />}
+                        {tab === "combats" && <Combats go={go} openPage={openPage} />}
                         {tab === "profile" && <Profile openPage={openPage} go={go} />}
                       </>
                     )}
@@ -122,9 +133,9 @@ function Shell() {
             <nav className="tabbar" aria-label="Navigation">
               <LayoutGroup id="tabs">
                 {TABS.map(({ id, label, Icon }) => (
-                  <button key={id} className={`tab ${tab === id && !page ? "active" : ""}`} aria-current={tab === id ? "page" : undefined} onClick={() => go(id)}>
+                  <button key={id} className={`tab ${barOf(tab) === id && !page ? "active" : ""}`} aria-current={barOf(tab) === id ? "page" : undefined} onClick={() => go(id)}>
                     <Icon /> {label}
-                    {tab === id && <motion.span className="tabind" layoutId="tabind" transition={{ type: "spring", stiffness: 500, damping: 38 }} />}
+                    {barOf(tab) === id && <motion.span className="tabind" layoutId="tabind" transition={{ type: "spring", stiffness: 500, damping: 38 }} />}
                     {id === "home" && stock > 0 && <span className="tabbadge">{stock}</span>}
                     {id === "combats" && canDuel && <span className="tabdot" aria-label="Duels disponibles" />}
                     {id === "profile" && ready > 0 && <span className="tabbadge">{ready}</span>}

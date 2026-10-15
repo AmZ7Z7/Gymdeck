@@ -36,6 +36,7 @@ export function TestPanel() {
             <button className="btn ghost small" onClick={() => run(() => t.finishGradings(), "Expertises terminées")}>Finir expertises</button>
             <button className="btn ghost small" onClick={() => run(() => t.finishGradings(10), "Expertises terminées : note 10")}>Finir (note 10)</button>
             <button className="btn ghost small" onClick={() => run(() => t.addDuels(3), "+3 duels aujourd’hui")}>+3 duels</button>
+            <button className="btn ghost small" onClick={() => run(() => t.addPassXp(130), "+1 palier de passe")}>Passe +1 palier</button>
           </div>
           <button className="btn ghost small" onClick={() => { setOpen(false); setResetAsk(true); }}>Tout réinitialiser…</button>
           <button className="btn ghost small" onClick={() => setOpen(false)}>Fermer</button>

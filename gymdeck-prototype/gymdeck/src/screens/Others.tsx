@@ -14,7 +14,10 @@ import { LOGIN_CYCLE, PITY_THRESHOLD } from "@/lib/config";
 import { completion } from "@/lib/game";
 import { readyCount } from "@/lib/grading";
 import { recordShort } from "@/lib/duel";
-import { getLevel, setLevel, subscribeSound, type SoundLevel } from "@/lib/sound";
+import { getVolume, isMuted, setMuted, setVolume, soundSnapshot, subscribeSound } from "@/lib/sound";
+import { getTheme, setTheme, subscribeTheme } from "@/lib/theme";
+import { daysBetween, streakNow, trainingDays, weekOf } from "@/lib/progress";
+import { shareStreak } from "@/lib/share";
 
 export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => void }) {
   const g = useGame();
@@ -31,7 +34,10 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
   const e = g.extra;
   const ready = claimableCount(p, g.day);
   const showcase = e.showcase.map((id) => p.cards.find((c) => c.id === id)).filter((c) => !!c);
-  const level = useSyncExternalStore(subscribeSound, getLevel, () => "low" as SoundLevel);
+  useSyncExternalStore(subscribeSound, soundSnapshot, () => "0:0.50");
+  const theme = useSyncExternalStore(subscribeTheme, getTheme, () => "dark" as const);
+  const muted = isMuted();
+  const volume = getVolume();
   const cycle = p.loginCount % LOGIN_CYCLE;
   const tops = p.cards.filter((c) => c.rarity === "UR" || c.rarity === "LR").length;
   const graded = p.cards.filter((c) => c.grade).length;
@@ -62,10 +68,12 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
         <div className="kv"><span>Collection (uniques)</span><b>{comp.owned} / {comp.total}</b></div>
         <div className="kv"><span>Cartes UR / LR</span><b>{tops}</b></div>
         <div className="kv"><span>Cartes expertisées</span><b>{graded}</b></div>
-        <div className="kv"><span>Duels de la saison (victoires · défaites)</span><b>{recordShort(se)}</b></div>
+        <div className="kv"><span>Combats de la saison (victoires · défaites)</span><b>{recordShort(se)}</b></div>
         <div className="kv"><span>Connexions (cycle de {LOGIN_CYCLE})</span><b>{cycle} / {LOGIN_CYCLE}</b></div>
         <div className="kv" style={{ borderBottom: 0 }}><span>Boosters depuis la dernière UR/LR</span><b>{p.pityCounter} / {PITY_THRESHOLD - 1}</b></div>
       </div>
+
+      <Stats />
 
       <h2 className="section" style={{ fontSize: 24, margin: "16px 0 8px" }}>Ma vitrine</h2>
       <div className="show3">
@@ -85,9 +93,30 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
         <button className="linkrow" onClick={() => openPage("atelier")}><span>Atelier de Basile (expertise)</span><span>{gradeReady > 0 ? <span className="tabbadge" style={{ position: "static", display: "inline-grid" }}>{gradeReady}</span> : g.grading.length > 0 ? `${g.grading.length} en cours` : "›"}</span></button>
         <button className="linkrow" onClick={() => setRem(true)}><span>Rappel de séance</span><span>{e.reminder ? `${e.reminder.time}` : "›"}</span></button>
         <button className="linkrow" onClick={() => setTuto(true)}><span>Revoir le tutoriel</span><span>›</span></button>
-        <button className="linkrow" onClick={() => setLevel(level === "off" ? "low" : level === "low" ? "on" : "off")}><span>Sons du jeu</span><span>{level === "off" ? "Coupés" : level === "low" ? "Doux" : "Normal"}</span></button>
+        <button className="linkrow" onClick={() => { g.resetCombatTuto(); g.say("Le guide reviendra à ton prochain combat"); }}><span>Revoir le guide des combats</span><span>›</span></button>
         <button className="linkrow" onClick={() => setOdds(true)}><span>Taux de drop et garanties</span><span>›</span></button>
       </div>
+      <h2 className="section" style={{ fontSize: 24, margin: "16px 0 8px" }}>Réglages</h2>
+      <div className="panel settings">
+        <div className="set-row">
+          <span>Sons du jeu</span>
+          <button role="switch" aria-checked={!muted} className={`switch ${!muted ? "on" : ""}`} onClick={() => setMuted(!muted)}><i /></button>
+        </div>
+        <div className={`set-row ${muted ? "dim" : ""}`}>
+          <span>Volume</span>
+          <input type="range" min={0} max={100} step={5} value={Math.round(volume * 100)} aria-label="Volume des sons"
+            onChange={(ev) => setVolume(Number(ev.target.value) / 100)} onPointerUp={() => setVolume(volume, true)} onKeyUp={() => setVolume(volume, true)} />
+          <b>{muted ? "—" : `${Math.round(volume * 100)} %`}</b>
+        </div>
+        <div className="set-row" style={{ borderBottom: 0 }}>
+          <span>Thème</span>
+          <div className="seg mini">
+            <button className={theme === "dark" ? "on" : ""} onClick={() => setTheme("dark")}>Sombre</button>
+            <button className={theme === "light" ? "on" : ""} onClick={() => setTheme("light")}>Clair</button>
+          </div>
+        </div>
+      </div>
+
       <h2 className="section" style={{ fontSize: 24, margin: "16px 0 8px" }}>Compte</h2>
       <div className="panel">
         <div className="kv"><span>{g.account?.email || "Compte test"}</span><b>{g.account?.cloud ? "En ligne" : "Sur cet appareil"}</b></div>
@@ -159,3 +188,57 @@ function ReminderSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
+
+/** Statistiques personnelles : régularité, séries, combats (sans suivi détaillé des séances). */
+function Stats() {
+  const g = useGame();
+  const e = g.extra;
+  const p = g.player;
+  const [busy, setBusy] = useState(false);
+  const days = trainingDays(e);
+  const set = new Set(days);
+  const wk0 = weekOf(g.day);
+  const weeks = Array.from({ length: 8 }, (_, i) => {
+    const start = new Date(Date.parse(`${wk0}T00:00:00Z`) - (7 - i) * 7 * 86_400_000);
+    let n = 0;
+    for (let k = 0; k < 7; k++) if (set.has(new Date(start.getTime() + k * 86_400_000).toISOString().slice(0, 10))) n++;
+    return { label: `${start.getUTCDate()}/${start.getUTCMonth() + 1}`, n };
+  });
+  const last30 = days.filter((d) => d <= g.day && daysBetween(d, g.day) < 30).length;
+  const avg = weeks.slice(0, 7).reduce((a, w) => a + w.n, 0) / 7; // 7 semaines complètes
+  const regular = weeks.slice(0, 7).filter((w) => w.n >= 2).length;
+  const won = e.life?.duelWin ?? 0, fought = e.life?.duel ?? 0;
+  const defWon = (e.defenses ?? []).filter((d) => d.won).length;
+  const max = Math.max(3, ...weeks.map((w) => w.n));
+  const streak = streakNow(e, g.day);
+  return (
+    <>
+      <h2 className="section" style={{ fontSize: 24, margin: "16px 0 8px" }}>Mes statistiques</h2>
+      <div className="panel stats">
+        <div className="st-cap">Séances par semaine</div>
+        <div className="st-bars" role="img" aria-label={`Séances des 8 dernières semaines : ${weeks.map((w) => w.n).join(", ")}`}>
+          {weeks.map((w, i) => (
+            <div key={i} className={i === 7 ? "cur" : ""}>
+              <b>{w.n || ""}</b>
+              <i style={{ height: `${(w.n / max) * 100}%` }} />
+              <span>{i === 7 ? "Cette sem." : w.label}</span>
+            </div>
+          ))}
+        </div>
+        <div className="st-grid">
+          <div><b>{avg.toFixed(1).replace(".", ",")}</b><span>séances / semaine en moyenne</span></div>
+          <div><b>{regular} / 7</b><span>semaines avec 2 séances ou plus</span></div>
+          <div><b>{last30}</b><span>séances sur les 30 derniers jours</span></div>
+          <div><b>{e.streak?.best ?? 0}</b><span>meilleure série</span></div>
+          <div><b>{fought ? Math.round((won / fought) * 100) : 0} %</b><span>combats gagnés ({won} / {fought})</span></div>
+          <div><b>{defWon}</b><span>attaques repoussées</span></div>
+        </div>
+        <button className="btn ghost small" disabled={busy || streak < 1} onClick={async () => {
+          setBusy(true);
+          g.say(await shareStreak({ days: streak, sessions: p.sessionsValidated, name: p.name ?? "Joueur" }));
+          setBusy(false);
+        }}>{busy ? "Création de l’image…" : streak > 0 ? `Partager ma série (${streak})` : "Partager ma série (valide une séance)"}</button>
+      </div>
+    </>
+  );
+}

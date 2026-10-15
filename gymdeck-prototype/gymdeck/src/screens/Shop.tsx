@@ -11,10 +11,10 @@ import type { OpenPage } from "@/app/page";
 import { readyCount } from "@/lib/grading";
 
 const KIND_LABEL: Record<BoosterKind, string> = {
-  welcome1: "Bienvenue", welcome2: "Bienvenue ✦", session: "Séance", login: "Connexion", shop: "Boutique",
+  welcome1: "Bienvenue", welcome2: "Bienvenue ✦", session: "Séance", login: "Connexion", shop: "Boutique", pass: "Passe de saison",
 };
 
-export function Shop({ onMarket, openPage }: { onMarket: () => void; openPage: OpenPage }) {
+export function Shop({ onMarket, openPage, seg }: { onMarket: () => void; openPage: OpenPage; seg?: React.ReactNode }) {
   const g = useGame();
   const { player } = g;
   const [odds, setOdds] = useState(false);
@@ -28,6 +28,7 @@ export function Shop({ onMarket, openPage }: { onMarket: () => void; openPage: O
     <div className="screen">
       <div className="topbar"><Wordmark /><GcPill gc={player.gc} /></div>
       <h1 className="title" style={{ marginTop: 14 }}>Boutique</h1>
+      {seg}
 
       <div className="panel shop-main">
         <div className="pack" style={{ height: 190 }}><img src="/assets/ui/booster.webp" alt="" draggable={false} /></div>

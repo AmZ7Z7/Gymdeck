@@ -8,29 +8,40 @@ import type { Rarity } from "./config";
 
 export type SoundLevel = "off" | "low" | "on";
 const KEY = "gymdeck:sound";
-const LEVEL_GAIN: Record<SoundLevel, number> = { off: 0, low: 0.38, on: 0.7 };
+const KEY2 = "gymdeck:sound2";
+
+/** Son coupé ou non, et volume (0 à 1). Gardés sur l'appareil. */
+let muted = false;
+let volume = 0.5;
+const gainOf = () => (muted ? 0 : 0.9 * volume);
 
 let ctx: AudioContext | null = null;
 let bus: GainNode | null = null; // entrée de tous les sons
 let master: GainNode | null = null;
 let noiseBuf: AudioBuffer | null = null;
-let level: SoundLevel = "low";
 const listeners = new Set<() => void>();
 
 try {
-  const v = localStorage.getItem(KEY);
-  if (v === "off" || v === "low" || v === "on") level = v;
+  const raw = localStorage.getItem(KEY2);
+  if (raw) {
+    const v = JSON.parse(raw) as { muted?: boolean; volume?: number };
+    muted = !!v.muted;
+    if (typeof v.volume === "number") volume = Math.max(0, Math.min(1, v.volume));
+  } else {
+    const v = localStorage.getItem(KEY); // anciens réglages : Coupés / Doux / Normal
+    if (v === "off") muted = true; else if (v === "on") volume = 0.8; else if (v === "low") volume = 0.42;
+  }
 } catch { /* ignoré */ }
 
 function ensure(): AudioContext | null {
-  if (level === "off" || typeof window === "undefined") return null;
+  if (muted || typeof window === "undefined") return null;
   try {
     if (!ctx) {
       const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       if (!AC) return null;
       ctx = new AC();
       master = ctx.createGain();
-      master.gain.value = LEVEL_GAIN[level];
+      master.gain.value = gainOf();
       // Chaîne : bus → filtre passe-bas (coupe tout ce qui pique) → compresseur doux → sortie, + un petit écho en parallèle.
       bus = ctx.createGain();
       const lp = ctx.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 5200; lp.Q.value = 0.5;
@@ -48,7 +59,7 @@ function ensure(): AudioContext | null {
       const data = noiseBuf.getChannelData(0);
       for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
     }
-    if (master) master.gain.value = LEVEL_GAIN[level];
+    if (master) master.gain.value = gainOf();
     if (ctx.state === "suspended") void ctx.resume();
     return ctx;
   } catch { return null; }
@@ -57,21 +68,39 @@ function ensure(): AudioContext | null {
 /** À appeler au premier toucher : les navigateurs n'autorisent le son qu'après un geste. */
 export function unlockAudio() { ensure(); }
 
-export const getLevel = () => level;
-export const isMuted = () => level === "off";
+const persist = () => { try { localStorage.setItem(KEY2, JSON.stringify({ muted, volume })); } catch { /* ignoré */ } };
+const notify = () => listeners.forEach((f) => f());
+
+export const getLevel = (): SoundLevel => (muted ? "off" : volume < 0.6 ? "low" : "on");
+export const isMuted = () => muted;
+export const getVolume = () => volume;
+/** Instantané (pour useSyncExternalStore) : change à chaque réglage. */
+export const soundSnapshot = () => `${muted ? 1 : 0}:${volume.toFixed(2)}`;
 export const subscribeSound = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
-export function setLevel(l: SoundLevel) {
-  level = l;
-  try { localStorage.setItem(KEY, l); } catch { /* ignoré */ }
-  if (master) master.gain.value = LEVEL_GAIN[l];
-  if (l !== "off") { ensure(); sfx.coin(); }
-  listeners.forEach((f) => f());
+export function setMuted(m: boolean) {
+  muted = m;
+  persist();
+  if (master) master.gain.value = gainOf();
+  if (!m) { ensure(); sfx.coin(); }
+  notify();
 }
-export const setMuted = (m: boolean) => setLevel(m ? "off" : "low");
+/** Volume de 0 à 1 (le son joue un petit « ding » de test à la fin du réglage). */
+export function setVolume(v: number, preview = false) {
+  volume = Math.max(0, Math.min(1, v));
+  if (volume > 0 && muted) muted = false;
+  persist();
+  if (master) master.gain.value = gainOf();
+  if (preview && !muted) { ensure(); sfx.coin(); }
+  notify();
+}
+export function setLevel(l: SoundLevel) {
+  if (l === "off") setMuted(true);
+  else { muted = false; setVolume(l === "low" ? 0.42 : 0.8, true); }
+}
 
 /** Petite vibration (Android) pour les grands moments ; rien si les sons sont coupés. */
 export function haptic(pattern: number | number[]) {
-  if (level === "off") return;
+  if (muted) return;
   try { navigator.vibrate?.(pattern); } catch { /* ignoré */ }
 }
 

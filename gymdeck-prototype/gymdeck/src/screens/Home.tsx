@@ -8,14 +8,15 @@ import { useGame } from "@/components/GameProvider";
 import { IconCheck, IconChevron, IconClock, IconFlame } from "@/components/Icons";
 import { sfx } from "@/lib/sound";
 import { Sheet } from "@/components/Sheet";
-import { DAILY_LOGIN_GC, DECK_SIZE, DUEL, LOGIN_CYCLE } from "@/lib/config";
+import { DAILY_LOGIN_GC, DECK_SIZE, DUEL, LOGIN_CYCLE, PASS } from "@/lib/config";
 import { readyCount } from "@/lib/grading";
 import { IconCombat } from "@/components/Icons";
 import { deckTotals } from "@/lib/engine";
 import { completion, msUntilParisMidnight } from "@/lib/game";
 import type { OpenPage, Tab } from "@/app/page";
 import { Tutorial } from "@/components/Tutorial";
-import { claimableCount, dailyMissions, missionProgress, streakNow, trainingDays, weekOf } from "@/lib/progress";
+import { claimableCount, dailyMissions, missionProgress, passClaimable, passLevel, passOf, streakNow, trainingDays, weekOf } from "@/lib/progress";
+import { seasonNumber } from "./Season";
 import { reminderDue } from "@/lib/reminder";
 
 export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: OpenPage }) {
@@ -41,6 +42,8 @@ export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: OpenPag
   const countdown = formatDuration(msUntilParisMidnight(now));
   const graded = readyCount(player, g.gameNow());
   const deckReady = g.deckCards.length >= DECK_SIZE;
+  const pass = passLevel(passOf(e, g.day).xp);
+  const passReady = passClaimable(e, g.day).length;
 
   const trainSet = new Set(trainingDays(e));
   const wk0 = weekOf(g.day);
@@ -131,6 +134,16 @@ export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: OpenPag
       {showReminder && (
         <div className="panel remindbanner" role="status"><IconClock className="ico" /> C’est l’heure de ta séance ! Valide-la pour gagner ton booster.</div>
       )}
+
+      <button className="passcard" onClick={() => openPage("season")} aria-label="Ouvrir le passe de saison">
+        <span className="pc-l">
+          <span className="pb-tag">Saison {seasonNumber(g.day)}</span>
+          <b>Passe de <em>saison</em></b>
+          <span className="pc-lv">Niveau {pass.level}{pass.level < PASS.tiers ? ` · ${pass.inTier} / ${PASS.perTier} pts` : " · terminé"}</span>
+          <span className="pl-bar"><i style={{ width: `${pass.level >= PASS.tiers ? 100 : (pass.inTier / PASS.perTier) * 100}%` }} /></span>
+        </span>
+        {passReady > 0 ? <span className="tabbadge" style={{ position: "static" }}>{passReady}</span> : <span className="link">›</span>}
+      </button>
 
       <button className="panel missioncard" onClick={() => openPage("missions")}>
         <div className="mc-l">

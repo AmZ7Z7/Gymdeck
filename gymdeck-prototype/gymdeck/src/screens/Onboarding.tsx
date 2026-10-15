@@ -47,7 +47,7 @@ export function Onboarding() {
 
   return (
     <motion.div className="onboard" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
-      <img className="logohero" src="/assets/ui/wordmark.webp" alt="GymDeck" draggable={false} />
+      <img className="logohero wm" src="/assets/ui/wordmark.webp" alt="GymDeck" draggable={false} />
       <h1>Ta séance,<br />ton booster.</h1>
       <div className="steps3">
         <div><b>1</b> Valide ta séance du jour</div>

@@ -1,0 +1,16 @@
+GymDeck v11 — équilibrage des combats (simulations sur le vrai code, IA contre IA)
+
+Matchmaking (adversaire choisi pour une chance simulée proche de 50 %), victoire réelle mesurée :
+  5 C ............ 53 %      R/SR ........... 51 %      SSR + SR ....... 53 %
+  5 UR ........... 51 %      LR + 4 C ....... 53 %      LR + 4 UR ...... 52 %
+
+La rareté compte (decks tirés au hasard, sans matchmaking) :
+  5 UR contre 5 SSR ............ 100 %
+  5 LR contre 5 UR ............. 100 %
+  LR + 4 C contre 5 C .......... 100 %
+  LR + 4 C contre 5 R ........... 76 %
+  LR + 4 C contre 5 SR .......... 0 %   (une LR seule ne gagne pas tout)
+  LR + 4 C contre 5 SR de même puissance : 1 %
+
+Capacités (deck SSR + 4 SR contre un deck égal d'un autre groupe) : 48 à 53 % pour les 7 capacités.
+Aucun coup fatal : un coup est plafonné à 35 % des PV adverses, 70 % au plus avec Coup puissant LR.

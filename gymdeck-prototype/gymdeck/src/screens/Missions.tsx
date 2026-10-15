@@ -15,7 +15,7 @@ type Tab = "missions" | "streak" | "ach";
 
 const Coin = ({ s = 16 }: { s?: number }) => <span className="coin" style={{ width: s, height: s, display: "inline-block", verticalAlign: "-3px", marginRight: 4 }} />;
 
-function Row({ label, sub, value, target, reward, done, claimed, onClaim }: {
+export function Row({ label, sub, value, target, reward, done, claimed, onClaim }: {
   label: string; sub?: string; value: number; target: number; reward: number; done: boolean; claimed: boolean; onClaim: () => void;
 }) {
   return (

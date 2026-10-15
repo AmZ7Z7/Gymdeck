@@ -10,14 +10,17 @@ import { cancelAuction as cancelAuctionFn, emptyMarket, listCard as listCardFn, 
 import { secureRng } from "@/lib/rng";
 import {
   claimAchievement as claimAchFn, claimMission as claimMissionFn, claimSeason as claimSeasonFn, claimSet as claimSetFn,
-  claimStreak as claimStreakFn, seasonOf, toggleDeclaredDay, track, type EventKind, type Extra,
+  claimStreak as claimStreakFn, claimPass as claimPassFn, claimChallenge as claimChallengeFn, addPassXp, seasonOf, toggleDeclaredDay, track, type EventKind, type Extra,
 } from "@/lib/progress";
 import {
-  addFriend as addFriendFn, finalRank, normalizeState, proposeTrade, removeFriend as removeFriendFn, toggleShowcase as toggleShowcaseFn, botById,
+  addFriend as addFriendFn, finalRank, normalizeState, proposeTrade, removeFriend as removeFriendFn, toggleShowcase as toggleShowcaseFn, botById, botDeck,
 } from "@/lib/social";
 import { deckPower, makeCard, revealOrder, type CardData } from "@/lib/engine";
 import { finishAll, gradedStats, revealGrading as revealGradingFn, submitGrading as submitGradingFn, type GradeReveal, type GradingJob } from "@/lib/grading";
-import { duelsLeft as duelsLeftFn, makeOpponent, playDuel, type DuelRecord, type DuelResult, type Opponent } from "@/lib/duel";
+import {
+  beginDuel as beginDuelFn, duelsLeft as duelsLeftFn, equalize, findMatch, finishDuel, runDefenses,
+  type Consigne, type DuelRecord, type Fight, type Opponent,
+} from "@/lib/duel";
 import {
   cloudEnabled, cloudLoad, cloudResetPassword, cloudSave, cloudSession, cloudSignIn, cloudSignOut, cloudSignUp,
 } from "@/lib/cloud";
@@ -117,10 +120,22 @@ interface Game {
   /** Duels restants aujourd'hui. */
   duelsLeft: number;
   findOpponent: (avoid?: string[]) => Opponent | { error: string };
-  fight: (order: string[], opp: Opponent) => { result: DuelResult; theirOrder: CardData[]; record: DuelRecord } | { error: string };
+  /** Duel amical contre un ami : son deck est ramené à la puissance du mien. */
+  friendOpponent: (botId: string) => Opponent | { error: string };
+  /** Décompte un duel au lancement du combat (message d'erreur ou null). */
+  beginDuel: () => string | null;
+  /** Fin du combat : récompenses et historique. */
+  endDuel: (f: Fight, opp: Opponent) => DuelRecord;
+  setConsigne: (c: Consigne) => void;
+  finishCombatTuto: () => void;
+  resetCombatTuto: () => void;
+  /** Passe de saison : récupère un palier (ou tous). */
+  claimPass: (tier?: number) => { gc: number; boosters: number } | { error: string };
+  claimChallenge: () => { gc: number; xp: number } | { error: string };
   tools: {
     nextDay: () => void; addGc: (n: number) => void; reset: () => void; advanceHours: (h: number) => void; giveCard: (r: Rarity, grade?: number) => void;
     openTestBooster: (r: Rarity) => void; advanceDays: (n: number) => void; resetTutorial: () => void; finishGradings: (grade?: number) => void; addDuels: (n: number) => void;
+    addPassXp: (n: number) => void;
   };
 }
 
@@ -182,7 +197,11 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const saved = load();
     const initial0 = saved ?? { player: createAccount(), opening: null };
-    const initial = { ...initial0, player: normalizeState(initial0.player, secureRng, parisDay(new Date(Date.now() + (initial0.player.extra?.dayShift ?? 0) * 86_400_000))) };
+    const now0 = Date.now() + (initial0.player.extra?.dayShift ?? 0) * 86_400_000;
+    const norm = normalizeState(initial0.player, secureRng, parisDay(new Date(now0)));
+    const def = runDefenses(norm, secureRng, parisDay(new Date(now0)), now0);
+    const initial = { ...initial0, player: def.state };
+    if (def.total > 0) setTimeout(() => say(def.won > 0 ? `Ton deck a repoussé ${def.won} attaque${def.won > 1 ? "s" : ""} sur ${def.total} : +${def.gc} GC` : `Ton deck a subi ${def.total} attaque${def.total > 1 ? "s" : ""} sans les repousser`), 1500);
     live.current = initial;
     save(initial);
     setPlayer(initial.player);
@@ -199,14 +218,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     accountRef.current = acc;
     setAccount(acc);
     setReady(true);
-  }, [saveAccount]);
+  }, [saveAccount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // passage à minuit (jour de Paris) pendant que l'appli est ouverte : missions et saison se remettent à jour
   useEffect(() => {
     if (!ready) return;
     const t = setInterval(() => {
       const p = live.current.player;
-      const n = normalizeState(p, secureRng, parisDay(clock()));
+      const n0 = normalizeState(p, secureRng, parisDay(clock()));
+      const n = runDefenses(n0, secureRng, parisDay(clock()), clock().getTime()).state;
       if (n !== p) commit({ ...live.current, player: n });
     }, 60000);
     return () => clearInterval(t);
@@ -441,16 +461,57 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const p = live.current.player;
       const deck = p.deck.map((id) => p.cards.find((c) => c.id === id)).filter((c): c is OwnedCard => !!c);
       if (deck.length < DECK_SIZE) return { error: "Il te faut un deck de 5 cartes pour combattre." };
-      return makeOpponent(secureRng, deckPower(deck), avoid);
+      return findMatch(secureRng, deck, avoid);
     },
-    fight: (order, opp) => {
+    friendOpponent: (botId) => {
+      const p = live.current.player;
+      const deck = p.deck.map((id) => p.cards.find((c) => c.id === id)).filter((c): c is OwnedCard => !!c);
+      if (deck.length < DECK_SIZE) return { error: "Il te faut un deck de 5 cartes pour combattre." };
+      const bot = botById(botId);
+      if (!bot) return { error: "Ami introuvable." };
+      const cards = equalize(botDeck(bot), deckPower(deck));
+      const cons: Consigne[] = ["agressif", "equilibre", "prudent"];
+      return { key: `ami-${bot.id}-${Date.now()}`, name: bot.name, cards, power: deckPower(cards), consigne: cons[secureRng.int(0, 2)]!, friendly: true };
+    },
+    beginDuel: () => {
+      const r = beginDuelFn(live.current.player, parisDay(clock()));
+      if (!r.ok) return r.error;
+      commit({ ...live.current, player: r.state });
+      return null;
+    },
+    endDuel: (f, opp) => {
       const day = parisDay(clock());
-      const r = playDuel(live.current.player, order, opp, secureRng, day, clock().getTime());
-      if (!r.ok) return { error: r.error };
-      let st = trk(r.state, "duel");
-      if (r.result.outcome === "win") st = trk(st, "duelWin");
+      const r = finishDuel(live.current.player, f, opp, day, clock().getTime());
+      let st = r.state;
+      if (!opp.friendly) { st = trk(st, "duel"); if (r.record.outcome === "win") st = trk(st, "duelWin"); }
+      const e = st.extra;
+      if (e && !e.combatTutoDone) st = { ...st, extra: { ...e, combatTutoDone: true } };
       commit({ ...live.current, player: st });
-      return { result: r.result, theirOrder: r.theirOrder, record: r.record };
+      return r.record;
+    },
+    setConsigne: (c) => {
+      const p = live.current.player;
+      if (p.extra) commit({ ...live.current, player: { ...p, extra: { ...p.extra, consigne: c } } });
+    },
+    finishCombatTuto: () => {
+      const p = live.current.player;
+      if (p.extra && !p.extra.combatTutoDone) commit({ ...live.current, player: { ...p, extra: { ...p.extra, combatTutoDone: true } } });
+    },
+    resetCombatTuto: () => {
+      const p = live.current.player;
+      if (p.extra) commit({ ...live.current, player: { ...p, extra: { ...p.extra, combatTutoDone: false } } });
+    },
+    claimPass: (tier) => {
+      const r = claimPassFn(live.current.player, parisDay(clock()), tier);
+      if (!r.ok) return { error: r.error };
+      commit({ ...live.current, player: r.state });
+      return { gc: r.gc, boosters: r.boosters };
+    },
+    claimChallenge: () => {
+      const r = claimChallengeFn(live.current.player, parisDay(clock()), clock().getTime());
+      if (!r.ok) return { error: r.error };
+      commit({ ...live.current, player: r.state });
+      return { gc: r.gc, xp: r.xp };
     },
 
     signUp: async (email, password, name) => {
@@ -608,6 +669,10 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         const day = parisDay(clock());
         const d = e.duel?.day === day ? e.duel : { day, used: 0, bonus: 0 };
         commit({ ...live.current, player: { ...p, extra: { ...e, duel: { ...d, bonus: d.bonus + n } } } });
+      },
+      addPassXp: (n) => {
+        const p = live.current.player;
+        if (p.extra) commit({ ...live.current, player: { ...p, extra: addPassXp(p.extra, n, parisDay(clock())) } });
       },
       addGc: (n) => commit({ ...live.current, player: { ...live.current.player, gc: live.current.player.gc + n } }),
       reset: () => commit({ player: normalizeState({ ...createAccount(), name: live.current.player.name }, secureRng, parisDay(new Date())), opening: null }),

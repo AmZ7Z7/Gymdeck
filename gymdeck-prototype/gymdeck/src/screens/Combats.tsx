@@ -3,39 +3,39 @@
 import { useState } from "react";
 import { Card } from "@/components/Card";
 import { GcPill, Wordmark } from "@/components/Bits";
-import { BonusLine, DuelFlow, GroupTag } from "@/components/Duel";
+import { BonusLine } from "@/components/CombatBits";
+import { CombatFlow, RulesSheet } from "@/components/Fight";
 import { useGame } from "@/components/GameProvider";
+import { IconCheck } from "@/components/Icons";
 import { Sheet } from "@/components/Sheet";
 import { DUEL } from "@/lib/config";
-import { combatPower } from "@/lib/duel";
+import { CONSIGNES, teamHp } from "@/lib/duel";
 import { seasonEndsIn, seasonOf } from "@/lib/progress";
-import type { Tab } from "@/app/page";
+import { botById } from "@/lib/social";
+import type { OpenPage, Tab } from "@/app/page";
 import { monthName, RankingBody } from "./Social";
 
-/** Règles des combats (validées par Adrien le 14 oct. 2026). */
-export const RULES: { t: string; d: string }[] = [
-  { t: "Duel asynchrone", d: "Tu affrontes le deck d’un joueur de puissance proche (± 25 %), sans qu’il ait besoin d’être connecté." },
-  { t: "Ordre caché", d: "Avant chaque duel, tu ranges tes 5 cartes. Ta n°1 affronte sa n°1, puis la n°2, etc. Tu vois ses cartes, mais pas son ordre : c’est un pari." },
-  { t: "Synergies de groupe", d: `2 cartes du même groupe : +${DUEL.synergyPct[2]} %. 3 : +${DUEL.synergyPct[3]} %. 4 : +${DUEL.synergyPct[4]} %. 5 : +${DUEL.synergyPct[5]} % (ATQ et DEF de ces cartes). Cinq groupes différents : +${DUEL.allGroupsPct} % à tout le deck.` },
-  { t: "Triangle des groupes", d: `Pecs > Épaules > Dos > Pecs, et Jambes > Abdos > Cardio > Jambes. La carte en avantage gagne +${DUEL.trianglePct} % d’ATQ et de DEF sur la manche. Les Bras sont neutres.` },
-  { t: "Une manche", d: `Chaque carte frappe l’autre : son ATQ (± ${DUEL.noisePct} % de hasard) moins la DEF adverse, passifs du deck compris. L’écart compté est plafonné à ${DUEL.cap} : écraser l’adversaire ne vaut pas plus qu’une victoire nette.` },
-  { t: "Victoire", d: "Qui gagne 3 manches sur 5 gagne le duel. À égalité de manches, l’écart total départage." },
-  { t: `${DUEL.daily} duels par jour`, d: `+${DUEL.perSession} duels le jour où tu valides ta séance dans l’app : plus tu t’entraînes, plus tu combats.` },
-  { t: "Récompenses", d: `+${DUEL.winGc} GC par victoire. Points de saison : victoire +${DUEL.winPts}, égalité ou défaite +${DUEL.lossPts}. Classement mensuel, sans booster gratuit pour garder les raretés précieuses.` },
-];
-
 const OUT: Record<string, string> = { win: "Victoire", loss: "Défaite", draw: "Égalité" };
+const ago = (ms: number) => {
+  const h = Math.max(0, Math.round(ms / 3_600_000));
+  return h < 1 ? "à l’instant" : h < 24 ? `il y a ${h} h` : `il y a ${Math.round(h / 24)} j`;
+};
 
-export function Combats({ go }: { go: (t: Tab) => void }) {
+export function Combats({ go, openPage }: { go: (t: Tab) => void; openPage?: OpenPage }) {
   const g = useGame();
   const [rules, setRules] = useState(false);
-  const [duel, setDuel] = useState(false);
+  const [duel, setDuel] = useState<{ friend?: string } | null>(null);
+  const [pickFriend, setPickFriend] = useState(false);
   const deck = g.deckCards;
   const ready = deck.length >= 5;
   const days = seasonEndsIn(g.day);
   const left = g.duelsLeft;
   const total = DUEL.daily + (g.sessionDoneToday ? DUEL.perSession : 0);
   const history = g.extra.duels ?? [];
+  const defenses = g.extra.defenses ?? [];
+  const consigne = CONSIGNES.find((c) => c.id === (g.extra.consigne ?? "equilibre"))!;
+  const friends = (g.extra.friends ?? []).map((id) => botById(id)).filter((b): b is NonNullable<typeof b> => !!b);
+  const now = g.gameNow();
 
   return (
     <div className="screen">
@@ -53,13 +53,14 @@ export function Combats({ go }: { go: (t: Tab) => void }) {
         </div>
         {ready ? (
           <>
-            <div className="arena-deck">{deck.map((c) => <div key={c.id}><Card card={c} holo={false} /><GroupTag card={c} /></div>)}</div>
+            <div className="arena-deck">{deck.map((c) => <div key={c.id}><Card card={c} holo={false} /></div>)}</div>
             <BonusLine cards={deck} />
-            <div className="arena-power"><span>Puissance de combat</span><b>{combatPower(deck).toLocaleString("fr-FR")}</b></div>
-            <button className="btn primary" disabled={left <= 0} onClick={() => setDuel(true)}>
+            <div className="arena-power"><span>PV de ton équipe</span><b>{teamHp(deck).toLocaleString("fr-FR")}</b></div>
+            <button className="btn primary" disabled={left <= 0} onClick={() => setDuel({})}>
               {left > 0 ? "Trouver un adversaire" : "Plus de duel aujourd’hui"}
             </button>
             {!g.sessionDoneToday && <p className="fine" style={{ textAlign: "center" }}>Valide ta séance du jour : +{DUEL.perSession} duels.</p>}
+            <button className="btn ghost small" onClick={() => setPickFriend(true)}>Duel amical avec un ami</button>
           </>
         ) : (
           <>
@@ -69,16 +70,36 @@ export function Combats({ go }: { go: (t: Tab) => void }) {
         )}
         <button className="link" style={{ justifySelf: "center" }} onClick={() => setRules(true)}>Règles des combats ›</button>
       </div>
+      {openPage && <button className="linkrow" style={{ marginTop: 10 }} onClick={() => openPage("season")}><span>Passe de saison : +{DUEL.passWin} pts par victoire, +{DUEL.passLoss} par défaite</span><span>›</span></button>}
+
+      <div className="panel defense">
+        <div className="def-top">
+          <div><b>Défense</b><small>Ton deck se défend seul quand tu n’es pas là : +{DUEL.defenseGc} GC par attaque repoussée.</small></div>
+          <button className="btn ghost chipbtn" onClick={() => go("gymdeck")}>{consigne.name}</button>
+        </div>
+        {defenses.length > 0 ? (
+          <div className="def-list">
+            {defenses.slice(0, 3).map((d) => (
+              <div key={d.at + d.opp} className={d.won ? "won" : "lost"}>
+                <span>{d.won ? <IconCheck width={16} height={16} /> : "×"}</span>
+                <b>{d.opp}</b>
+                <small>{d.won ? "repoussé" : "a gagné"} · {ago(now - d.at)}</small>
+                <em>{d.gc ? `+${d.gc} GC` : ""}</em>
+              </div>
+            ))}
+          </div>
+        ) : <div className="fine">Aucune attaque pour l’instant. Les attaques arrivent une fois par jour, après ton premier combat.</div>}
+      </div>
 
       {history.length > 0 && (
         <>
-          <h2 className="section" style={{ fontSize: 24, margin: "18px 0 8px" }}>Derniers duels</h2>
+          <h2 className="section" style={{ fontSize: 24, margin: "18px 0 8px" }}>Derniers combats</h2>
           <div className="board">
             {history.slice(0, 5).map((h) => (
               <div className={`brow hist ${h.outcome}`} key={h.at}>
-                <span className="rk">{h.outcome === "win" ? "✓" : h.outcome === "loss" ? "✗" : "="}</span>
-                <span className="bn">{OUT[h.outcome]} contre {h.opp}<small>{h.myWins} – {h.theirWins}</small></span>
-                <span className="bp">+{h.pts} pt{h.pts > 1 ? "s" : ""}{h.gc ? ` · +${h.gc} GC` : ""}</span>
+                <span className="rk">{h.outcome === "win" ? "V" : h.outcome === "loss" ? "D" : "N"}</span>
+                <span className="bn">{OUT[h.outcome]} contre {h.opp}<small>{h.friendly ? "duel amical · " : ""}{h.ko ? "KO · " : ""}{h.myHp ?? "?"} % – {h.theirHp ?? "?"} % de PV</small></span>
+                <span className="bp">{h.friendly ? "" : `+${h.pts} pts`}{h.gc ? ` · +${h.gc} GC` : ""}</span>
               </div>
             ))}
           </div>
@@ -88,14 +109,25 @@ export function Combats({ go }: { go: (t: Tab) => void }) {
       <h2 className="section" style={{ margin: "18px 0 8px" }}>Classement de saison</h2>
       <RankingBody />
 
-      {duel && <DuelFlow onClose={() => setDuel(false)} />}
-      {rules && (
-        <Sheet onClose={() => setRules(false)} label="Règles des combats">
-          <div className="sheet-title">Règles des combats</div>
-          <div className="rulelist">
-            {RULES.map((r, i) => <div key={r.t}><b>{i + 1}</b><div><strong>{r.t}</strong><span>{r.d}</span></div></div>)}
-          </div>
-          <button className="btn primary small" style={{ marginTop: 14 }} onClick={() => setRules(false)}>Compris</button>
+      {duel && <CombatFlow friend={duel.friend} onClose={() => setDuel(null)} />}
+      {rules && <RulesSheet onClose={() => setRules(false)} />}
+      {pickFriend && (
+        <Sheet onClose={() => setPickFriend(false)} label="Duel amical">
+          <div className="sheet-title">Duel amical</div>
+          <p className="fine" style={{ margin: "0 0 10px" }}>Les deux decks sont ramenés à la même puissance : seul le jeu compte. Pas de récompense, et ça ne compte pas dans tes duels du jour.</p>
+          {friends.length ? (
+            <div className="board">
+              {friends.map((b) => (
+                <button key={b.id} className="brow" onClick={() => { setPickFriend(false); setDuel({ friend: b.id }); }}>
+                  <span className="avatar sm">{b.name[0]}</span>
+                  <span className="bn">{b.name}</span>
+                  <span className="bp" style={{ color: "var(--lime)" }}>Défier ›</span>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="empty small">Ajoute d’abord un ami (Profil › Amis).</div>
+          )}
         </Sheet>
       )}
     </div>

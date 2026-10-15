@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { FRAME_LAYOUT, GRADE_LABEL, RARITY_COLOR, exerciseBySlug, gradeMedal, medalSrc, type Rarity } from "@/lib/config";
 import type { CardData, Passive } from "@/lib/engine";
 import { Shield, Swords } from "./Icons";
+import { CapDot } from "./CombatBits";
 
 const pct = (tenths: number) => `+${(tenths / 10).toFixed(1).replace(".", ",")} %`;
 
@@ -17,7 +18,7 @@ export function passiveLabel(p: Passive): string {
   return passiveLines(p).join(" · ") + " du deck";
 }
 
-export function Card({ card, count, holo = true }: { card: CardData; count?: number; holo?: boolean }) {
+export function Card({ card, count, holo = true, cap = true }: { card: CardData; count?: number; holo?: boolean; cap?: boolean }) {
   const L = FRAME_LAYOUT[card.rarity];
   const ex = exerciseBySlug(card.exerciseSlug);
   const bandH = (L.statsBottom - L.statsTop) * 144; // en cqw
@@ -75,6 +76,7 @@ export function Card({ card, count, holo = true }: { card: CardData; count?: num
           </>
         )}
       </div>
+      {cap && (card.rarity === "SSR" || top) && <CapDot card={card} />}
       {card.grade ? <GradeSeal grade={card.grade} /> : null}
       {count && count > 1 ? <span className="count">×{count}</span> : null}
     </div>

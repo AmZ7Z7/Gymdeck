@@ -222,11 +222,11 @@ export function RankingBody() {
       {me ? (
         <div className="panel myrank">
           <div className="r">#{me.rank}</div>
-          <div className="d">Tes points<b>{me.points}</b></div>
+          <div className="d">Tes points de classement<b>{me.points}</b></div>
           <div className="d rec">{recordShort(se)}<small>victoires · défaites</small></div>
         </div>
       ) : (
-        <div className="panel"><p style={{ margin: 0 }}>Fais ton <b>premier duel</b> pour entrer au classement de la saison.</p></div>
+        <div className="panel"><p style={{ margin: 0 }}>Fais ton <b>premier combat</b> pour entrer au classement de la saison.</p></div>
       )}
 
       <div className="board">
@@ -247,7 +247,7 @@ export function RankingBody() {
       <div className="panel">
         {SEASON_TIERS.map((t, i) => <div className="kv" key={t.label} style={i === SEASON_TIERS.length - 1 ? { borderBottom: 0 } : undefined}><span>{t.label}</span><b><Coin s={16} />{t.reward} GC</b></div>)}
       </div>
-      <p className="warn">Points de saison : victoire +3, égalité +1, défaite +1. Le classement repart à zéro chaque mois. Les autres joueurs sont fictifs pendant le prototype.</p>
+      <p className="warn">Points de classement : victoire +3, égalité ou défaite +1 (à ne pas confondre avec les points du passe de saison). Le classement repart à zéro chaque mois. Les autres joueurs sont fictifs pendant le prototype.</p>
     </>
   );
 }
