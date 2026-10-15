@@ -9,7 +9,7 @@ Ta séance, ton booster.
 - Combats : duels asynchrones (ordre caché, synergies de groupe, triangle, ± 10 % de hasard, écart plafonné à 350), 3 duels par jour + 2 avec la séance, classement mensuel aux points.
 - Atelier de Basile : expertise des cartes (note de 1 à 10, prix selon la rareté, 24 h, effet −1 % à +4 % sur ATQ/DEF).
 - Toutes les règles et tous les chiffres sont dans `src/lib/config.ts` ; la logique est pure et testée (`npm test`).
-- Atelier de Basile : image fixe au repos, puis deux courtes vidéos (signe de tête, expertise) à 30 images/s, avec images intermédiaires calculées entre les 11 planches de `assets-src/golem2` (`tools/basile_frames.py` puis `tools/basile_video.py`, non livrés dans les zips). Notes affichées avec 5 médailles (`public/assets/medals`).
+- Atelier de Basile : image fixe au repos, puis deux courtes vidéos (signe, expertise) tirées d'une vidéo faite par IA (`assets-src/video-ia`, mise en forme par `tools/basile_ai.py`, non livrés dans les zips). Notes affichées avec 5 médailles (`public/assets/medals`).
 - Ouverture : la carte la plus rare du booster est toujours révélée en dernier (affichage seulement, probabilités inchangées).
 
 ## Lancer en local

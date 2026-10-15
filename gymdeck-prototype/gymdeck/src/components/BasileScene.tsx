@@ -7,14 +7,14 @@ import { GRADE_LABEL, gradeColor, gradeMedal } from "@/lib/config";
 import type { CardData } from "@/lib/engine";
 
 /**
- * Atelier de Basile : une image fixe tant qu'il attend, puis de courtes vidéos (30 images/s, images intermédiaires
- * calculées entre les poses dessinées, décor intégré) quand on lui confie une carte et pendant l'expertise.
- * Chaque vidéo commence et finit exactement sur l'image fixe : aucun saut. Fabriquées par tools/basile_video.py.
+ * Atelier de Basile : une image fixe tant qu'il attend, puis de courtes vidéos (poses
+ * issues d'une vidéo IA, décor intégré, sans son) quand on lui confie une carte et pendant l'expertise.
+ * Chaque vidéo commence et finit exactement sur l'image fixe : aucun saut. Fabriquées par tools/basile_ai.py.
  */
 
 const STILL = "/assets/atelier/basile-repos.webp";
 const VIDEO = {
-  evaluate: { src: "/assets/atelier/basile-expertise", cues: { inspect: 1.3, stamp: 4.32 } },
+  evaluate: { src: "/assets/atelier/basile-expertise", cues: { inspect: 1.3, stamp: 4.3 } },
   nod: { src: "/assets/atelier/basile-signe", cues: {} as Record<string, number> },
 } as const;
 type Clip = keyof typeof VIDEO;
