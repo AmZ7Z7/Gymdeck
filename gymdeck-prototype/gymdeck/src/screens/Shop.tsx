@@ -14,11 +14,12 @@ const KIND_LABEL: Record<BoosterKind, string> = {
   welcome1: "Bienvenue", welcome2: "Bienvenue ✦", session: "Séance", login: "Connexion", shop: "Boutique", pass: "Passe de saison",
 };
 
-export function Shop({ onMarket, openPage, seg }: { onMarket: () => void; openPage: OpenPage; seg?: React.ReactNode }) {
+export function Shop({ openPage, seg }: { openPage: OpenPage; seg?: React.ReactNode }) {
   const g = useGame();
   const { player } = g;
   const [odds, setOdds] = useState(false);
   const [bought, setBought] = useState<string | null>(null);
+  const [confirmBuy, setConfirmBuy] = useState(false);
   const cycle = player.loginCount % LOGIN_CYCLE;
   const untilBonus = LOGIN_CYCLE - cycle;
   const missing = BOOSTER_PRICE_GC - player.gc;
@@ -40,11 +41,7 @@ export function Shop({ onMarket, openPage, seg }: { onMarket: () => void; openPa
             className="btn primary small"
             style={{ marginTop: 8 }}
             disabled={missing > 0}
-            onClick={() => {
-              const r = g.buy();
-              if ("error" in r) { g.say(r.error); return; }
-              setBought(r.boosterId);
-            }}
+            onClick={() => setConfirmBuy(true)}
           >{missing > 0 ? `Il manque ${missing} GC` : `Acheter — ${BOOSTER_PRICE_GC} GC`}</button>
         </div>
       </div>
@@ -96,13 +93,22 @@ export function Shop({ onMarket, openPage, seg }: { onMarket: () => void; openPa
         <span className={`soon ${readyCount(player, g.gameNow()) > 0 ? "live" : ""}`}>{readyCount(player, g.gameNow()) > 0 ? "Note prête" : g.grading.length > 0 ? `${g.grading.length} en cours` : "Entrer"} <IconChevron width={14} height={14} style={{ verticalAlign: "-2px" }} /></span>
       </button>
 
-      <button className="panel market" style={{ width: "100%", textAlign: "left" }} onClick={onMarket}>
-        <IconCart />
-        <span className="t">Marché<span className="sub">Enchères entre joueurs</span></span>
-        <span className="soon live">{g.market.auctions.filter((a) => a.seller !== "me").length} enchères <IconChevron width={14} height={14} style={{ verticalAlign: "-2px" }} /></span>
-      </button>
 
       {odds && <OddsSheet onClose={() => setOdds(false)} />}
+      {confirmBuy && (
+        <Sheet onClose={() => setConfirmBuy(false)} label="Confirmer l’achat">
+          <div className="sheet-title">Acheter un booster ?</div>
+          <p>Un booster standard de 5 cartes pour <b>{BOOSTER_PRICE_GC} GC</b>. Il te restera {player.gc - BOOSTER_PRICE_GC} GC.</p>
+          <button className="btn primary" onClick={() => {
+            setConfirmBuy(false);
+            const r = g.buy();
+            if ("error" in r) { g.say(r.error); return; }
+            sfx.coin();
+            setBought(r.boosterId);
+          }}>Oui, acheter · {BOOSTER_PRICE_GC} GC</button>
+          <button className="btn ghost small" onClick={() => setConfirmBuy(false)}>Annuler</button>
+        </Sheet>
+      )}
       {bought && (
         <Sheet onClose={() => setBought(null)} label="Booster acheté">
           <div className="sheet-title">Booster acheté !</div>

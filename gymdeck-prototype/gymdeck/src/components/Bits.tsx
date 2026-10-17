@@ -41,8 +41,8 @@ export function GcPill({ gc }: { gc: number }) {
   }, [gc]);
   return (
     <div className={`gc ${delta ? (delta.v > 0 ? "up" : "down") : ""}`} aria-label={`${gc} GymCoins`}>
-      <span className="coin" key={delta && delta.v > 0 ? delta.k : 0} />{shown} GC
-      {delta && <span key={delta.k} className={`gcdelta ${delta.v > 0 ? "pos" : "neg"}`} aria-hidden>{delta.v > 0 ? "+" : "−"}{Math.abs(delta.v)}</span>}
+      <span className="coin" key={delta && delta.v > 0 ? `c${delta.k}` : "c"} />{shown} GC
+      {delta && <span key={`d${delta.k}`} className={`gcdelta ${delta.v > 0 ? "pos" : "neg"}`} aria-hidden>{delta.v > 0 ? "+" : "−"}{Math.abs(delta.v)}</span>}
     </div>
   );
 }

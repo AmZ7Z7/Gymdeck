@@ -2,6 +2,7 @@ import { CardData, deckPower, makeCard, drawRarity, type Weights } from "./engin
 import { fairValue } from "./market";
 import { atWorkshop, newId, type OwnedCard, type PlayerState, type Result } from "./game";
 import { normalize, seasonOf } from "./progress";
+import { migrateGrades } from "./grading";
 import { seededRng, type Rng } from "./rng";
 
 /**
@@ -174,4 +175,7 @@ export function finalRank(seasonId: string, points: number): { rank: number; tot
 }
 
 /** Raccourci : normalise l'état avec le calcul de classement de ce module. */
-export const normalizeState = (s: PlayerState, rng: Rng, day: string) => normalize(s, rng, day, finalRank);
+export const normalizeState = (s: PlayerState, rng: Rng, day: string) => {
+  const cards = migrateGrades(s.cards);
+  return normalize(cards === s.cards ? s : { ...s, cards }, rng, day, finalRank);
+};

@@ -25,7 +25,7 @@ export function Card({ card, count, holo = true, cap = true }: { card: CardData;
   const color = RARITY_COLOR[card.rarity as Rarity];
   const top = card.rarity === "UR" || card.rarity === "LR";
   return (
-    <div className="card">
+    <div className={`card ${card.grade ? "graded" : ""}`}>
       <img className="frame" src={`/assets/frames/${card.rarity}.webp`} alt="" draggable={false} decoding="async" />
       {holo && top && (
         <span

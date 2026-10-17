@@ -57,6 +57,7 @@ function Shell() {
   const [pageArg, setPageArg] = useState<string | null>(null);
   // sens de l'animation d'arrivée d'un écran (glisse depuis la gauche ou la droite)
   const [dir, setDir] = useState(0);
+  const [noAnim, setNoAnim] = useState(false);
   const tabRef = useRef<Tab>("home");
   useEffect(() => { applyTheme(); }, []);
 
@@ -74,6 +75,8 @@ function Shell() {
   }, []);
 
   const go = useCallback((t: Tab) => {
+    // Boosters ↔ Marché : même onglet, on change de partie sans animation d'arrivée
+    setNoAnim(barOf(t) === barOf(tabRef.current) && t !== tabRef.current);
     setDir(Math.sign(tabIndex(t) - tabIndex(tabRef.current)));
     tabRef.current = t;
     setPage(null);
@@ -82,6 +85,7 @@ function Shell() {
   }, []);
 
   const openPage: OpenPage = (p, cardId) => {
+    setNoAnim(false);
     setDir(1);
     setPageArg(cardId ?? null);
     setPage(p);
@@ -111,7 +115,7 @@ function Shell() {
         <Opening key={g.opening.boosterId} go={go} />
       ) : (
         <>
-          <div className="view" key={page ?? tab} style={{ ["--sx" as string]: `${dir * 28}px` }}>
+          <div className={`view ${noAnim && !page ? "noanim" : ""}`} key={page ?? barOf(tab)} style={{ ["--sx" as string]: `${dir * 28}px` }}>
             {page === "missions" ? <Missions back={closePage} />
               : page === "friends" ? <Friends back={closePage} />
                 : page === "calendar" ? <Calendar back={closePage} />
@@ -122,7 +126,7 @@ function Shell() {
                         {tab === "home" && <Home go={go} openPage={openPage} />}
                         {tab === "collection" && <Collection openPage={openPage} />}
                         {tab === "gymdeck" && <GymDeckTab go={go} />}
-                        {tab === "shop" && <Shop onMarket={() => go("market")} openPage={openPage} seg={shopSeg} />}
+                        {tab === "shop" && <Shop openPage={openPage} seg={shopSeg} />}
                         {tab === "market" && <Market seg={shopSeg} />}
                         {tab === "combats" && <Combats go={go} openPage={openPage} />}
                         {tab === "profile" && <Profile openPage={openPage} go={go} />}

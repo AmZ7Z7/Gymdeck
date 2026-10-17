@@ -5,9 +5,9 @@ import { useMemo, useState } from "react";
 import { Card, passiveLabel } from "@/components/Card";
 import { GcPill, Wordmark } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
-import { IconBack, Shield, Swords } from "@/components/Icons";
+import { IconBack, IconSearch, Shield, Swords } from "@/components/Icons";
 import { Sheet } from "@/components/Sheet";
-import { DECK_SIZE, EXERCISES, RARITY_COLOR, RARITY_RANK, exerciseBySlug } from "@/lib/config";
+import { DECK_SIZE, EXERCISES, GROUPS, RARITIES, RARITY_COLOR, RARITY_RANK, exerciseBySlug, type Rarity } from "@/lib/config";
 import { bestDeckIds, deckPower, deckTotals } from "@/lib/engine";
 import type { OwnedCard } from "@/lib/game";
 import type { Tab } from "@/app/page";
@@ -73,7 +73,6 @@ export function GymDeckTab({ go }: { go: (t: Tab) => void }) {
           );
         })}
       </div>
-      <p className="hint" style={{ marginTop: 0, marginBottom: 14 }}>Un exemplaire par exercice.</p>
 
       <button className="btn primary" onClick={() => setPicker(true)} disabled={player.cards.length === 0}>Modifier mon deck</button>
       {player.cards.length === 0 && <p className="hint">Ouvre un booster pour avoir des cartes à placer.</p>}
@@ -119,13 +118,13 @@ export function GymDeckTab({ go }: { go: (t: Tab) => void }) {
             <div className="passrow" style={{ borderBottom: 0, marginTop: 6 }}><span>PV de l’équipe en combat</span><b>{fmt(teamHp(deck))}</b></div>
           </>
         ) : (
-          <div style={{ color: "var(--muted)", fontSize: 15, lineHeight: 1.4 }}>En combat, deux cartes du même groupe se renforcent (+{DUEL.synergyPct[2]} % à +{DUEL.synergyPct[5]} %), et cinq groupes différents donnent +{DUEL.allGroupsPct} % à tout le deck.</div>
+          <div style={{ color: "var(--muted)", fontSize: 15, lineHeight: 1.4 }}>Complète ton deck pour voir ses bonus de combat.</div>
         )}
       </div>
 
       <div className="row-head"><h2 className="section" style={{ fontSize: 26 }}>Consigne de défense</h2></div>
       <div className="panel consignes">
-        <p className="fine" style={{ margin: "0 0 10px" }}>Quand d’autres joueurs attaquent ton deck, il se défend seul avec cette consigne. +{DUEL.defenseGc} GC par attaque repoussée.</p>
+        <p className="fine" style={{ margin: "0 0 10px" }}>Comment ton deck se défend quand on l’attaque.</p>
         <div className="cons-row" role="radiogroup" aria-label="Consigne de défense">
           {CONSIGNES.map((c) => {
             const on = (g.extra.consigne ?? "equilibre") === c.id;
@@ -138,11 +137,6 @@ export function GymDeckTab({ go }: { go: (t: Tab) => void }) {
         </div>
       </div>
 
-      <button className="panel combats" style={{ width: "100%", textAlign: "left" }} onClick={() => go("combats")} aria-label="Ouvrir Combats et classement">
-        <Swords />
-        <div className="t">Combats et classement<span>{deck.length >= 5 ? `${g.duelsLeft} duel${g.duelsLeft > 1 ? "s" : ""} disponible${g.duelsLeft > 1 ? "s" : ""} aujourd’hui.` : "Complète ton deck pour affronter les autres joueurs."}</span></div>
-        <span className={`soon ${deck.length >= 5 && g.duelsLeft > 0 ? "live" : ""}`}>Jouer ›</span>
-      </button>
 
       {picker && <DeckPicker onClose={() => setPicker(false)} />}
       {help && (
@@ -174,14 +168,22 @@ function DeckPicker({ onClose }: { onClose: () => void }) {
   const before = deckPower(g.deckCards);
   const diff = deckPower(draftCards) - before;
 
+  const [q, setQ] = useState("");
+  const [rar, setRar] = useState<Rarity | null>(null);
+  const needle = q.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
   const groups = useMemo(() => {
-    return EXERCISES.map((e) => ({
+    return EXERCISES.filter((e) => {
+      if (!needle) return true;
+      const n = e.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      const gr = GROUPS.find((x) => x.id === e.group)!.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+      return n.includes(needle) || gr.includes(needle);
+    }).map((e) => ({
       ex: e,
       cards: player.cards
-        .filter((c) => c.exerciseSlug === e.slug)
+        .filter((c) => c.exerciseSlug === e.slug && (!rar || c.rarity === rar))
         .sort((a, b) => RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity] || b.atq + b.def - (a.atq + a.def)),
     })).filter((x) => x.cards.length > 0);
-  }, [player.cards]);
+  }, [player.cards, needle, rar]);
 
   const toggle = (c: OwnedCard) => {
     if (draft.includes(c.id)) { setDraft(draft.filter((id) => id !== c.id)); return; }
@@ -223,7 +225,17 @@ function DeckPicker({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="picklist">
-        {groups.length === 0 && <div className="empty">Tu n’as encore aucune carte.</div>}
+        <label className="search" style={{ marginBottom: 8 }}>
+          <IconSearch />
+          <input placeholder="Rechercher un exercice ou un groupe…" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Rechercher une carte" />
+        </label>
+        <div className="chips" style={{ marginBottom: 10 }}>
+          <button className={`chip ${rar === null ? "on" : ""}`} onClick={() => setRar(null)}>Toutes</button>
+          {RARITIES.map((r) => (
+            <button key={r} className={`chip ${rar === r ? "on" : ""}`} style={{ ["--c" as string]: RARITY_COLOR[r] }} onClick={() => setRar(rar === r ? null : r)}>{r}</button>
+          ))}
+        </div>
+        {groups.length === 0 && <div className="empty">{player.cards.length === 0 ? "Tu n’as encore aucune carte." : "Aucune carte ne correspond."}</div>}
         {groups.map(({ ex, cards }) => {
           const taken = draftCards.some((d) => d.exerciseSlug === ex.slug);
           return (

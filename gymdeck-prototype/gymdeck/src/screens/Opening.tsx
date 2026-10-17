@@ -51,8 +51,8 @@ export function Opening({ go }: { go: (t: Tab) => void }) {
 
 /* ───────────────────────── Le paquet ───────────────────────── */
 
-/** Couleur de la lumière qui sort du paquet : elle trahit (un peu) la meilleure carte, comme dans Pokémon TCG Pocket. */
-const lightFor = (best: Rarity) => (RARITY_RANK[best] >= RARITY_RANK.SR ? RARITY_COLOR[best] : "#ffffff");
+/** Lumière qui sort du paquet : toujours la même, pour ne rien dévoiler du tirage. */
+const lightFor = (_best: Rarity) => "#f4ffc4";
 
 function PackStage({ go, onBurst }: { go: (t: Tab) => void; onBurst: (color: string) => void }) {
   const g = useGame();
@@ -79,7 +79,7 @@ function PackStage({ go, onBurst }: { go: (t: Tab) => void; onBurst: (color: str
   const charging = step === "charge";
   const tearing = step === "tear";
   const light = lightFor(bestRef.current);
-  const rainbow = bestRef.current === "LR";
+  const rainbow = false;
 
   return (
     <div className="stage">
@@ -286,16 +286,17 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
     }
   };
 
+  /** Aucun indice avant de retourner la carte : la cinématique LR se joue une fois la carte visible. */
   const doReveal = (i: number) => {
     if (charging !== null || shown[i]) return;
     g.reveal(i); // enregistré tout de suite : si on quitte, la carte reste révélée
-    if (isTop(cards[i]!.rarity)) {
-      const lr = cards[i]!.rarity === "LR";
-      const ms = lr ? 1900 : 1050;
+    if (cards[i]!.rarity === "LR") {
+      setShown((s) => s.map((v, k) => (k === i ? true : v)));
+      sfx.flip();
       setCharging(i);
-      if (lr) { setLegend("charge"); sfx.legendCharge(); } else sfx.heartbeat();
-      try { navigator.vibrate?.(lr ? [30, 60, 30, 60, 30, 60, 40, 40, 40, 40, 80] : [30, 60, 30, 60, 30]); } catch { /* ignoré */ }
-      window.setTimeout(() => { setCharging(null); flipNow(i); }, ms);
+      setLegend("charge"); sfx.legendCharge();
+      try { navigator.vibrate?.([30, 60, 30, 60, 30, 60, 40, 40, 40, 40, 80]); } catch { /* ignoré */ }
+      window.setTimeout(() => { setCharging(null); flipNow(i); }, 1900);
     } else {
       flipNow(i);
     }
@@ -464,13 +465,12 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
                 style={{ background: color }}
                 animate={{
                   opacity: charging === i ? [0.2, 0.95, 0.4, 1]
-                    : holding === i && !isShown ? [0.55, 0.95, 0.55]
-                      : isShown ? (top ? [0.45, 0.85, 0.45] : 0.35) : 0,
-                  scale: charging === i ? [1, 1.25, 1.1, 1.35] : holding === i && !isShown ? [1.04, 1.14, 1.04] : 1,
+                    : isShown ? (top ? [0.45, 0.85, 0.45] : 0.35) : 0,
+                  scale: charging === i ? [1, 1.25, 1.1, 1.35] : 1,
                 }}
                 transition={
                   charging === i ? { duration: c.rarity === "LR" ? 1.9 : 1, ease: "easeIn" }
-                    : (isShown && top) || (holding === i && !isShown) ? { duration: holding === i && !isShown ? 0.9 : 2.2, repeat: Infinity, ease: "easeInOut" }
+                    : isShown && top ? { duration: 2.2, repeat: Infinity, ease: "easeInOut" }
                       : { duration: 0.5 }
                 }
               />

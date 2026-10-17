@@ -466,7 +466,7 @@ button.cell { display: block; text-align: left; }
 .cgrid.four { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .ccell.pick { position: relative; border-radius: 10px; outline: 3px solid transparent; outline-offset: 2px; transition: outline-color .15s; }
 .ccell.pick.sel { outline-color: var(--lime); }
-.ccell.pick .val { position: absolute; left: 50%; bottom: -2px; transform: translateX(-50%); padding: 1px 8px; border-radius: 99px; background: rgba(0,0,0,.82); border: 1px solid #3a4466; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.ccell.pick > .val { position: absolute; left: 50%; bottom: -2px; transform: translateX(-50%); padding: 1px 8px; border-radius: 99px; background: rgba(0,0,0,.82); border: 1px solid #3a4466; font-size: 12px; font-weight: 700; white-space: nowrap; }
 .tradeMsg { margin-top: 12px; padding: 10px 12px; border-radius: 12px; font-size: 15px; }
 .tradeMsg.ok { background: rgba(200,243,29,.12); border: 1px solid var(--lime); }
 .tradeMsg.ko { background: rgba(255,110,110,.1); border: 1px solid #ff8a8a; color: #ffb0b0; }
@@ -1261,13 +1261,22 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .st-grid b { font-family: var(--display); font-style: italic; font-weight: 800; font-size: 26px; line-height: 1; color: var(--lime); }
 .st-grid span { font-size: 12px; color: var(--muted); line-height: 1.25; }
 
-/* ═════════════════════════ Thème clair ═════════════════════════
-   L'interface est inversée (fonds clairs, textes foncés), puis les images, cartes, boosters et pièces sont
-   ré-inversées pour garder leurs vraies couleurs. */
-html[data-theme="light"], html[data-theme="light"] body { background: #e9edf5; }
-html[data-theme="light"] .app { filter: invert(1) hue-rotate(180deg); box-shadow: none; }
-html[data-theme="light"] .app :is(img:not(.wm), video, .card, .coin, .pb-coin, .rart.coins i, .pbanner, .passcard, .pfinal, .ap-img, .bb-ico, .capdot, .medal, .basile-stage, .gc-coin):not(:is(.card, .pbanner, .passcard, .pfinal, .basile-stage) *) { filter: invert(1) hue-rotate(180deg); }
-html[data-theme="light"] .app .pbanner img, html[data-theme="light"] .app .pfinal img { filter: drop-shadow(0 8px 14px rgba(0,0,0,.6)); }
+
 
 .pc-foot .chipbtn { white-space: nowrap; font-size: 16px; padding: 0 14px; height: 40px; }
 .sheet .board .brow { width: 100%; text-align: left; align-items: center; }
+.view.noanim .screen { animation: none; }
+.stickybar { position: sticky; bottom: 0; z-index: 4; padding: 12px 0 4px; margin-top: 10px; background: linear-gradient(180deg, transparent, var(--bg) 35%); }
+.card.graded .capdot { top: 23.5%; left: 6.7%; width: 13.5cqw; height: 13.5cqw; }
+.gradeinfo { margin-top: 6px; display: grid; gap: 3px; }
+.gi-eff { font-size: 14px; color: var(--muted); }
+.gi-eff.up b { color: var(--lime); }
+.gi-eff.down b { color: #ff8a8a; }
+.viewhint { margin: -4px 0 10px; font-size: 13px; color: var(--muted); }
+.selrow { display: grid; grid-template-columns: 1.4fr 1fr; gap: 8px; margin-bottom: 12px; }
+.selrow label { display: flex; align-items: center; gap: 8px; padding: 0 10px; height: 42px; border-radius: 12px; border: 1px solid var(--line); background: rgba(10,14,26,.85); }
+.selrow span { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.selrow select { flex: 1; min-width: 0; height: 100%; background: transparent; border: 0; color: var(--text); font: inherit; font-size: 15px; font-weight: 600; appearance: none; -webkit-appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--lime) 50%), linear-gradient(135deg, var(--lime) 50%, transparent 50%); background-position: right 4px center, right -1px center; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 16px; }
+.selrow select option { background: #0d1220; color: #fff; }
+.pricebox .pr { white-space: nowrap; }

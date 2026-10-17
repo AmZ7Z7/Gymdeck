@@ -172,8 +172,17 @@ export const GRADE_WEIGHTS: Record<number, number> = {
 };
 export const GRADES = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1] as const;
 
-/** Effet de la note sur ATQ et DEF (en %). */
-export const gradeStatPct = (grade: number): number => (grade >= 10 ? 4 : grade === 9 ? 2 : grade === 8 ? 1 : grade >= 5 ? 0 : -1);
+/** Effet de la note sur ATQ et DEF (en %), barème v12 : chaque point au-dessus de 5 compte. */
+export const GRADE_STAT_PCT: Record<number, number> = { 10: 6, 9: 4, 8: 3, 7: 2, 6: 1, 5: 0, 4: -1, 3: -1, 2: -2, 1: -2 };
+export const gradeStatPct = (grade: number): number => GRADE_STAT_PCT[grade] ?? 0;
+/** Ancien barème (jusqu'à la v11) : sert seulement à recalculer les cartes déjà notées. */
+export const gradeStatPctV1 = (grade: number): number => (grade >= 10 ? 4 : grade === 9 ? 2 : grade === 8 ? 1 : grade >= 5 ? 0 : -1);
+
+/**
+ * Faire monter la note : Basile réexamine une carte déjà notée (même prix, 24 h).
+ * Chance (sur 10 000) de gagner +1 point, selon la note visée. En cas d'échec, la note ne baisse jamais.
+ */
+export const UPGRADE_CHANCE: Record<number, number> = { 2: 7000, 3: 7000, 4: 7000, 5: 6500, 6: 6000, 7: 5500, 8: 4000, 9: 2500, 10: 1200 };
 
 /** Prix d'une expertise selon la rareté (GC). */
 export const GRADE_PRICE: Record<Rarity, number> = { C: 5, R: 10, SR: 20, SSR: 35, UR: 60, LR: 100 };

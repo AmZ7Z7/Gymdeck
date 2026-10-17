@@ -151,7 +151,7 @@ export function Extensions() {
           </div>
         );
       })}
-      <p className="warn">Les récompenses dépendent de la taille de l’extension : chaque exercice du groupe rapporte des GC. Plus d’exercices arrivent bientôt : chaque nouvel exercice rejoint son extension.</p>
+      <p className="warn">Chaque exercice du groupe rapporte des GC.</p>
     </div>
   );
 }

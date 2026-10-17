@@ -23,9 +23,9 @@ describe("expertise : règles", () => {
     for (let i = 0; i < n; i++) { const g = drawGrade(rng); count[g] = (count[g] ?? 0) + 1; }
     for (const g of GRADES) expect(Math.abs(count[g]! / n - GRADE_WEIGHTS[g]! / 10000)).toBeLessThan(0.004);
   });
-  it("effets : −1 % (≤ 4), 0 (5 à 7), +1 % (8), +2 % (9), +4 % (10)", () => {
-    expect([1, 4, 5, 7, 8, 9, 10].map(gradeStatPct)).toEqual([-1, -1, 0, 0, 1, 2, 4]);
-    expect(gradedStats(1000, 950, 10)).toEqual({ atq: 1040, def: 988, pct: 4 });
+  it("effets : de −2 % (note 1) à +6 % (note 10)", () => {
+    expect([1, 4, 5, 7, 8, 9, 10].map(gradeStatPct)).toEqual([-2, -1, 0, 2, 3, 4, 6]);
+    expect(gradedStats(1000, 950, 10)).toEqual({ atq: 1060, def: 1007, pct: 6 });
     expect(gradedStats(150, 151, 3)).toEqual({ atq: 149, def: 149, pct: -1 });
   });
 });
@@ -63,5 +63,39 @@ describe("expertise : parcours", () => {
     expect(duplicateIds(r.state)).not.toContain("c2");
     const f = finishAll(r.state, 1);
     expect(revealGrading(f, "c2", 1).ok).toBe(true);
+  });
+});
+
+import { migrateGrades, revealGrading as reveal2, submitUpgrade, upgradeBlocker } from "../src/lib/grading";
+import { createAccount as mkAcc, type OwnedCard as OC } from "../src/lib/game";
+import { seededRng as sr } from "../src/lib/rng";
+
+describe("monter la note", () => {
+  const base = (grade?: number): OC => ({ id: "x", obtainedSeq: 1, exerciseSlug: "squat", rarity: "UR", atq: 1000, def: 1000, passive: null, ...(grade ? { grade, raw: { atq: 1000, def: 1000 }, atq: 1030, def: 1030 } : {}) });
+  it("refuse une carte non notée ou déjà à 10", () => {
+    const s = { ...mkAcc(), gc: 500, cards: [base()] };
+    expect(upgradeBlocker(s, "x")).toMatch(/pas encore/);
+    expect(upgradeBlocker({ ...s, cards: [{ ...base(8), grade: 10 }] }, "x")).toMatch(/maximale/);
+  });
+  it("la note monte d'un point ou reste la même, jamais plus bas ; stats recalculées depuis la base", () => {
+    let up = 0;
+    for (let i = 0; i < 300; i++) {
+      const s = { ...mkAcc(), gc: 500, cards: [base(8)] };
+      const r = submitUpgrade(s, "x", sr(i), 0);
+      expect(r.ok).toBe(true);
+      if (!r.ok) continue;
+      expect(r.state.gc).toBe(500 - 60);
+      const v = reveal2(r.state, "x", 1e12);
+      if (!v.ok) continue;
+      expect([8, 9]).toContain(v.grade);
+      if (v.grade === 9) { up++; expect(v.card.atq).toBe(1040); } else expect(v.card.atq).toBe(1030);
+    }
+    expect(up / 300).toBeGreaterThan(0.15);
+    expect(up / 300).toBeLessThan(0.35);
+  });
+  it("les cartes notées avant la v12 passent au nouveau barème", () => {
+    const [c] = migrateGrades<{ atq: number; def: number; grade?: number; raw?: { atq: number; def: number } }>([{ atq: 1040, def: 520, grade: 10 }]);
+    expect(c!.raw).toEqual({ atq: 1000, def: 500 });
+    expect(c!.atq).toBe(1060);
   });
 });

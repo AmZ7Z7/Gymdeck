@@ -70,11 +70,10 @@ export function Combats({ go, openPage }: { go: (t: Tab) => void; openPage?: Ope
         )}
         <button className="link" style={{ justifySelf: "center" }} onClick={() => setRules(true)}>Règles des combats ›</button>
       </div>
-      {openPage && <button className="linkrow" style={{ marginTop: 10 }} onClick={() => openPage("season")}><span>Passe de saison : +{DUEL.passWin} pts par victoire, +{DUEL.passLoss} par défaite</span><span>›</span></button>}
 
       <div className="panel defense">
         <div className="def-top">
-          <div><b>Défense</b><small>Ton deck se défend seul quand tu n’es pas là : +{DUEL.defenseGc} GC par attaque repoussée.</small></div>
+          <div><b>Défense</b><small>+{DUEL.defenseGc} GC par attaque repoussée</small></div>
           <button className="btn ghost chipbtn" onClick={() => go("gymdeck")}>{consigne.name}</button>
         </div>
         {defenses.length > 0 ? (
@@ -88,7 +87,7 @@ export function Combats({ go, openPage }: { go: (t: Tab) => void; openPage?: Ope
               </div>
             ))}
           </div>
-        ) : <div className="fine">Aucune attaque pour l’instant. Les attaques arrivent une fois par jour, après ton premier combat.</div>}
+        ) : <div className="fine">Aucune attaque pour l’instant.</div>}
       </div>
 
       {history.length > 0 && (
@@ -114,7 +113,7 @@ export function Combats({ go, openPage }: { go: (t: Tab) => void; openPage?: Ope
       {pickFriend && (
         <Sheet onClose={() => setPickFriend(false)} label="Duel amical">
           <div className="sheet-title">Duel amical</div>
-          <p className="fine" style={{ margin: "0 0 10px" }}>Les deux decks sont ramenés à la même puissance : seul le jeu compte. Pas de récompense, et ça ne compte pas dans tes duels du jour.</p>
+          <p className="fine" style={{ margin: "0 0 10px" }}>Decks de même puissance, sans récompense.</p>
           {friends.length ? (
             <div className="board">
               {friends.map((b) => (

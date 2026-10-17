@@ -108,7 +108,7 @@ const frame: React.CSSProperties = { width: 1080, height: 1920, position: "relat
 const center = (top: number, size: number, extra: React.CSSProperties = {}): React.CSSProperties => ({ position: "absolute", top, width: "100%", textAlign: "center", fontSize: size, fontWeight: 800, fontStyle: "italic", textTransform: "uppercase", ...extra });
 
 function Brand() {
-  return <img src="/assets/ui/logo.webp" alt="" style={{ position: "absolute", top: 70, left: 290, width: 500, mixBlendMode: "screen" }} />;
+  return <img src="/assets/ui/logo.webp" alt="" style={{ position: "absolute", top: 60, left: 350, width: 380 }} />;
 }
 
 function VictoryView({ cards, name, opp, myHp, ko }: { cards: CardData[]; name: string; opp: string; myHp: number; ko: boolean }) {

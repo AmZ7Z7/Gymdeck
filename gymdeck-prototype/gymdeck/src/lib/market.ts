@@ -91,7 +91,7 @@ function npcAuction(rng: Rng, now: number): Auction {
   if (rng.int(0, 99) < 16) {
     const grade = drawGrade(rng);
     const g = gradedStats(card.atq, card.def, grade);
-    card = { ...card, atq: g.atq, def: g.def, grade };
+    card = { ...card, raw: { atq: card.atq, def: card.def }, atq: g.atq, def: g.def, grade };
   }
   const fair = fairValue(card);
   const duration = Math.round(rnd(rng, 0.4, 24) * HOUR);

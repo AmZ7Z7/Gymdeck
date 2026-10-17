@@ -10,10 +10,10 @@ import { IconBack, IconHourglass } from "@/components/Icons";
 import { Sheet } from "@/components/Sheet";
 import {
   GRADES, GRADE_HOURS, GRADE_LABEL, GRADE_PRICE, GRADE_SLOTS, GRADE_WEIGHTS, RARITIES, RARITY_COLOR, RARITY_RANK,
-  exerciseBySlug, gradeColor, gradeStatPct, type Rarity,
+  UPGRADE_CHANCE, exerciseBySlug, gradeColor, gradeStatPct, type Rarity,
 } from "@/lib/config";
 import type { CardData } from "@/lib/engine";
-import { gradeBlocker, type GradeReveal } from "@/lib/grading";
+import { gradeBlocker, upgradeBlocker, upgradeChance, type GradeReveal } from "@/lib/grading";
 import { haptic, sfx } from "@/lib/sound";
 
 const Coin = ({ s = 16 }: { s?: number }) => <span className="coin" style={{ width: s, height: s, display: "inline-block", verticalAlign: "-3px", marginRight: 4 }} />;
@@ -33,6 +33,8 @@ const VERDICT: Record<number, string> = {
   2: "Elle a beaucoup voyagé… mais elle reste à toi !",
   1: "Pauvre carte… Elle a tout vécu.",
 };
+
+const pc = (v: number) => `${Math.round(v * 100)} %`;
 
 export function Atelier({ back, initialCardId }: { back: () => void; initialCardId?: string | null }) {
   const g = useGame();
@@ -61,18 +63,20 @@ export function Atelier({ back, initialCardId }: { back: () => void; initialCard
   const selJob = sel ? jobs.find((j) => j.cardId === sel) ?? null : null;
   const ready = !!selJob && now >= selJob.readyAt;
   const matCard: CardData | null = matOverride ?? selCard;
-  const blocker = selCard && !selJob ? gradeBlocker(g.player, selCard.id) : null;
+  const upgrading = !!selCard?.grade;
+  const blocker = selCard && !selJob ? (upgrading ? upgradeBlocker(g.player, selCard.id) : gradeBlocker(g.player, selCard.id)) : null;
+  const chance = selCard?.grade ? upgradeChance(selCard.grade) : 0;
   const price = selCard ? GRADE_PRICE[selCard.rarity] : 0;
 
   // la carte choisie a disparu (vendue ailleurs, échangée…) : on la désélectionne
   useEffect(() => { if (sel && !selCard && !result) setSel(null); }, [sel, selCard, result]);
 
   const say = line ?? (
-    result?.done ? VERDICT[result.grade]!
+    result?.done ? (result.from ? (result.grade > result.from ? "Je l’ai regardée de plus près… elle mérite un point de plus !" : "Non, je maintiens ma note. Elle reste comme elle est.") : VERDICT[result.grade]!)
       : busy ? "Voyons voir…"
         : selJob && ready ? "J’ai terminé ! Tu veux connaître sa note ?"
           : selJob ? `Je l’examine encore… Reviens dans ${formatDuration(selJob.readyAt - now)}.`
-            : selCard?.grade ? "Celle-ci a déjà sa note : je ne note jamais deux fois la même carte."
+            : selCard?.grade ? (selCard.grade >= 10 ? "Une 10 sur 10 ! On ne peut pas faire mieux." : `Elle a ${selCard.grade}. Pour ${price} GC, je la réexamine : ${pc(chance)} de chances qu’elle gagne un point. Elle ne baissera jamais.`)
               : selCard ? `Une ${selCard.rarity} ? Pour ${price} GC, je te donne ma note dans ${GRADE_HOURS} h.`
                 : jobs.length >= GRADE_SLOTS ? "Mon établi est plein ! Viens d’abord chercher une note."
                   : "Bonjour, je suis Basile ! Confie-moi une carte, je te dirai ce qu’elle vaut."
@@ -82,7 +86,7 @@ export function Atelier({ back, initialCardId }: { back: () => void; initialCard
 
   const submit = () => {
     if (!selCard || busy) return;
-    const e = g.submitGrading(selCard.id);
+    const e = upgrading ? g.submitUpgrade(selCard.id) : g.submitGrading(selCard.id);
     if (e) { sfx.error(); g.say(e); return; }
     sfx.coin();
     setLine("Parfait, je m’en occupe ! Reviens dans 24 h.");
@@ -146,13 +150,13 @@ export function Atelier({ back, initialCardId }: { back: () => void; initialCard
       {result && !result.done ? (
         <div className="panel gradeact">
           <button className="btn primary" disabled>Basile examine ta carte…</button>
-          <p className="fine">Le résultat est déjà enregistré : tu peux quitter, la note restera sur ta carte.</p>
         </div>
       ) : result?.done ? (
         <motion.div className="panel gradeout" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} onAnimationStart={() => outRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })} ref={outRef}>
           <div className="go-card"><Card card={result.card} /></div>
           <div className="go-info">
-            <div className="go-grade" style={{ color: gradeColor(result.grade) }}><Medal grade={result.grade} className="md" /><span>{result.grade}<small>/10</small> · {GRADE_LABEL[result.grade]}</span></div>
+            <div className="go-grade" style={{ color: gradeColor(result.grade) }}><Medal grade={result.grade} className="md" /><span>{result.from && result.from !== result.grade ? <>{result.from} → </> : null}{result.grade}<small>/10</small> · {GRADE_LABEL[result.grade]}</span></div>
+            {result.from ? <div className={`go-eff ${result.grade > result.from ? "up" : ""}`}>{result.grade > result.from ? "+1 point !" : "Note inchangée"}</div> : null}
             <div className="go-name">{exerciseBySlug(result.card.exerciseSlug).name} <b style={{ color: RARITY_COLOR[result.card.rarity] }}>{result.card.rarity}</b></div>
             <div className="go-stats">
               <span>ATQ {result.before.atq} → <b>{result.card.atq}</b></span>
@@ -173,21 +177,20 @@ export function Atelier({ back, initialCardId }: { back: () => void; initialCard
               <div className="progress thin"><i style={{ width: `${Math.min(100, ((now - selJob.startedAt) / (selJob.readyAt - selJob.startedAt)) * 100)}%` }} /></div>
             </div>
           )}
-          <p className="fine">La carte reste dans ton deck. Pendant l’expertise, elle ne peut être ni vendue, ni échangée, ni défaussée.</p>
         </div>
       ) : selCard ? (
         <div className="panel gradeact">
           <div className="pricebox">
-            <span>Expertise d’une carte <b style={{ color: RARITY_COLOR[selCard.rarity] }}>{selCard.rarity}</b></span>
+            <span>{upgrading ? <>Note <Medal grade={selCard.grade!} className="sm" />→ <b>{Math.min(10, selCard.grade! + 1)}</b> · {pc(chance)} de chances</> : <>Expertise d’une carte <b style={{ color: RARITY_COLOR[selCard.rarity] }}>{selCard.rarity}</b></>}</span>
             <b className="pr"><Coin s={20} />{price} GC</b>
           </div>
-          <button className="btn primary" disabled={!!blocker || busy} onClick={submit}>{blocker && !selCard.grade ? blocker : selCard.grade ? "Déjà expertisée" : `Confier à Basile · ${price} GC`}</button>
+          <button className="btn primary" disabled={!!blocker || busy} onClick={submit}>{blocker ?? (upgrading ? `Tenter +1 point · ${price} GC` : `Confier à Basile · ${price} GC`)}</button>
           <button className="btn ghost small" onClick={() => setPicker(true)} disabled={busy}>Changer de carte</button>
         </div>
       ) : (
         <div className="panel gradeact">
           <button className="btn primary" onClick={() => setPicker(true)} disabled={jobs.length >= GRADE_SLOTS}>Choisir une carte</button>
-          <p className="fine">De {GRADE_PRICE.C} à {GRADE_PRICE.LR} GC selon la rareté · résultat en {GRADE_HOURS} h · une seule expertise par carte.</p>
+          <p className="fine">De {GRADE_PRICE.C} à {GRADE_PRICE.LR} GC selon la rareté · résultat en {GRADE_HOURS} h.</p>
         </div>
       )}
 
@@ -230,8 +233,8 @@ function GradePicker({ onClose, onPick }: { onClose: () => void; onPick: (id: st
   const g = useGame();
   const [rarity, setRarity] = useState<Rarity | null>(null);
   const list = useMemo(() => g.player.cards
-    .filter((c) => !c.grade && !g.grading.some((j) => j.cardId === c.id) && (!rarity || c.rarity === rarity))
-    .sort((a, b) => RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity] || b.atq + b.def - (a.atq + a.def)), [g.player.cards, g.grading, rarity]);
+    .filter((c) => (c.grade ?? 0) < 10 && !g.grading.some((j) => j.cardId === c.id) && (!rarity || c.rarity === rarity))
+    .sort((a, b) => (a.grade ? 1 : 0) - (b.grade ? 1 : 0) || RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity] || b.atq + b.def - (a.atq + a.def)), [g.player.cards, g.grading, rarity]);
   return (
     <Sheet onClose={onClose} variant="full" label="Choisir une carte à expertiser">
       <div className="fsheet">
@@ -242,7 +245,7 @@ function GradePicker({ onClose, onPick }: { onClose: () => void; onPick: (id: st
             <span style={{ width: 44 }} />
           </div>
         </div>
-        <p className="fine" style={{ margin: "0 0 10px" }}>Chaque carte ne peut être expertisée qu’une fois. Le prix dépend de sa rareté.</p>
+        <p className="fine" style={{ margin: "0 0 10px" }}>Une carte déjà notée peut repasser chez Basile pour tenter de gagner un point.</p>
         <div className="chips" style={{ marginBottom: 10 }}>
           <button className={`chip ${rarity === null ? "on" : ""}`} onClick={() => setRarity(null)}>Toutes</button>
           {RARITIES.map((r) => (
@@ -254,7 +257,7 @@ function GradePicker({ onClose, onPick }: { onClose: () => void; onPick: (id: st
             {list.map((c) => (
               <button key={c.id} className="ccell pick" onClick={() => onPick(c.id)} aria-label={`${exerciseBySlug(c.exerciseSlug).name} ${c.rarity}, ${GRADE_PRICE[c.rarity]} GC`}>
                 <Card card={c} holo={false} />
-                <span className="gprice"><Coin s={14} />{GRADE_PRICE[c.rarity]} GC</span>
+                <span className="gprice">{c.grade ? "Monter · " : ""}<Coin s={14} />{GRADE_PRICE[c.rarity]} GC</span>
                 {g.player.deck.includes(c.id) && <span className="deckbadge">DECK</span>}
               </button>
             ))}
@@ -272,7 +275,8 @@ export function GradeRules({ onClose }: { onClose: () => void }) {
       <div className="sheet-title">L’expertise</div>
       <ul className="rules">
         <li>Basile examine ta carte pendant <b>{GRADE_HOURS} h</b>, puis lui donne une <b>note de 1 à 10</b>.</li>
-        <li><b>Une seule expertise par carte.</b> Jusqu’à {GRADE_SLOTS} cartes sur l’établi en même temps.</li>
+        <li>Une carte notée peut <b>repasser chez Basile</b> (même prix, {GRADE_HOURS} h) pour tenter de gagner +1 point. Si ça ne marche pas, la note ne baisse jamais.</li>
+        <li>Jusqu’à {GRADE_SLOTS} cartes sur l’établi en même temps.</li>
         <li>La note reste sur la carte : elle se voit dans ta collection, au Marché et dans les échanges.</li>
         <li>Pendant l’expertise, la carte reste dans ton deck mais ne peut être ni vendue, ni échangée, ni défaussée.</li>
       </ul>
@@ -287,6 +291,12 @@ export function GradeRules({ onClose }: { onClose: () => void }) {
         ))}
       </div>
       <p className="fine">L’effet s’applique à l’ATQ et à la DEF de la carte.</p>
+      <div className="odds">
+        <div className="odds-row head g2"><span>Monter la note</span><span>Chance</span></div>
+        {[2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+          <div className="odds-row g2" key={n}><span>{n - 1} → {n}</span><span>{pctTxt(UPGRADE_CHANCE[n]!)}</span></div>
+        ))}
+      </div>
       <div className="odds">
         <div className="odds-row head g2"><span>Rareté</span><span>Prix</span></div>
         {RARITIES.map((r) => (

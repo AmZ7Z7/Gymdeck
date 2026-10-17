@@ -21,6 +21,8 @@ export interface CardData {
   passive: Passive | null;
   /** Note de l'expertise de Basile (1 à 10), une fois révélée. Elle suit la carte partout (Marché, échanges). */
   grade?: number;
+  /** ATQ / DEF avant l'effet de la note (présent dès qu'une carte est notée). */
+  raw?: { atq: number; def: number };
 }
 
 export type Weights = Record<Rarity, number>;

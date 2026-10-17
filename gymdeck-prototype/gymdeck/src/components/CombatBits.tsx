@@ -2,7 +2,7 @@
 
 import { DUEL, GROUPS, RARITY_COLOR, CAPACITIES, SECOND_WIND, type CapKind, type MuscleGroup } from "@/lib/config";
 import { BEATS } from "@/lib/config";
-import { capacityOf, capacityText, combatPower, deckBonus, groupOf, groupShort, teamHp, POSTURE_INFO, CONSIGNES } from "@/lib/duel";
+import { capacityOf, capacityText, combatPower, deckBonus, groupOf, groupShort, teamHp, POSTURE_INFO } from "@/lib/duel";
 import type { CardData } from "@/lib/engine";
 import { GroupIcon, IconBolt, IconCombo, IconEye, IconFist, IconHeartPlus, IconReturn, IconWind, Shield } from "./Icons";
 
@@ -84,36 +84,28 @@ export function BonusLine({ cards }: { cards: CardData[] }) {
 
 export const deckStats = (cards: CardData[]) => ({ hp: teamHp(cards), power: combatPower(cards) });
 
-/** Règles complètes des combats (page « Règles »). */
+/** Règles des combats (courtes : l'essentiel, puis le tableau des capacités). */
 export function RulesBody() {
   const P = POSTURE_INFO;
   return (
     <div className="crules">
       <section>
-        <h3>Le principe</h3>
-        <p>Tu affrontes le deck d’un autre joueur. Chaque équipe a des <b>PV</b> : la somme des (ATQ + DEF) / 2 de ses 5 cartes. À chaque manche, vous posez une carte et une posture en même temps. 5 manches au plus.</p>
-        <p>Le premier à 0 PV perd (KO). Sinon, après 5 manches, celui qui garde le plus de PV (en %) gagne.</p>
+        <h3>Le combat</h3>
+        <p>5 manches. À chaque manche, chacun pose une carte (une seule fois) et choisit une posture. Le premier à 0 PV perd ; sinon, le plus de PV restants gagne.</p>
       </section>
       <section>
-        <h3>Une manche</h3>
-        <p>Choisis une carte de ta main (chaque carte ne sert qu’une fois), puis une posture. Tu vois les groupes des cartes adverses, pas laquelle il va jouer.</p>
-        <p>Dégâts = ATQ − la moitié de la DEF adverse (au moins 15 % de l’ATQ), avec ± {DUEL.noisePct} % de hasard. Un coup ne dépasse jamais <b>{DUEL.hitCapPct} %</b> des PV adverses : la barre affiche alors <b>MAX</b>.</p>
-      </section>
-      <section>
-        <h3>Les postures</h3>
+        <h3>Postures</h3>
         <div className="rtable">
           {(["force", "technique", "garde"] as const).map((k) => <div key={k}><b>{P[k].name}</b><span>{P[k].short}</span></div>)}
         </div>
-        <p className="fine">Force bat Garde, Technique bat Force, Garde bat Technique.</p>
       </section>
       <section>
-        <h3>Le triangle des groupes</h3>
-        <p>Pecs › Épaules › Dos › Pecs, et Jambes › Abdos › Cardio › Jambes : +{DUEL.trianglePct} % d’ATQ pour la carte en avantage. Les Bras sont neutres.</p>
-        <p>Synergies : 2 cartes du même groupe +{DUEL.synergyPct[2]} %, 3 → +{DUEL.synergyPct[3]} %, 4 → +{DUEL.synergyPct[4]} %, 5 → +{DUEL.synergyPct[5]} %. Cinq groupes différents : +{DUEL.allGroupsPct} % à tout le deck. Les passifs UR et LR comptent aussi.</p>
+        <h3>Groupes</h3>
+        <p>Pecs › Épaules › Dos › Pecs · Jambes › Abdos › Cardio › Jambes : +{DUEL.trianglePct} % d’ATQ. Plusieurs cartes du même groupe se renforcent.</p>
       </section>
       <section>
-        <h3>La jauge et les capacités</h3>
-        <p>La jauge se remplit à chaque manche, et plus vite quand tu prends des coups (encore plus vite avec une LR dans ton deck). Pleine, elle permet <b>une capacité par combat</b> : celle de la carte que tu poses.</p>
+        <h3>Capacités</h3>
+        <p>La jauge (éclair) se remplit à chaque manche. Pleine : une capacité par combat, celle de la carte posée. Un coup ne dépasse jamais {DUEL.hitCapPct} % des PV (« MAX »).</p>
         <div className="captable">
           <div className="ct-h"><span /><span>SSR</span><span>UR</span><span>LR</span></div>
           {(Object.keys(CAPACITIES) as MuscleGroup[]).map((g) => {
@@ -130,21 +122,10 @@ export function RulesBody() {
             <span className="span3">dégâts ×{String(DUEL.secondWind).replace(".", ",")}</span>
           </div>
         </div>
-        <p className="fine">Les valeurs affichées sont les vraies valeurs : elles s’ajoutent après la limite de {DUEL.hitCapPct} %. Même le plus gros coup (Coup puissant LR) ne peut pas finir un combat d’un seul coup.</p>
       </section>
       <section>
-        <h3>Adversaires</h3>
-        <p>On te propose un adversaire contre qui tes chances sont proches de 50 % : des milliers de combats sont simulés pour le choisir. Il joue avec une IA qui suit sa consigne (Agressif, Équilibré ou Prudent), ne voit jamais tes choix et se trompe parfois.</p>
-      </section>
-      <section>
-        <h3>Défense</h3>
-        <p>Quand tu n’es pas là, d’autres joueurs attaquent ton deck. Il se défend seul avec ta consigne :</p>
-        <div className="rtable">{CONSIGNES.map((c) => <div key={c.id}><b>{c.name}</b><span>{c.desc}</span></div>)}</div>
-        <p>+{DUEL.defenseGc} GC par attaque repoussée. Choisis ta consigne dans l’onglet Deck.</p>
-      </section>
-      <section>
-        <h3>Duels et récompenses</h3>
-        <p>{DUEL.daily} duels par jour, +{DUEL.perSession} le jour où tu valides ta séance. Victoire : +{DUEL.winGc} GC et +{DUEL.passWin} points de passe. Défaite : +{DUEL.passLoss} points de passe. Les duels entre amis se jouent avec des decks de même puissance, sans récompense.</p>
+        <h3>Récompenses</h3>
+        <p>{DUEL.daily} duels par jour (+{DUEL.perSession} avec ta séance). Victoire : +{DUEL.winGc} GC. Ton deck se défend seul : +{DUEL.defenseGc} GC par attaque repoussée.</p>
       </section>
     </div>
   );

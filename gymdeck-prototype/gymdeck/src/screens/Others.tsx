@@ -9,13 +9,12 @@ import { claimableCount } from "@/lib/progress";
 import { GcPill, OddsSheet, Wordmark } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
 import { Sheet } from "@/components/Sheet";
-import { IconPencil } from "@/components/Icons";
+import { IconBack, IconPencil } from "@/components/Icons";
 import { LOGIN_CYCLE, PITY_THRESHOLD } from "@/lib/config";
 import { completion } from "@/lib/game";
 import { readyCount } from "@/lib/grading";
 import { recordShort } from "@/lib/duel";
 import { getVolume, isMuted, setMuted, setVolume, soundSnapshot, subscribeSound } from "@/lib/sound";
-import { getTheme, setTheme, subscribeTheme } from "@/lib/theme";
 import { daysBetween, streakNow, trainingDays, weekOf } from "@/lib/progress";
 import { shareStreak } from "@/lib/share";
 
@@ -35,7 +34,6 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
   const ready = claimableCount(p, g.day);
   const showcase = e.showcase.map((id) => p.cards.find((c) => c.id === id)).filter((c) => !!c);
   useSyncExternalStore(subscribeSound, soundSnapshot, () => "0:0.50");
-  const theme = useSyncExternalStore(subscribeTheme, getTheme, () => "dark" as const);
   const muted = isMuted();
   const volume = getVolume();
   const cycle = p.loginCount % LOGIN_CYCLE;
@@ -67,10 +65,7 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
         <div className="kv"><span>Cartes possédées</span><b>{p.cards.length}</b></div>
         <div className="kv"><span>Collection (uniques)</span><b>{comp.owned} / {comp.total}</b></div>
         <div className="kv"><span>Cartes UR / LR</span><b>{tops}</b></div>
-        <div className="kv"><span>Cartes expertisées</span><b>{graded}</b></div>
-        <div className="kv"><span>Combats de la saison (victoires · défaites)</span><b>{recordShort(se)}</b></div>
-        <div className="kv"><span>Connexions (cycle de {LOGIN_CYCLE})</span><b>{cycle} / {LOGIN_CYCLE}</b></div>
-        <div className="kv" style={{ borderBottom: 0 }}><span>Boosters depuis la dernière UR/LR</span><b>{p.pityCounter} / {PITY_THRESHOLD - 1}</b></div>
+        <div className="kv" style={{ borderBottom: 0 }}><span>Cartes expertisées</span><b>{graded}</b></div>
       </div>
 
       <Stats />
@@ -89,7 +84,6 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
         <button className="linkrow" onClick={() => openPage("missions")}><span>Missions, série et succès</span><span>{ready > 0 ? <span className="tabbadge" style={{ position: "static", display: "inline-grid" }}>{ready}</span> : "›"}</span></button>
         <button className="linkrow" onClick={() => openPage("calendar")}><span>Calendrier des séances</span><span>›</span></button>
         <button className="linkrow" onClick={() => openPage("friends")}><span>Amis et échanges</span><span>{e.friends.length > 0 ? e.friends.length : "›"}</span></button>
-        <button className="linkrow" onClick={() => go("combats")}><span>Combats et classement de saison</span><span>›</span></button>
         <button className="linkrow" onClick={() => openPage("atelier")}><span>Atelier de Basile (expertise)</span><span>{gradeReady > 0 ? <span className="tabbadge" style={{ position: "static", display: "inline-grid" }}>{gradeReady}</span> : g.grading.length > 0 ? `${g.grading.length} en cours` : "›"}</span></button>
         <button className="linkrow" onClick={() => setRem(true)}><span>Rappel de séance</span><span>{e.reminder ? `${e.reminder.time}` : "›"}</span></button>
         <button className="linkrow" onClick={() => setTuto(true)}><span>Revoir le tutoriel</span><span>›</span></button>
@@ -102,18 +96,11 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
           <span>Sons du jeu</span>
           <button role="switch" aria-checked={!muted} className={`switch ${!muted ? "on" : ""}`} onClick={() => setMuted(!muted)}><i /></button>
         </div>
-        <div className={`set-row ${muted ? "dim" : ""}`}>
+        <div className={`set-row ${muted ? "dim" : ""}`} style={{ borderBottom: 0 }}>
           <span>Volume</span>
           <input type="range" min={0} max={100} step={5} value={Math.round(volume * 100)} aria-label="Volume des sons"
             onChange={(ev) => setVolume(Number(ev.target.value) / 100)} onPointerUp={() => setVolume(volume, true)} onKeyUp={() => setVolume(volume, true)} />
           <b>{muted ? "—" : `${Math.round(volume * 100)} %`}</b>
-        </div>
-        <div className="set-row" style={{ borderBottom: 0 }}>
-          <span>Thème</span>
-          <div className="seg mini">
-            <button className={theme === "dark" ? "on" : ""} onClick={() => setTheme("dark")}>Sombre</button>
-            <button className={theme === "light" ? "on" : ""} onClick={() => setTheme("light")}>Clair</button>
-          </div>
         </div>
       </div>
 
@@ -141,7 +128,11 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
       {picker && (
         <Sheet onClose={() => setPicker(false)} variant="full" label="Ma vitrine">
           <div className="fsheet">
-            <div className="sheet-title" style={{ fontSize: 28 }}>Ma vitrine</div>
+            <div className="duel-top">
+              <button className="backbtn" aria-label="Retour" onClick={() => setPicker(false)}><IconBack width={22} height={22} /></button>
+              <div className="sheet-title" style={{ fontSize: 28 }}>Ma vitrine</div>
+              <span />
+            </div>
             <p className="fine" style={{ margin: "4px 0 10px" }}>Choisis jusqu’à 3 cartes à montrer à tes amis ({showcase.length} / 3).</p>
             <div className="cgrid four">
               {[...p.cards].sort((a, b) => b.obtainedSeq - a.obtainedSeq).map((c) => (
@@ -150,7 +141,7 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
                 </button>
               ))}
             </div>
-            <button className="btn primary" style={{ marginTop: 14 }} onClick={() => setPicker(false)}>Terminé</button>
+            <div className="stickybar"><button className="btn primary" onClick={() => setPicker(false)}>Terminé ({showcase.length} / 3)</button></div>
           </div>
         </Sheet>
       )}

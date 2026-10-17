@@ -10,23 +10,45 @@ import { useGame } from "@/components/GameProvider";
 import { IconBack, IconNext, IconSearch } from "@/components/Icons";
 import { Sheet } from "@/components/Sheet";
 import { CombatInfo } from "@/components/CombatBits";
+import { gradeBonus } from "@/lib/grading";
 import { sfx } from "@/lib/sound";
-import { DISCARD_GC, EXERCISES, GRADE_LABEL, GRADE_PRICE, RARITIES, RARITY_COLOR, RARITY_RANK, exerciseBySlug, gradeColor, type Rarity } from "@/lib/config";
+import { DISCARD_GC, EXERCISES, GRADE_LABEL, GRADE_PRICE, GROUPS, RARITIES, RARITY_COLOR, RARITY_RANK, exerciseBySlug, gradeColor, type MuscleGroup, type Rarity } from "@/lib/config";
 import { atWorkshop } from "@/lib/game";
 import type { OpenPage } from "@/app/page";
 import { formatDuration } from "@/components/Bits";
 import { completion, duplicateIds, type OwnedCard } from "@/lib/game";
 
-type Sort = "recent" | "rarity" | "atq" | "def";
+type Sort = "catalog" | "recent" | "rarity" | "power" | "atq" | "def" | "grade" | "name";
 /** Minuscules sans accents : « developpe » trouve « Développé ». */
 const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
 
 const SORTS: { id: Sort; label: string }[] = [
-  { id: "recent", label: "Récentes" },
+  { id: "catalog", label: "Par groupe" },
+  { id: "recent", label: "Les plus récentes" },
   { id: "rarity", label: "Rareté" },
+  { id: "power", label: "Puissance (ATQ + DEF)" },
   { id: "atq", label: "ATQ" },
   { id: "def", label: "DEF" },
+  { id: "grade", label: "Note de Basile" },
+  { id: "name", label: "Nom (A → Z)" },
 ];
+const GROUP_ORDER = GROUPS.map((x) => x.id);
+
+function compare(sort: Sort) {
+  return (a: OwnedCard, b: OwnedCard): number => {
+    switch (sort) {
+      case "recent": return b.obtainedSeq - a.obtainedSeq;
+      case "rarity": return bestFirst(a, b);
+      case "power": return b.atq + b.def - (a.atq + a.def);
+      case "atq": return b.atq - a.atq;
+      case "def": return b.def - a.def;
+      case "grade": return (b.grade ?? 0) - (a.grade ?? 0) || bestFirst(a, b);
+      case "name": return exerciseBySlug(a.exerciseSlug).name.localeCompare(exerciseBySlug(b.exerciseSlug).name, "fr") || bestFirst(a, b);
+      case "catalog": return GROUP_ORDER.indexOf(exerciseBySlug(a.exerciseSlug).group) - GROUP_ORDER.indexOf(exerciseBySlug(b.exerciseSlug).group)
+        || EXERCISES.findIndex((e) => e.slug === a.exerciseSlug) - EXERCISES.findIndex((e) => e.slug === b.exerciseSlug) || bestFirst(a, b);
+    }
+  };
+}
 
 const bestFirst = (a: OwnedCard, b: OwnedCard) => RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity] || b.atq + b.def - (a.atq + a.def);
 
@@ -35,7 +57,8 @@ export function Collection({ openPage }: { openPage: OpenPage }) {
   const [q, setQ] = useState("");
   const [rarity, setRarity] = useState<Rarity | null>(null);
   const [view, setView] = useState<"exercise" | "all" | "ext">("exercise");
-  const [sort, setSort] = useState<Sort>("recent");
+  const [sort, setSort] = useState<Sort>("catalog");
+  const [group, setGroup] = useState<MuscleGroup | null>(null);
   const [detail, setDetail] = useState<{ slug: string; id: string } | null>(null);
   const [cleaning, setCleaning] = useState(false);
 
@@ -47,28 +70,31 @@ export function Collection({ openPage }: { openPage: OpenPage }) {
 
   const needle = norm(q);
   const filtered = useMemo(
-    () => cards.filter((c) => (!rarity || c.rarity === rarity) && (!needle || norm(exerciseBySlug(c.exerciseSlug).name).includes(needle))),
-    [cards, rarity, needle],
+    () => cards.filter((c) => (!rarity || c.rarity === rarity) && (!group || exerciseBySlug(c.exerciseSlug).group === group)
+      && (!needle || norm(exerciseBySlug(c.exerciseSlug).name).includes(needle))),
+    [cards, rarity, group, needle],
   );
 
-  const allSorted = useMemo(() => {
-    const l = [...filtered];
-    if (sort === "recent") l.sort((a, b) => b.obtainedSeq - a.obtainedSeq);
-    else if (sort === "rarity") l.sort(bestFirst);
-    else if (sort === "atq") l.sort((a, b) => b.atq - a.atq);
-    else l.sort((a, b) => b.def - a.def);
-    return l;
-  }, [filtered, sort]);
+  const allSorted = useMemo(() => [...filtered].sort(compare(sort)), [filtered, sort]);
 
   // Une case par exercice : la meilleure carte (de la rareté choisie le cas échéant), ou une case « à découvrir ».
   const slots = useMemo(() => {
-    return EXERCISES
-      .filter((e) => !needle || norm(e.name).includes(needle))
+    const list = EXERCISES
+      .filter((e) => (!needle || norm(e.name).includes(needle)) && (!group || e.group === group))
       .map((e) => {
-        const list = filtered.filter((c) => c.exerciseSlug === e.slug).sort(bestFirst);
-        return { slug: e.slug, name: e.name, best: list[0] ?? null, count: list.length };
+        const l = filtered.filter((c) => c.exerciseSlug === e.slug).sort(bestFirst);
+        return { slug: e.slug, name: e.name, group: e.group, best: l[0] ?? null, count: l.length };
       });
-  }, [filtered, needle]);
+    const cmp = compare(sort);
+    const byCatalog = (a: { slug: string; group: MuscleGroup }, b: { slug: string; group: MuscleGroup }) =>
+      GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group) || EXERCISES.findIndex((e) => e.slug === a.slug) - EXERCISES.findIndex((e) => e.slug === b.slug);
+    return list.sort((a, b) => {
+      if (sort === "name") return a.name.localeCompare(b.name, "fr");
+      if (sort === "catalog") return byCatalog(a, b);
+      if (!a.best || !b.best) return (a.best ? 0 : 1) - (b.best ? 0 : 1) || byCatalog(a, b); // pas encore obtenues : à la fin
+      return cmp(a.best, b.best);
+    });
+  }, [filtered, needle, group, sort]);
 
   const inDeck = (id: string) => player.deck.includes(id);
   const rarityOwned = rarity ? slots.filter((s) => s.best).length : null;
@@ -97,14 +123,25 @@ export function Collection({ openPage }: { openPage: OpenPage }) {
       </>)}
 
       <div className="seg three">
-        <button className={view === "exercise" ? "on" : ""} onClick={() => setView("exercise")}>Par exercice</button>
-        <button className={view === "all" ? "on" : ""} onClick={() => setView("all")}>Toutes</button>
+        <button className={view === "exercise" ? "on" : ""} onClick={() => setView("exercise")}>Album</button>
+        <button className={view === "all" ? "on" : ""} onClick={() => setView("all")}>Mes cartes</button>
         <button className={view === "ext" ? "on" : ""} onClick={() => setView("ext")}>Extensions</button>
       </div>
+      <p className="viewhint">{view === "exercise" ? "Une case par exercice : ta meilleure carte, ou « ? » si tu ne l’as pas encore." : view === "all" ? "Toutes tes cartes, doublons compris." : "Complète un groupe musculaire pour gagner des GC."}</p>
 
-      {view === "all" && (
-        <div className="sortrow" role="group" aria-label="Trier">
-          {SORTS.map((s) => <button key={s.id} className={sort === s.id ? "on" : ""} onClick={() => setSort(s.id)}>{s.label}</button>)}
+      {view !== "ext" && (
+        <div className="selrow">
+          <label><span>Trier</span>
+            <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="Trier les cartes">
+              {SORTS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+            </select>
+          </label>
+          <label><span>Groupe</span>
+            <select value={group ?? ""} onChange={(e) => setGroup((e.target.value || null) as MuscleGroup | null)} aria-label="Filtrer par groupe">
+              <option value="">Tous</option>
+              {GROUPS.map((x) => <option key={x.id} value={x.id}>{x.short}</option>)}
+            </select>
+          </label>
         </div>
       )}
       {view === "exercise" && rarity && (
@@ -202,7 +239,16 @@ function Detail({ slug, startId, onClose, onGrade }: { slug: string; startId: st
       <div style={{ textAlign: "center", fontSize: 15, color: "#cfd6e8" }}>
         {exerciseBySlug(card.exerciseSlug).name} · <b style={{ color: RARITY_COLOR[card.rarity] }}>{card.rarity}</b>
         {card.passive && <div style={{ color: "var(--lime)", marginTop: 4 }}>Passif : {passiveLabel(card.passive)}</div>}
-        {card.grade ? <div style={{ marginTop: 4 }}><Medal grade={card.grade} className="sm" />Note de Basile : <b style={{ color: gradeColor(card.grade) }}>{card.grade}/10 · {GRADE_LABEL[card.grade]}</b></div> : null}
+        {card.grade ? (() => {
+          const b = gradeBonus(card);
+          const sg = (n: number) => (n > 0 ? `+${n}` : `${n}`);
+          return (
+            <div className="gradeinfo">
+              <div><Medal grade={card.grade} className="sm" />Note de Basile : <b style={{ color: gradeColor(card.grade) }}>{card.grade}/10 · {GRADE_LABEL[card.grade]}</b></div>
+              <div className={`gi-eff ${b.pct > 0 ? "up" : b.pct < 0 ? "down" : ""}`}>{b.pct === 0 ? "La note ne change pas les stats." : <>Effet de la note : {sg(b.pct)} % · <b>{sg(b.atq)} ATQ</b> · <b>{sg(b.def)} DEF</b></>}</div>
+            </div>
+          );
+        })() : null}
         {job && <div style={{ marginTop: 4, color: "#ffd27a" }}>Chez Basile : {g.gameNow() >= job.readyAt ? "note prête !" : `note dans ${formatDuration(job.readyAt - g.gameNow())}`}</div>}
       </div>
       <CombatInfo card={card} />
@@ -221,8 +267,8 @@ function Detail({ slug, startId, onClose, onGrade }: { slug: string; startId: st
         >
           {inDeck ? "Retirer de mon deck" : swapWith ? "Remplacer dans mon deck" : deckFull ? "Deck complet" : "Mettre dans mon deck"}
         </button>
-        {!card.grade && (
-          <button className="btn ghost small" onClick={() => onGrade(card.id)}>{lab ? "Voir à l’atelier" : `Faire expertiser · ${GRADE_PRICE[card.rarity]} GC`}</button>
+        {(card.grade ?? 0) < 10 && (
+          <button className="btn ghost small" onClick={() => onGrade(card.id)}>{lab ? "Voir à l’atelier" : card.grade ? `Faire monter la note · ${GRADE_PRICE[card.rarity]} GC` : `Faire expertiser · ${GRADE_PRICE[card.rarity]} GC`}</button>
         )}
         {lab ? (
           <div className="hint" style={{ margin: 0 }}>Pendant l’expertise, la carte ne peut pas être défaussée.</div>

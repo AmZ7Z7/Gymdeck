@@ -97,7 +97,7 @@ export function Calendar({ back }: { back: () => void }) {
         <span><i className="lg done" />Séance validée dans l’app</span>
         <span><i className="lg manual" />Ajouté à la main</span>
       </div>
-      <p className="warn">Touche un jour passé pour le cocher ou le décocher. Seules les séances validées dans l’app donnent un booster, comptent pour la série et les missions : les jours ajoutés à la main servent uniquement à ton suivi.</p>
+      <p className="warn">Touche un jour passé pour le cocher. Seules les séances validées dans l’app donnent un booster.</p>
     </div>
   );
 }

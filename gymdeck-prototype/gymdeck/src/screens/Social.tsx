@@ -247,7 +247,7 @@ export function RankingBody() {
       <div className="panel">
         {SEASON_TIERS.map((t, i) => <div className="kv" key={t.label} style={i === SEASON_TIERS.length - 1 ? { borderBottom: 0 } : undefined}><span>{t.label}</span><b><Coin s={16} />{t.reward} GC</b></div>)}
       </div>
-      <p className="warn">Points de classement : victoire +3, égalité ou défaite +1 (à ne pas confondre avec les points du passe de saison). Le classement repart à zéro chaque mois. Les autres joueurs sont fictifs pendant le prototype.</p>
+      <p className="warn">Victoire +3 points, égalité ou défaite +1. Le classement repart à zéro chaque mois.</p>
     </>
   );
 }

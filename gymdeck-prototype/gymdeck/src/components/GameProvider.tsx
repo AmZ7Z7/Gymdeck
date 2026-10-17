@@ -16,7 +16,7 @@ import {
   addFriend as addFriendFn, finalRank, normalizeState, proposeTrade, removeFriend as removeFriendFn, toggleShowcase as toggleShowcaseFn, botById, botDeck,
 } from "@/lib/social";
 import { deckPower, makeCard, revealOrder, type CardData } from "@/lib/engine";
-import { finishAll, gradedStats, revealGrading as revealGradingFn, submitGrading as submitGradingFn, type GradeReveal, type GradingJob } from "@/lib/grading";
+import { finishAll, gradedStats, revealGrading as revealGradingFn, submitGrading as submitGradingFn, submitUpgrade as submitUpgradeFn, type GradeReveal, type GradingJob } from "@/lib/grading";
 import {
   beginDuel as beginDuelFn, duelsLeft as duelsLeftFn, equalize, findMatch, finishDuel, runDefenses,
   type Consigne, type DuelRecord, type Fight, type Opponent,
@@ -115,6 +115,8 @@ interface Game {
   grading: GradingJob[];
   /** Confier une carte à Basile : renvoie un message d'erreur ou null. */
   submitGrading: (cardId: string) => string | null;
+  /** Faire repasser une carte notée chez Basile (tenter +1 point) : message d'erreur ou null. */
+  submitUpgrade: (cardId: string) => string | null;
   /** Révéler une expertise terminée (la note est appliquée à la carte). */
   revealGrading: (cardId: string) => GradeReveal | { error: string };
   /** Duels restants aujourd'hui. */
@@ -450,11 +452,17 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       commit({ ...live.current, player: trk(r.state, "grade") });
       return null;
     },
+    submitUpgrade: (cardId) => {
+      const r = submitUpgradeFn(live.current.player, cardId, secureRng, clock().getTime());
+      if (!r.ok) return r.error;
+      commit({ ...live.current, player: trk(r.state, "grade") });
+      return null;
+    },
     revealGrading: (cardId) => {
       const r = revealGradingFn(live.current.player, cardId, clock().getTime());
       if (!r.ok) return { error: r.error };
       commit({ ...live.current, player: r.state });
-      return { card: r.card, grade: r.grade, pct: r.pct, before: r.before };
+      return { card: r.card, grade: r.grade, pct: r.pct, before: r.before, from: r.from };
     },
     duelsLeft: duelsLeftFn(player, today),
     findOpponent: (avoid) => {
@@ -645,7 +653,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         const base = makeCard(secureRng, rarity);
         const c: OwnedCard = {
           ...base, id: newId(), obtainedSeq: p.seq + 1,
-          ...(grade ? { atq: gradedStats(base.atq, base.def, grade).atq, def: gradedStats(base.atq, base.def, grade).def, grade } : {}),
+          ...(grade ? { atq: gradedStats(base.atq, base.def, grade).atq, def: gradedStats(base.atq, base.def, grade).def, grade, raw: { atq: base.atq, def: base.def } } : {}),
         };
         commit({ ...live.current, player: { ...p, seq: p.seq + 1, cards: [...p.cards, c] } });
       },

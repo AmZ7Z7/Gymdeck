@@ -23,7 +23,7 @@ const fmt = (n: number) => n.toLocaleString("fr-FR");
 function RewardArt({ r }: { r: PassReward }) {
   if (r.boosters >= 2) return <div className="rart two"><img src="/assets/ui/booster.webp" alt="" /><img src="/assets/ui/booster.webp" alt="" /></div>;
   if (r.boosters === 1) return <div className="rart one"><img src="/assets/ui/booster.webp" alt="" /></div>;
-  return <div className="rart coins"><i /><i /><i /><i /><i /></div>;
+  return <div className="rart coins"><i /><i /><i /></div>;
 }
 const rewardLabel = (r: PassReward) => (r.boosters ? `${r.boosters} booster${r.boosters > 1 ? "s" : ""}` : `${r.gc} GC`);
 
@@ -149,7 +149,7 @@ export function Season({ back, openMissions }: { back: () => void; openMissions:
       ) : (
         <PassMissions openMissions={openMissions} />
       )}
-      <p className="warn">Le passe change chaque mois. Les paliers non récupérés à la fin du mois sont perdus. Les GC et les cartes ne s’échangent jamais contre de l’argent.</p>
+      <p className="warn">Le passe recommence chaque mois : récupère tes paliers avant la fin.</p>
     </div>
   );
 }
@@ -198,7 +198,7 @@ function PassMissions({ openMissions }: { openMissions: () => void }) {
       <h2 className="section" style={{ fontSize: 24, margin: "16px 0 8px" }}>Gagner des points</h2>
       <div className="panel psources">
         {SOURCES.map((s) => <div key={s.t}><span className="ps-i">{s.ico}</span><span>{s.t}</span><b>+{s.v}</b></div>)}
-        <small>{PASS.perTier} points par palier. Avec une séance par jour, on finit le passe en un mois.</small>
+        <small>{PASS.perTier} points par palier.</small>
       </div>
     </>
   );
