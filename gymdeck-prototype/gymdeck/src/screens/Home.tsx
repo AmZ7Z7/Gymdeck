@@ -18,6 +18,7 @@ import { Tutorial } from "@/components/Tutorial";
 import { claimableCount, dailyMissions, missionProgress, passClaimable, passLevel, passOf, streakNow, trainingDays, weekOf } from "@/lib/progress";
 import { seasonNumber } from "./Season";
 import { reminderDue } from "@/lib/reminder";
+import { LegalLinks } from "@/components/LegalPage";
 
 export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: OpenPage }) {
   const g = useGame();
@@ -218,6 +219,8 @@ export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: OpenPag
           ))}
         </div>
       )}
+
+      <LegalLinks />
 
       {tuto && <Tutorial onClose={() => { setTuto(false); g.finishTutorial(); }} />}
 

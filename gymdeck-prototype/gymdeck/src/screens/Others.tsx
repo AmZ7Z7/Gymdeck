@@ -17,6 +17,7 @@ import { recordShort } from "@/lib/duel";
 import { getVolume, isMuted, setMuted, setVolume, soundSnapshot, subscribeSound } from "@/lib/sound";
 import { daysBetween, streakNow, trainingDays, weekOf } from "@/lib/progress";
 import { shareStreak } from "@/lib/share";
+import { LegalLinks } from "@/components/LegalPage";
 
 export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => void }) {
   const g = useGame();
@@ -108,6 +109,7 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
       <div className="panel">
         <div className="kv"><span>{g.account?.email || "Compte test"}</span><b>{g.account?.cloud ? "En ligne" : "Sur cet appareil"}</b></div>
         <button className="btn ghost small" style={{ marginTop: 10 }} onClick={() => setOut(true)}>Se déconnecter</button>
+        <LegalLinks />
       </div>
       <p className="warn">GymDeck est gratuit. Les cartes et les GymCoins n’ont aucune valeur en argent et ne peuvent pas être convertis. {g.account?.cloud ? "Tes progrès sont sauvegardés en ligne." : "Les progrès sont enregistrés sur cet appareil pendant le prototype."}</p>
 

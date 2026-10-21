@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { useGame } from "@/components/GameProvider";
+import { LegalLinks } from "@/components/LegalPage";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -89,6 +90,7 @@ export function Onboarding() {
         {create && g.player.boosters.length > 0 ? "2 boosters de bienvenue t’attendent. " : ""}
         GymDeck est gratuit : les cartes et les GymCoins n’ont aucune valeur en argent. Réservé aux 18 ans et plus.
       </p>
+      <LegalLinks />
     </motion.div>
   );
 }
