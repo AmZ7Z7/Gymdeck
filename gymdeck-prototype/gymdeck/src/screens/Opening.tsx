@@ -305,6 +305,15 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
     }
   };
 
+  // Comme dans Pokémon : la carte qui arrive sur le dessus de la pile se retourne toute seule (un seul geste par carte).
+  const revealRef = useRef(doReveal);
+  revealRef.current = doReveal;
+  useEffect(() => {
+    if (intro || charging !== null || shown[idx]) return;
+    const t = window.setTimeout(() => revealRef.current(idx), 320);
+    return () => window.clearTimeout(t);
+  }, [idx, intro, charging, shown]);
+
   /** La carte du dessus quitte la pile (vers la gauche ou la droite) : la suivante, derrière, passe devant. */
   const advance = (dir: number) => {
     if (idx < n - 1) {
@@ -408,7 +417,7 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
   const hint = charging !== null
     ? "Attention…"
     : !curShown
-      ? "Touche la carte pour la révéler"
+      ? "La carte se retourne…"
       : idx < n - 1
         ? "Touche ou glisse pour la suivante"
         : "Touche ou glisse pour voir ton butin";
@@ -468,9 +477,9 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
                   ? { x: flyDir[i]! * (box.w / 2 + cardW), y: -cardH * 0.08, rotate: flyDir[i]! * 24, scale: 0.95, opacity: 0 }
                   : {
                     x: isCur ? dragX : 0,
-                    y: -d * cardH * 0.035, // les cartes de derrière dépassent un peu au-dessus
+                    y: -d * cardH * 0.05, // les cartes de derrière dépassent au-dessus
                     rotate: isCur ? dragX * 0.06 : 0,
-                    scale: 1 - d * 0.045,
+                    scale: 1 - d * 0.05,
                     opacity: d > 3 ? 0 : 1,
                   }
               }
