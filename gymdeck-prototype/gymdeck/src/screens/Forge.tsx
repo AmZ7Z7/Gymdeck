@@ -80,9 +80,9 @@ export function Forge({ back, initialSlug }: { back: () => void; initialSlug?: s
           </select>
         </label>
       </div>
-      <div className="cgrid">
+      <div className="cgrid forgegrid">
         {list.map((e) => (
-          <button key={e.slug} className={`ccell pick ${slug === e.slug ? "sel" : ""} ${owned.has(`${e.slug}|${rarity}`) ? "" : "ghost"}`} onClick={() => setSlug(e.slug)} aria-label={`${e.name} ${rarity}`}>
+          <button key={e.slug} className={`ccell pick ${slug === e.slug ? "sel" : ""} ${owned.has(`${e.slug}|${rarity}`) ? "" : "notowned"}`} onClick={() => setSlug(e.slug)} aria-label={`${e.name} ${rarity}`}>
             <Card card={preview(e.slug)} hideStats holo={false} cap={false} />
             {owned.has(`${e.slug}|${rarity}`) && <span className="deckbadge">✓</span>}
           </button>

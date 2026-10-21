@@ -1294,3 +1294,4 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .forgepick { display: grid; grid-template-columns: 38% 1fr; gap: 14px; align-items: center; margin: 8px 0 12px; }
 .forgepick .fp-info { display: grid; gap: 6px; }
 .forgepick .fp-name { font-family: var(--display); font-style: italic; font-weight: 800; font-size: 22px; text-transform: uppercase; line-height: 1.05; }
+.forgegrid .ccell.notowned .card { opacity: .7; filter: grayscale(.6) brightness(.85); }
