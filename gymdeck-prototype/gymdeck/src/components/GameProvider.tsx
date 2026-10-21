@@ -22,14 +22,17 @@ import {
   type Consigne, type DuelRecord, type Fight, type Opponent,
 } from "@/lib/duel";
 import {
-  cloudEnabled, cloudLoad, cloudResetPassword, cloudSave, cloudSession, cloudSignIn, cloudSignOut, cloudSignUp,
+  cloudEnabled, cloudLoad, cloudResetPassword, cloudSave, cloudSession, cloudSignIn, cloudSignOut, cloudSignUp, cloudStamp,
 } from "@/lib/cloud";
+import { changedElsewhere, startupChoice, type SyncInfo } from "@/lib/sync";
 import type { MuscleGroup, Rarity } from "@/lib/config";
 import { sfx } from "@/lib/sound";
 import { DECK_SIZE, type BoosterKind } from "@/lib/config";
 
 const STORAGE_KEY = "gymdeck:proto:v1";
 const ACCOUNT_KEY = "gymdeck:account:v1";
+const SYNC_KEY = "gymdeck:sync:v1";
+const OTHER_DEVICE_MSG = "Ta partie a été mise à jour depuis un autre appareil.";
 
 /** Compte connecté : « local » = mode test sans serveur ; « cloud » = Supabase. */
 export interface Account { email: string; cloud: boolean; userId?: string }
@@ -159,6 +162,12 @@ function load(): Persisted | null {
 function save(p: Persisted) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch { /* stockage indisponible */ }
 }
+function loadSync(): SyncInfo | null {
+  try { const raw = localStorage.getItem(SYNC_KEY); return raw ? (JSON.parse(raw) as SyncInfo) : null; } catch { return null; }
+}
+function saveSync(s: SyncInfo | null) {
+  try { if (s) localStorage.setItem(SYNC_KEY, JSON.stringify(s)); else localStorage.removeItem(SYNC_KEY); } catch { /* ignoré */ }
+}
 
 export function GameProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
@@ -171,6 +180,13 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Copie synchrone pour que chaque action lise le dernier état, même enchaînée dans le même tick.
   const live = useRef<Persisted>({ player, opening });
+  // Sauvegarde en ligne (compte connecté seulement) : voir src/lib/sync.ts.
+  const sync = useRef<SyncInfo | null>(null);
+  const rev = useRef(0); // compte les changements, pour savoir si d'autres ont eu lieu pendant un envoi
+  const pushing = useRef(false);
+  const pushAgain = useRef(false);
+  const pushRef = useRef<() => Promise<void>>(async () => {});
+  const setSync = (s: SyncInfo | null) => { sync.current = s; saveSync(s); };
 
   const commit = useCallback((next: Persisted) => {
     live.current = next;
@@ -178,11 +194,23 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setPlayer(next.player);
     setOpening(next.opening);
     // sauvegarde en ligne (au plus une fois toutes les 2 s)
-    const acc = accountRef.current;
-    if (acc?.cloud && acc.userId) {
+    const s = sync.current;
+    if (s) {
+      rev.current++;
+      setSync({ ...s, dirty: true, savedAt: Date.now() });
       if (syncTimer.current) clearTimeout(syncTimer.current);
-      syncTimer.current = setTimeout(() => { void cloudSave(acc.userId!, live.current.player); }, 2000);
+      syncTimer.current = setTimeout(() => { void pushRef.current(); }, 2000);
     }
+  }, []);
+
+  /** Remplace la partie du téléphone par la copie en ligne (enregistrée depuis un autre appareil). */
+  const adopt = useCallback((state: PlayerState, updatedAt: string, userId: string) => {
+    const next: Persisted = { player: normalizeState(state, secureRng, parisDay(new Date())), opening: null };
+    live.current = next;
+    save(next);
+    setPlayer(next.player);
+    setOpening(null);
+    setSync({ userId, base: updatedAt, dirty: false, savedAt: Date.now() });
   }, []);
 
   const saveAccount = useCallback((a: Account | null) => {
@@ -212,9 +240,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     let acc: Account | null = null;
     try { const raw = localStorage.getItem(ACCOUNT_KEY); acc = raw ? (JSON.parse(raw) as Account) : null; } catch { /* ignoré */ }
     if (!acc && initial.player.name) acc = { email: "", cloud: false };
+    sync.current = acc?.cloud ? loadSync() : null;
     if (acc?.cloud) {
       void cloudSession().then((u) => {
-        if (!u) saveAccount(null); else saveAccount({ email: u.email, cloud: true, userId: u.id });
+        if (!u) { saveAccount(null); return; }
+        saveAccount({ email: u.email, cloud: true, userId: u.id });
+        void reconcile(u.id);
       });
     }
     accountRef.current = acc;
@@ -260,6 +291,72 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 2600);
   }, []);
+
+  /** Envoie la partie en ligne, sans jamais écraser ce qu'un autre appareil a enregistré entre-temps. */
+  const push = useCallback(async () => {
+    const s = sync.current;
+    if (!s || !s.dirty) return;
+    if (pushing.current) { pushAgain.current = true; return; }
+    pushing.current = true;
+    try {
+      const startRev = rev.current;
+      const r = await cloudSave(s.userId, live.current.player, s.base);
+      const cur = sync.current;
+      if (!cur || cur.userId !== s.userId) return; // déconnecté entre-temps
+      if (r.ok) setSync({ ...cur, base: r.updatedAt, dirty: rev.current !== startRev });
+      else if (r.conflict) {
+        // un autre appareil a enregistré : on reprend sa copie au lieu de l'écraser
+        const remote = await cloudLoad(s.userId);
+        if (remote && sync.current?.userId === s.userId) { adopt(remote.state, remote.updatedAt, s.userId); say(OTHER_DEVICE_MSG); }
+      }
+      // échec réseau : la partie reste à envoyer, on réessaiera
+    } finally {
+      pushing.current = false;
+      if (pushAgain.current) { pushAgain.current = false; void pushRef.current(); }
+    }
+  }, [adopt, say]);
+  pushRef.current = push;
+
+  /** Vérifie si un autre appareil a enregistré la partie, et la récupère le cas échéant. */
+  const pull = useCallback(async () => {
+    const s = sync.current;
+    if (!s || pushing.current) return;
+    if (s.dirty) { await push(); return; } // l'envoi détecte lui-même un enregistrement venu d'ailleurs
+    const stamp = await cloudStamp(s.userId);
+    if (!changedElsewhere(s, stamp)) return;
+    const remote = await cloudLoad(s.userId);
+    const cur = sync.current;
+    // si le joueur a joué pendant la vérification, c'est le prochain envoi qui tranchera
+    if (remote && cur && cur.userId === s.userId && !cur.dirty) { adopt(remote.state, remote.updatedAt, s.userId); say(OTHER_DEVICE_MSG); }
+  }, [adopt, push, say]);
+
+  /** Au démarrage (ou à la reconnexion) : garde la copie la plus récente entre le téléphone et le compte en ligne. */
+  const reconcile = useCallback(async (userId: string) => {
+    const stamp = await cloudStamp(userId);
+    const prev = sync.current?.userId === userId ? sync.current : null;
+    if (stamp === undefined) {
+      // serveur injoignable : on garde la copie du téléphone et on vérifiera plus tard
+      if (!prev) setSync({ userId, base: null, dirty: false, savedAt: Date.now() });
+      return;
+    }
+    if (startupChoice(prev, userId, stamp) === "cloud") {
+      const remote = await cloudLoad(userId);
+      if (remote) { adopt(remote.state, remote.updatedAt, userId); if (prev) say(OTHER_DEVICE_MSG); }
+      return;
+    }
+    // la copie du téléphone est la plus récente : elle remplacera celle en ligne
+    setSync({ userId, base: stamp, dirty: prev ? prev.dirty || prev.base !== stamp : true, savedAt: prev?.savedAt ?? Date.now() });
+    await push();
+  }, [adopt, push, say]);
+
+  // compte en ligne : vérification toutes les 20 s et à chaque retour sur l'appli
+  useEffect(() => {
+    if (!ready || !account?.cloud) return;
+    const onShow = () => { if (document.visibilityState === "visible") void pull(); };
+    const t = setInterval(() => void pull(), 20000);
+    document.addEventListener("visibilitychange", onShow);
+    return () => { clearInterval(t); document.removeEventListener("visibilitychange", onShow); };
+  }, [ready, account?.cloud, pull]);
 
   const today = parisDay(new Date(Date.now() + (player.extra?.dayShift ?? 0) * 86_400_000));
 
@@ -530,21 +627,26 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (r.needsConfirm || !r.user) return "confirm";
       saveAccount({ email: r.user.email, cloud: true, userId: r.user.id });
       const fresh = normalizeState({ ...createAccount(), name: nm.state.name }, secureRng, parisDay(new Date()));
+      setSync({ userId: r.user.id, base: null, dirty: false, savedAt: Date.now() });
       commit({ player: fresh, opening: null });
-      void cloudSave(r.user.id, fresh);
+      void push();
       return null;
     },
 
     signIn: async (email, password) => {
       const r = await cloudSignIn(email.trim(), password);
       if (!r.ok || !r.user) return r.ok ? "Connexion impossible." : r.error;
-      const saved = await cloudLoad(r.user.id);
-      saveAccount({ email: r.user.email, cloud: true, userId: r.user.id });
-      if (saved) commit({ player: normalizeState(saved.state, secureRng, parisDay(new Date())), opening: null });
+      const uid = r.user.id;
+      saveAccount({ email: r.user.email, cloud: true, userId: uid });
+      // même compte que la partie du téléphone (session expirée, par exemple) : on garde la copie la plus récente
+      if (sync.current?.userId === uid) { await reconcile(uid); return null; }
+      const saved = await cloudLoad(uid);
+      if (saved) adopt(saved.state, saved.updatedAt, uid);
       else {
         const base = normalizeState({ ...createAccount(), name: r.user.name ?? email.split("@")[0] }, secureRng, parisDay(new Date()));
+        setSync({ userId: uid, base: null, dirty: false, savedAt: Date.now() });
         commit({ player: base, opening: null });
-        void cloudSave(r.user.id, base);
+        void push();
       }
       return null;
     },
@@ -561,7 +663,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     signOut: async () => {
       const acc = accountRef.current;
-      if (acc?.cloud) { if (acc.userId) await cloudSave(acc.userId, live.current.player); await cloudSignOut(); }
+      if (acc?.cloud) { await push(); await cloudSignOut(); }
+      setSync(null);
       saveAccount(null);
       commit({ player: normalizeState(createAccount(), secureRng, parisDay(new Date())), opening: null });
     },
@@ -685,7 +788,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       addGc: (n) => commit({ ...live.current, player: { ...live.current.player, gc: live.current.player.gc + n } }),
       reset: () => commit({ player: normalizeState({ ...createAccount(), name: live.current.player.name }, secureRng, parisDay(new Date())), opening: null }),
     },
-  }), [ready, player, opening, toast, today, account, say, commit, runSync, saveAccount]);
+  }), [ready, player, opening, toast, today, account, say, commit, runSync, saveAccount, adopt, push, reconcile]);
 
   return <Ctx.Provider value={game}>{children}</Ctx.Provider>;
 }

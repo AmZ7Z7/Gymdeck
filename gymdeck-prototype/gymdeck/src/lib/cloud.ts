@@ -78,9 +78,34 @@ export async function cloudLoad(userId: string): Promise<{ state: PlayerState; u
   } catch { return null; }
 }
 
-export async function cloudSave(userId: string, state: PlayerState): Promise<boolean> {
+/** Date de la copie en ligne (null : aucune copie ; undefined : serveur injoignable). */
+export async function cloudStamp(userId: string): Promise<string | null | undefined> {
   try {
-    const { error } = await (await client()).from("player_saves").upsert({ user_id: userId, name: state.name ?? null, state, updated_at: new Date().toISOString() });
-    return !error;
-  } catch { return false; }
+    const { data, error } = await (await client()).from("player_saves").select("updated_at").eq("user_id", userId).maybeSingle();
+    if (error) return undefined;
+    return data ? (data.updated_at as string) : null;
+  } catch { return undefined; }
+}
+
+/** `conflict` : un autre appareil a enregistré entre-temps, rien n'a été écrasé. */
+export type SaveResult = { ok: true; updatedAt: string } | { ok: false; conflict: boolean };
+
+/**
+ * Enregistre la partie en ligne SEULEMENT si la copie en ligne est toujours celle vue en dernier (`base`).
+ * `base` null : première sauvegarde du compte (refusée si une copie existe déjà).
+ */
+export async function cloudSave(userId: string, state: PlayerState, base: string | null): Promise<SaveResult> {
+  try {
+    const c = await client();
+    const row = { user_id: userId, name: state.name ?? null, state, updated_at: new Date().toISOString() };
+    if (base === null) {
+      const { data, error } = await c.from("player_saves").insert(row).select("updated_at").single();
+      if (error) return { ok: false, conflict: error.code === "23505" }; // 23505 : la ligne existe déjà
+      return { ok: true, updatedAt: data.updated_at as string };
+    }
+    const { data, error } = await c.from("player_saves").update(row).eq("user_id", userId).eq("updated_at", base).select("updated_at");
+    if (error) return { ok: false, conflict: false };
+    if (!data?.length) return { ok: false, conflict: true };
+    return { ok: true, updatedAt: data[0].updated_at as string };
+  } catch { return { ok: false, conflict: false }; }
 }
