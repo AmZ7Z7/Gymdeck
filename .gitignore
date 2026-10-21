@@ -1,0 +1,17 @@
+# Fichiers créés automatiquement sur l'ordinateur : ils ne doivent pas aller sur GitHub.
+node_modules/
+.next/
+out/
+.vercel/
+
+# Secrets et réglages locaux
+.env*
+!.env.example
+
+# Réglages locaux de Claude Code
+.claude/
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+*.log
