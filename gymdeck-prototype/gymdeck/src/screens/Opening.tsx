@@ -93,6 +93,7 @@ function PackStage({ go, onBurst }: { go: (t: Tab) => void; onBurst: (color: str
         <p>{step === "idle" ? "Touche le booster pour l’ouvrir." : charging ? "Ça vibre…" : "Il s’ouvre !"}</p>
         {o.kind === "welcome2" && <p className="tagline">✦ Booster de bienvenue amélioré</p>}
         {o.kind === "welcome1" && <p className="tagline">✦ Booster de bienvenue</p>}
+        {o.kind === "streak" && <p className="tagline">✦ Booster de série amélioré</p>}
       </div>
 
       <div className="packstage">
@@ -241,6 +242,8 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
   const [fx, setFx] = useState<{ i: number; key: number } | null>(null);
   const [intro, setIntro] = useState(dealt);
   const [dragX, setDragX] = useState(0);
+  // Cartes déjà passées : elles sont parties à gauche (-1) ou à droite (1) de la pile.
+  const [flyDir, setFlyDir] = useState<number[]>(() => o.cardIds.map(() => -1));
   const [holding, setHolding] = useState<number | null>(null); // doigt posé longtemps sur une carte : on voit sa couleur
   const [tilt, setTilt] = useState({ x: 0, y: 0 }); // inclinaison de la carte sous le doigt, entre -1 et 1
   const holdTimer = useRef<number | null>(null);
@@ -255,8 +258,8 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
     return () => clearTimeout(t);
   }, [intro]);
 
-  // Taille des cartes : on remplit la zone sans jamais dépasser 60 % de la largeur ni sa hauteur.
-  const cardW = Math.max(120, Math.min(box.w * 0.6, ((box.h - 16) / 1.44)));
+  // Taille des cartes : on remplit la zone sans jamais dépasser 72 % de la largeur ni sa hauteur (avec la place de la pile).
+  const cardW = Math.max(120, Math.min(box.w * 0.72, ((box.h - 40) / 1.44)));
   const cardH = cardW * 1.44;
   const step = cardW * 1.0;
 
@@ -302,15 +305,24 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
     }
   };
 
-  /** Un seul geste : révéler la carte, puis passer à la suivante (la dernière mène au butin). */
-  const tap = (i: number) => {
-    if (charging !== null) return;
-    if (i !== idx) return goTo(i);
-    if (!shown[i]) return doReveal(i);
-    if (i < n - 1) return goTo(i + 1);
+  /** La carte du dessus quitte la pile (vers la gauche ou la droite) : la suivante, derrière, passe devant. */
+  const advance = (dir: number) => {
+    if (idx < n - 1) {
+      setFlyDir((f) => f.map((v, k) => (k === idx ? dir : v)));
+      goTo(idx + 1);
+      return;
+    }
     sfx.good();
     g.finishOpening();
   };
+
+  /** Toucher ou glisser la carte du dessus : la révéler si elle est cachée, sinon passer à celle de derrière. */
+  const act = (dir: number) => {
+    if (charging !== null) return;
+    if (!shown[idx]) return doReveal(idx);
+    advance(dir);
+  };
+  const tap = () => act(-1);
 
   const revealAll = () => {
     if (charging !== null) return;
@@ -322,9 +334,10 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
   // Clavier (ordinateur) : flèches pour naviguer, Entrée / espace pour toucher la carte.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "ArrowRight") goTo(idx + 1);
-      else if (e.key === "ArrowLeft") goTo(idx - 1);
-      else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tap(idx); }
+      if (e.key === "ArrowRight") act(1);
+      else if (e.key === "ArrowLeft") act(-1);
+      else if (e.key === "Backspace") goTo(idx - 1);
+      else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tap(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -379,9 +392,10 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
     endPress();
     if (p.moved) {
       const v = dx / Math.max(1, Date.now() - p.t); // px/ms
-      if (charging === null && (Math.abs(dx) > step * 0.22 || Math.abs(v) > 0.45)) goTo(idx + (dx < 0 ? 1 : -1));
+      // glisser vers la gauche ou la droite : la carte part de ce côté
+      if (Math.abs(dx) > step * 0.22 || Math.abs(v) > 0.45) act(dx < 0 ? -1 : 1);
     } else {
-      tap(p.i ?? idx); // un appui à côté d'une carte compte comme un appui sur la carte du milieu
+      tap(); // un appui n'importe où sur la pile compte comme un appui sur la carte du dessus
     }
   };
   const onCancel = () => { press.current = null; setDragX(0); endPress(); };
@@ -396,8 +410,8 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
     : !curShown
       ? "Touche la carte pour la révéler"
       : idx < n - 1
-        ? "Touche pour passer à la suivante"
-        : "Touche pour voir ton butin";
+        ? "Touche ou glisse pour la suivante"
+        : "Touche ou glisse pour voir ton butin";
 
   return (
     <div className="stage">
@@ -445,14 +459,21 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
               aria-label={`Carte ${i + 1} sur ${n}${isShown ? "" : ", face cachée"}`}
               style={{
                 width: cardW, height: cardH, marginLeft: -cardW / 2, marginTop: -cardH / 2,
-                zIndex: 30 - Math.abs(d) * 2, pointerEvents: Math.abs(d) > 1 ? "none" : "auto",
+                // pile : la carte du dessus devant, les suivantes derrière ; les cartes passées s'envolent par-dessus
+                zIndex: d < 0 ? 40 : 30 - d * 2, pointerEvents: isCur ? "auto" : "none",
               }}
               initial={dealt ? { x: 0, y: cardH * 0.45, scale: 0.35, opacity: 0, rotate: (i - 2) * 9 } : false}
-              animate={{
-                x: d * step + dragX, y: 0, rotate: 0,
-                scale: isCur ? 1 : 0.8,
-                opacity: Math.abs(d) > 1 ? 0 : isCur ? 1 : 0.7,
-              }}
+              animate={
+                d < 0
+                  ? { x: flyDir[i]! * (box.w / 2 + cardW), y: -cardH * 0.08, rotate: flyDir[i]! * 24, scale: 0.95, opacity: 0 }
+                  : {
+                    x: isCur ? dragX : 0,
+                    y: -d * cardH * 0.035, // les cartes de derrière dépassent un peu au-dessus
+                    rotate: isCur ? dragX * 0.06 : 0,
+                    scale: 1 - d * 0.045,
+                    opacity: d > 3 ? 0 : 1,
+                  }
+              }
               transition={
                 dragX !== 0 && !intro
                   ? { duration: 0 }
