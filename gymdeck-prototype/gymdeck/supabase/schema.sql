@@ -23,3 +23,37 @@ create policy "création de sa propre sauvegarde" on public.player_saves
 drop policy if exists "mise à jour de sa propre sauvegarde" on public.player_saves;
 create policy "mise à jour de sa propre sauvegarde" on public.player_saves
   for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+
+-- ───────── Suppression de compte (bouton « Supprimer mon compte » du profil) ─────────
+-- Le joueur connecté supprime son propre compte ; sa sauvegarde part avec (on delete cascade).
+create or replace function public.delete_my_account()
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'Non connecté';
+  end if;
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+revoke all on function public.delete_my_account() from public, anon;
+grant execute on function public.delete_my_account() to authenticated;
+
+-- ───────── Suppression automatique après 3 ans d'inactivité (politique de confidentialité) ─────────
+-- Chaque lundi à 4 h (UTC) : les comptes sans aucune sauvegarde depuis 3 ans sont supprimés.
+create extension if not exists pg_cron with schema pg_catalog;
+select cron.schedule(
+  'gymdeck-comptes-inactifs',
+  '0 4 * * 1',
+  $job$
+    delete from auth.users u
+    where coalesce(
+      (select s.updated_at from public.player_saves s where s.user_id = u.id),
+      u.last_sign_in_at,
+      u.created_at
+    ) < now() - interval '3 years';
+  $job$
+);

@@ -1,16 +1,16 @@
 /**
  * Informations des pages légales (mentions légales et politique de confidentialité).
- * Les valeurs entre crochets sont à remplacer avant de publier.
+ * Pense à changer la date `updated` à chaque modification du texte.
  */
 export const LEGAL = {
   /** Nom de famille de l'éditeur. */
-  lastName: "[NOM DE FAMILLE]",
+  lastName: "Mariotte",
   /** Adresse e-mail de contact affichée sur les pages. */
-  email: "[ADRESSE EMAIL DE CONTACT]",
+  email: "contact@gymdeck.fr",
   /** Adresse du site. */
-  site: "[ADRESSE DU SITE]",
+  site: "gymdeck.fr",
   /** Date de dernière mise à jour des pages. */
-  updated: "[date de mise en ligne]",
+  updated: "21 octobre 2026",
 };
 
 /** Hébergeur (adresse vérifiée sur vercel.com/legal le 21 octobre 2026). */

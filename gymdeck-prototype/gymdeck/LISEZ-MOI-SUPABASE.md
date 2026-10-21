@@ -14,3 +14,9 @@ Tant que ce n'est pas fait, GymDeck tourne en « mode test » : le compte reste 
 5. (Conseillé) Supabase → **Authentication → URL Configuration** : mets l'adresse de ton site Vercel dans « Site URL ».
 
 Après ça, l'écran d'accueil propose « Créer un compte / Se connecter » pour de vrai, et la partie est sauvegardée en ligne.
+
+## Mise à jour : suppression de compte et comptes inactifs
+Si tu as déjà fait l'étape 2 avant le 21 octobre 2026, recolle tout `supabase/schema.sql` dans **SQL Editor** → **Run**
+(il peut être relancé sans risque). Cela ajoute :
+- la fonction qui permet au bouton « Supprimer mon compte » du profil de fonctionner ;
+- un nettoyage automatique chaque lundi : les comptes sans aucune activité depuis 3 ans sont supprimés (comme annoncé dans la politique de confidentialité).

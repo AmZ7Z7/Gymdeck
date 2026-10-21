@@ -18,7 +18,7 @@ export default function Confidentialite() {
         <li><b>Données de compte</b> : adresse email et pseudo, si vous créez un compte.</li>
         <li><b>Données de jeu</b> : cartes collectionnées, boosters ouverts, monnaie du jeu (GC), progression, séries de jours, missions, résultats des combats et classements.</li>
         <li><b>Données sociales</b> : liste d’amis, vitrine, échanges de cartes et enchères, si vous utilisez ces fonctions.</li>
-        <li><b>Séances déclarées</b> : les séances que vous enregistrez pour obtenir des récompenses dans le jeu (date, exercices).</li>
+        <li><b>Séances déclarées</b> : les jours où vous validez une séance ou que vous cochez dans le calendrier, pour obtenir des récompenses dans le jeu. Seule la date est enregistrée.</li>
         <li><b>Données techniques</b> : informations de connexion nécessaires au fonctionnement et à la sécurité du site (journaux techniques de l’hébergeur).</li>
       </ul>
       <p>GymDeck ne collecte aucune donnée bancaire, aucune donnée de santé (poids, mensurations, état de santé) et aucune donnée de localisation précise.</p>
@@ -29,7 +29,7 @@ export default function Confidentialite() {
         <li>Créer et gérer votre compte, sauvegarder votre collection et votre progression (exécution du service que vous demandez).</li>
         <li>Faire fonctionner les fonctions sociales : amis, échanges, enchères, classements.</li>
         <li>Assurer la sécurité du site et empêcher la triche (intérêt légitime).</li>
-        <li>Vous envoyer des rappels de séance, uniquement si vous les activez (consentement, que vous pouvez retirer à tout moment).</li>
+        <li>Vous rappeler vos séances, uniquement si vous le demandez : le jeu crée un fichier d’agenda que vous ajoutez vous-même à votre calendrier (consentement, que vous pouvez retirer à tout moment en supprimant l’événement de votre agenda).</li>
       </ul>
       <p>Vos données ne sont jamais vendues ni utilisées à des fins publicitaires.</p>
 
@@ -46,7 +46,7 @@ export default function Confidentialite() {
 
       <h2>Durée de conservation</h2>
       <ul>
-        <li>Données de compte et de jeu : tant que votre compte existe. Elles sont supprimées si vous supprimez votre compte, ou après 3 ans d’inactivité.</li>
+        <li>Données de compte et de jeu : tant que votre compte existe. Elles sont supprimées définitivement quand vous supprimez votre compte (bouton « Supprimer mon compte » dans votre profil), ou automatiquement après 3 ans sans aucune activité dans le jeu.</li>
         <li>Journaux techniques : selon les durées de conservation de l’hébergeur, en règle générale quelques semaines.</li>
       </ul>
 
@@ -55,7 +55,7 @@ export default function Confidentialite() {
       <p>Si vous estimez que vos droits ne sont pas respectés, vous pouvez déposer une réclamation auprès de la CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer">www.cnil.fr</a>).</p>
 
       <h2>Mineurs</h2>
-      <p>Si vous avez moins de 15 ans, la création d’un compte nécessite l’accord d’un de vos parents ou représentant légal.</p>
+      <p>GymDeck est réservé aux personnes âgées de 15 ans et plus. Si vous avez moins de 15 ans, vous ne pouvez pas créer de compte.</p>
 
       <h2>Modifications</h2>
       <p>Cette politique peut être mise à jour si le jeu évolue. La date de dernière mise à jour figure en haut de la page.</p>

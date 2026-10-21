@@ -56,6 +56,17 @@ export async function cloudSignIn(email: string, password: string): Promise<Auth
   } catch (e) { return { ok: false, error: e instanceof Error ? e.message : "Erreur réseau." }; }
 }
 
+/** Supprime définitivement le compte connecté et sa sauvegarde (fonction delete_my_account de supabase/schema.sql). */
+export async function cloudDeleteAccount(): Promise<string | null> {
+  try {
+    const c = await client();
+    const { error } = await c.rpc("delete_my_account");
+    if (error) return frenchError(error.message);
+    await c.auth.signOut();
+    return null;
+  } catch (e) { return e instanceof Error ? e.message : "Erreur réseau."; }
+}
+
 export async function cloudSignOut() { try { await (await client()).auth.signOut(); } catch { /* ignoré */ } }
 
 export async function cloudResetPassword(email: string): Promise<string | null> {

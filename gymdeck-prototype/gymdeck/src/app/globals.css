@@ -1307,3 +1307,6 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .legal-body b { color: var(--text); }
 .legal-links { text-align: center; font-size: 12px; color: var(--muted); margin: 18px 0 4px; }
 .legal-links a { color: var(--muted); text-decoration: underline; text-underline-offset: 2px; }
+.textbtn.danger { display: block; margin: 12px auto 0; color: #ff8a8a; font-size: 14px; text-decoration: underline; text-underline-offset: 2px; }
+.btn.primary.danger { background: #e5484d; color: #fff; box-shadow: none; }
+.btn.primary.danger:disabled { opacity: .45; }

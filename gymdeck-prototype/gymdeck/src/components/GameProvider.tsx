@@ -22,7 +22,7 @@ import {
   type Consigne, type DuelRecord, type Fight, type Opponent,
 } from "@/lib/duel";
 import {
-  cloudEnabled, cloudLoad, cloudResetPassword, cloudSave, cloudSession, cloudSignIn, cloudSignOut, cloudSignUp, cloudStamp,
+  cloudDeleteAccount, cloudEnabled, cloudLoad, cloudResetPassword, cloudSave, cloudSession, cloudSignIn, cloudSignOut, cloudSignUp, cloudStamp,
 } from "@/lib/cloud";
 import { changedElsewhere, startupChoice, type SyncInfo } from "@/lib/sync";
 import type { MuscleGroup, Rarity } from "@/lib/config";
@@ -99,6 +99,8 @@ interface Game {
   resetPassword: (email: string) => Promise<string | null>;
   localStart: (email: string, name: string) => string | null;
   signOut: () => Promise<void>;
+  /** Supprime définitivement le compte (en ligne) ou la partie (mode test). Renvoie un message d'erreur ou null. */
+  deleteAccount: () => Promise<string | null>;
   claimMission: (scope: "daily" | "weekly", id: string) => number | string;
   claimStreak: (days: number) => number | string;
   claimSet: (group: MuscleGroup, tier: string) => number | string;
@@ -676,6 +678,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       setSync(null);
       saveAccount(null);
       commit({ player: normalizeState(createAccount(), secureRng, parisDay(new Date())), opening: null });
+    },
+
+    deleteAccount: async () => {
+      const acc = accountRef.current;
+      // plus aucun envoi en ligne : la sauvegarde ne doit pas être recréée juste après la suppression
+      if (syncTimer.current) clearTimeout(syncTimer.current);
+      const s = sync.current;
+      setSync(null);
+      if (acc?.cloud) {
+        const err = await cloudDeleteAccount();
+        if (err) { setSync(s); return err; }
+      }
+      saveAccount(null);
+      commit({ player: normalizeState(createAccount(), secureRng, parisDay(new Date())), opening: null });
+      return null;
     },
 
     claimMission: (scope, id) => {

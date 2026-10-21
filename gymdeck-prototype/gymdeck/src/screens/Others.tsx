@@ -31,6 +31,10 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
   const [rem, setRem] = useState(false);
   const [tuto, setTuto] = useState(false);
   const [out, setOut] = useState(false);
+  const [del, setDel] = useState(false);
+  const [delText, setDelText] = useState("");
+  const [delErr, setDelErr] = useState<string | null>(null);
+  const [delBusy, setDelBusy] = useState(false);
   const e = g.extra;
   const ready = claimableCount(p, g.day, g.gameNow());
   const showcase = e.showcase.map((id) => p.cards.find((c) => c.id === id)).filter((c) => !!c);
@@ -109,6 +113,7 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
       <div className="panel">
         <div className="kv"><span>{g.account?.email || "Compte test"}</span><b>{g.account?.cloud ? "En ligne" : "Sur cet appareil"}</b></div>
         <button className="btn ghost small" style={{ marginTop: 10 }} onClick={() => setOut(true)}>Se déconnecter</button>
+        <button className="textbtn danger" onClick={() => { setDel(true); setDelText(""); setDelErr(null); }}>Supprimer mon compte</button>
         <LegalLinks />
       </div>
       <p className="warn">GymDeck est gratuit. Les cartes et les GymCoins n’ont aucune valeur en argent et ne peuvent pas être convertis. {g.account?.cloud ? "Tes progrès sont sauvegardés en ligne." : "Les progrès sont enregistrés sur cet appareil pendant le prototype."}</p>
@@ -154,6 +159,27 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
           <p>{g.account?.cloud ? "Ta partie est sauvegardée en ligne : tu la retrouveras en te reconnectant." : "Mode test : ta partie n’est pas sauvegardée en ligne, elle sera effacée de ce téléphone."}</p>
           <button className="btn primary" onClick={() => { void g.signOut(); setOut(false); }}>Oui, me déconnecter</button>
           <button className="btn ghost small" onClick={() => setOut(false)}>Annuler</button>
+        </Sheet>
+      )}
+      {del && (
+        <Sheet onClose={() => !delBusy && setDel(false)} label="Supprimer mon compte">
+          <div className="sheet-title">Supprimer mon compte ?</div>
+          <p>{g.account?.cloud
+            ? "Ton compte, ta collection, tes GC et toute ta progression seront supprimés définitivement. Impossible de revenir en arrière."
+            : "Mode test : toute ta partie sera effacée de ce téléphone. Impossible de revenir en arrière."}</p>
+          <div className="field">
+            <label htmlFor="delconfirm">Pour confirmer, écris SUPPRIMER</label>
+            <input id="delconfirm" value={delText} autoComplete="off" onChange={(ev) => { setDelText(ev.target.value); setDelErr(null); }} />
+          </div>
+          {delErr && <span className="autherr" role="alert">{delErr}</span>}
+          <button className="btn primary danger" disabled={delText.trim().toUpperCase() !== "SUPPRIMER" || delBusy} onClick={async () => {
+            setDelBusy(true);
+            const err = await g.deleteAccount();
+            setDelBusy(false);
+            if (err) { setDelErr(err); return; }
+            setDel(false);
+          }}>{delBusy ? "…" : "Supprimer définitivement"}</button>
+          <button className="btn ghost small" disabled={delBusy} onClick={() => setDel(false)}>Annuler</button>
         </Sheet>
       )}
     </div>

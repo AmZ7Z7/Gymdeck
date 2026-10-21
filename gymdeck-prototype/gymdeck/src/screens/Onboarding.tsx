@@ -88,7 +88,7 @@ export function Onboarding() {
       <p className="fine" style={{ textAlign: "center" }}>
         {!cloud && "Mode test : ton compte reste sur ce téléphone et ton mot de passe n’est pas enregistré. "}
         {create && g.player.boosters.length > 0 ? "2 boosters de bienvenue t’attendent. " : ""}
-        GymDeck est gratuit : les cartes et les GymCoins n’ont aucune valeur en argent. Réservé aux 18 ans et plus.
+        GymDeck est gratuit : les cartes et les GymCoins n’ont aucune valeur en argent. Réservé aux 15 ans et plus.
       </p>
       <LegalLinks />
     </motion.div>
