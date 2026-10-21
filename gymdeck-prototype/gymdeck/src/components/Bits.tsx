@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { DISCARD_GC, NORMAL_WEIGHTS, PITY_THRESHOLD, RARITIES, RARITY_COLOR, STAT_RANGE } from "@/lib/config";
+import {
+  DISCARD_GC, LR_PITY_THRESHOLD, NORMAL_WEIGHTS, PITY_THRESHOLD, RARITIES, RARITY_COLOR, SESSION_WEIGHTS, SHARDS_DISCARD, STAT_RANGE,
+  STREAK_BOOSTER_EVERY, WELCOME2_WEIGHTS,
+} from "@/lib/config";
 import { Sheet } from "./Sheet";
 import { IconGift } from "./Icons";
 
@@ -72,22 +75,28 @@ export function OddsSheet({ onClose }: { onClose: () => void }) {
     <Sheet onClose={onClose} label="Taux de drop">
       <div className="sheet-title">Taux de drop</div>
       <div className="odds">
-        <div className="odds-row head"><span>Rareté</span><span>Booster</span><span>Défausse</span></div>
+        <div className="odds-row g4 head"><span>Rareté</span><span>Booster</span><span>Séance</span><span>Défausse</span></div>
         {RARITIES.map((r) => (
-          <div className="odds-row" key={r}>
+          <div className="odds-row g4" key={r}>
             <span style={{ color: RARITY_COLOR[r], fontWeight: 800 }}>{r}</span>
             <span>{pctFmt(NORMAL_WEIGHTS[r])}</span>
-            <span>{DISCARD_GC[r]} GC</span>
+            <span>{pctFmt(SESSION_WEIGHTS[r])}</span>
+            <span>{DISCARD_GC[r]} GC · {SHARDS_DISCARD[r]} ✦</span>
           </div>
         ))}
       </div>
-      <p className="fine">Probabilités par carte, avant garanties. ATQ et DEF sont tirées au hasard dans la fourchette de la rareté
+      <p className="fine">Probabilités par carte, avant garanties. « Séance » : booster gagné en validant ta séance ; « Booster » : tous les
+        autres (connexion, boutique, passe). ATQ et DEF sont tirées au hasard dans la fourchette de la rareté
         ({RARITIES.map((r) => `${r} ${STAT_RANGE[r].min}–${STAT_RANGE[r].max}`).join(" · ")}).</p>
       <ul className="rules">
         <li><b>5 cartes</b> par booster.</li>
         <li><b>Au moins une R :</b> si les 5 cartes sont des C, l’une d’elles devient R.</li>
         <li><b>Garantie UR :</b> après {PITY_THRESHOLD - 1} boosters sans UR ni LR, le {PITY_THRESHOLD}e en contient forcément une UR.</li>
         <li>Une UR ou une LR remet ce compteur à zéro.</li>
+        <li><b>Garantie LR :</b> après {LR_PITY_THRESHOLD - 1} boosters sans LR, le {LR_PITY_THRESHOLD}e en contient forcément une.</li>
+        <li><b>Booster de série :</b> tous les {STREAK_BOOSTER_EVERY} jours de série, un booster bonus aux taux améliorés
+          ({RARITIES.map((r) => `${r} ${pctFmt(WELCOME2_WEIGHTS[r])}`).join(" · ")}).</li>
+        <li><b>Forge :</b> chaque carte défaussée donne des éclats ✦ ; avec assez d’éclats, fabrique la carte de ton choix.</li>
         <li>Seules les UR et LR ont un passif.</li>
       </ul>
       <button className="btn ghost small" onClick={onClose}>Fermer</button>

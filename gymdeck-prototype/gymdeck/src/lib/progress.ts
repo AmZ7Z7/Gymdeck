@@ -1,4 +1,6 @@
-import { COMMUNITY_GC, DUEL, EXERCISES, GROUPS, PARIS_TZ, PASS, PASS_REWARDS, RARITIES, RARITY_RANK, type MuscleGroup, type Rarity } from "./config";
+import {
+  COMMUNITY_GC, DUEL, EXERCISES, GROUPS, PARIS_TZ, PASS, PASS_REWARDS, RARITIES, RARITY_RANK, STREAK_BOOSTER_EVERY, type MuscleGroup, type Rarity,
+} from "./config";
 import type { Consigne, DefenseRecord, DuelDay, DuelRecord } from "./duel";
 import { deckPower } from "./engine";
 import { newId, parisDay, type PlayerState, type Result } from "./game";
@@ -10,7 +12,7 @@ import type { Rng } from "./rng";
  * Les montants de récompense sont tous ici : un seul endroit à modifier pour équilibrer.
  */
 
-export type EventKind = "session" | "open" | "bid" | "list" | "deck" | "buy" | "login" | "won" | "sold" | "trade" | "discard" | "duel" | "duelWin" | "grade";
+export type EventKind = "session" | "open" | "bid" | "list" | "deck" | "buy" | "login" | "won" | "sold" | "trade" | "discard" | "duel" | "duelWin" | "grade" | "craft";
 export type Counters = Partial<Record<EventKind, number>>;
 
 export interface SeasonResult { id: string; rank: number; total: number; reward: number }
@@ -175,12 +177,15 @@ export function track(s: PlayerState, kind: EventKind, rng: Rng, day: string, ra
   const base = normalize(s, rng, day, ranker);
   const e = base.extra!;
   let streak = e.streak;
+  let streakBooster = false;
   if (kind === "session") {
     const gap = streak.lastDay ? daysBetween(streak.lastDay, day) : null;
     if (gap === 0) { /* déjà compté aujourd'hui */ }
     else {
       const cur = gap !== null && gap <= 2 && streak.current > 0 ? streak.current + 1 : 1;
       streak = { current: cur, best: Math.max(streak.best, cur), lastDay: day, claimed: gap !== null && gap <= 2 && streak.current > 0 ? streak.claimed : [] };
+      // tous les 7 jours de série : un booster bonus aux taux améliorés
+      streakBooster = cur % STREAK_BOOSTER_EVERY === 0;
     }
   }
   let history = e.history ?? [];
@@ -189,7 +194,8 @@ export function track(s: PlayerState, kind: EventKind, rng: Rng, day: string, ra
   const duel = kind === "session" && e.duel?.day === day ? { ...e.duel, bonus: DUEL.perSession } : e.duel;
   let next: Extra = { ...e, daily: inc(e.daily, kind, n), weekly: inc(e.weekly, kind, n), life: inc(e.life, kind, n), streak, history, duel };
   if (kind === "session") next = addPassXp(next, PASS.session, day);
-  const out = { ...base, extra: next };
+  const boosters = streakBooster ? [...base.boosters, { id: newId(), kind: "streak" as const }] : base.boosters;
+  const out = { ...base, boosters, extra: next };
   // la puissance du deck a pu changer
   const power = rankedPower(out);
   if (power > next.season.bestPower) return { ...out, extra: { ...next, season: { ...next.season, bestPower: power } } };

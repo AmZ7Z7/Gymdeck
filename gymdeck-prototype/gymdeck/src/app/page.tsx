@@ -15,6 +15,7 @@ import { Friends } from "@/screens/Social";
 import { Calendar } from "@/screens/Calendar";
 import { Combats } from "@/screens/Combats";
 import { Atelier } from "@/screens/Atelier";
+import { Forge } from "@/screens/Forge";
 import { claimableCount } from "@/lib/progress";
 import { readyCount } from "@/lib/grading";
 import { Profile } from "@/screens/Others";
@@ -27,12 +28,12 @@ import { Card } from "@/components/Card";
 import type { CardData } from "@/lib/engine";
 
 /** Pages ouvertes depuis un onglet (avec un bouton retour). */
-export type Page = "missions" | "friends" | "calendar" | "atelier" | "season";
-const PAGES: Page[] = ["missions", "friends", "calendar", "atelier", "season"];
-const PAGE_HASH: Record<Page, string> = { missions: "missions", friends: "amis", calendar: "calendrier", atelier: "atelier", season: "saison" };
+export type Page = "missions" | "friends" | "calendar" | "atelier" | "season" | "forge";
+const PAGES: Page[] = ["missions", "friends", "calendar", "atelier", "season", "forge"];
+const PAGE_HASH: Record<Page, string> = { missions: "missions", friends: "amis", calendar: "calendrier", atelier: "atelier", season: "saison", forge: "forge" };
 
 export type Tab = "home" | "collection" | "gymdeck" | "shop" | "market" | "combats" | "profile";
-/** Ouvre une page ; pour l'atelier, on peut préciser la carte à confier à Basile. */
+/** Ouvre une page ; pour l'atelier, on peut préciser la carte à confier à Basile ; pour la Forge, l'exercice choisi. */
 export type OpenPage = (p: Page, cardId?: string) => void;
 
 /** 6 onglets au maximum : le Marché est dans la Boutique (« market » = Boutique, partie Marché). */
@@ -121,6 +122,7 @@ function Shell() {
                 : page === "calendar" ? <Calendar back={closePage} />
                   : page === "atelier" ? <Atelier back={closePage} initialCardId={pageArg} />
                   : page === "season" ? <Season back={closePage} openMissions={() => openPage("missions")} />
+                  : page === "forge" ? <Forge back={closePage} initialSlug={pageArg} />
                     : (
                       <>
                         {tab === "home" && <Home go={go} openPage={openPage} />}

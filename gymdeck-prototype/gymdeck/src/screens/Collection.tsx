@@ -12,7 +12,7 @@ import { Sheet } from "@/components/Sheet";
 import { CombatInfo } from "@/components/CombatBits";
 import { gradeBonus } from "@/lib/grading";
 import { sfx } from "@/lib/sound";
-import { DISCARD_GC, EXERCISES, GRADE_LABEL, GRADE_PRICE, GROUPS, RARITIES, RARITY_COLOR, RARITY_RANK, exerciseBySlug, gradeColor, type MuscleGroup, type Rarity } from "@/lib/config";
+import { DISCARD_GC, EXERCISES, SHARDS_DISCARD, GRADE_LABEL, GRADE_PRICE, GROUPS, RARITIES, RARITY_COLOR, RARITY_RANK, exerciseBySlug, gradeColor, type MuscleGroup, type Rarity } from "@/lib/config";
 import { atWorkshop } from "@/lib/game";
 import type { OpenPage } from "@/app/page";
 import { formatDuration } from "@/components/Bits";
@@ -67,6 +67,7 @@ export function Collection({ openPage }: { openPage: OpenPage }) {
   const comp = completion(player);
   const dups = useMemo(() => duplicateIds(player), [player]);
   const dupGain = dups.reduce((s, id) => s + DISCARD_GC[cards.find((c) => c.id === id)!.rarity], 0);
+  const dupShards = dups.reduce((s, id) => s + SHARDS_DISCARD[cards.find((c) => c.id === id)!.rarity], 0);
 
   const needle = norm(q);
   const filtered = useMemo(
@@ -107,6 +108,11 @@ export function Collection({ openPage }: { openPage: OpenPage }) {
         <span><b>{comp.owned} / {comp.total}</b> cartes uniques · {cards.length} au total</span>
       </div>
       <div className="progress" style={{ marginBottom: 12 }}><i style={{ width: `${(comp.owned / comp.total) * 100}%` }} /></div>
+      <button className="panel forgebtn" onClick={() => openPage("forge")}>
+        <span className="fb-ico" aria-hidden>✦</span>
+        <span className="t">La Forge<span className="sub">Fabrique la carte de ton choix avec tes éclats</span></span>
+        <span className="fb-n">{player.shards ?? 0} ✦</span>
+      </button>
 
       {view !== "ext" && (<>
       <label className="search">
@@ -163,11 +169,11 @@ export function Collection({ openPage }: { openPage: OpenPage }) {
               {atWorkshop(player, s.best.id) && <span className="deckbadge lab">CHEZ BASILE</span>}
             </button>
           ) : (
-            <div className="ccell ghost" key={s.slug} aria-label={`${s.name} : pas encore obtenu`}>
+            <button className="ccell ghost" key={s.slug} aria-label={`${s.name} : pas encore obtenu, fabriquer à la Forge`} onClick={() => openPage("forge", s.slug)}>
               <div className="card"><CardBack /></div>
               <span className="ghostlab">?</span>
               <div className="nm">{s.name}</div>
-            </div>
+            </button>
           ))}
         </div>
       ) : filtered.length === 0 ? (
@@ -186,7 +192,7 @@ export function Collection({ openPage }: { openPage: OpenPage }) {
 
       {dups.length > 0 && (
         <button className="btn ghost small" style={{ marginTop: 18 }} onClick={() => setCleaning(true)}>
-          Nettoyer les doublons ({dups.length}) · +{dupGain} GC
+          Nettoyer les doublons ({dups.length}) · +{dupGain} GC · +{dupShards} ✦
         </button>
       )}
 
@@ -195,16 +201,16 @@ export function Collection({ openPage }: { openPage: OpenPage }) {
       {cleaning && (
         <Sheet onClose={() => setCleaning(false)} label="Nettoyer les doublons">
           <div className="sheet-title">Nettoyer les doublons</div>
-          <p>Pour chaque exercice et chaque rareté, on garde ta <b>meilleure carte</b>. {dups.length > 1 ? `Les ${dups.length} cartes en trop sont défaussées` : "La carte en trop est défaussée"} pour <b style={{ color: "var(--lime)" }}>+{dupGain} GC</b>. Les cartes de ton deck ne sont jamais touchées.</p>
+          <p>Pour chaque exercice et chaque rareté, on garde ta <b>meilleure carte</b>. {dups.length > 1 ? `Les ${dups.length} cartes en trop sont défaussées` : "La carte en trop est défaussée"} pour <b style={{ color: "var(--lime)" }}>+{dupGain} GC</b> et <b style={{ color: "var(--lime)" }}>+{dupShards} éclats ✦</b> pour la Forge. Les cartes de ton deck ne sont jamais touchées.</p>
           <p className="fine">Action définitive.</p>
           <button
             className="btn primary"
             onClick={() => {
               const r = g.discardMany(dups);
               setCleaning(false);
-              g.say("gained" in r ? `${r.count} doublons défaussés · +${r.gained} GC` : r.error);
+              g.say("gained" in r ? `${r.count} doublons défaussés · +${r.gained} GC · +${r.shards} ✦` : r.error);
             }}
-          >Défausser · +{dupGain} GC</button>
+          >Défausser · +{dupGain} GC · +{dupShards} ✦</button>
           <button className="btn ghost small" onClick={() => setCleaning(false)}>Annuler</button>
         </Sheet>
       )}
@@ -278,11 +284,11 @@ function Detail({ slug, startId, onClose, onGrade }: { slug: string; startId: st
           <button className="btn primary small" onClick={() => {
             const r = g.discard(card.id);
             setConfirm(false);
-            if ("gained" in r) { sfx.coin(); g.say(`+${r.gained} GC`); }
+            if ("gained" in r) { sfx.coin(); g.say(`+${r.gained} GC · +${r.shards} éclats ✦`); }
             else g.say(r.error);
-          }}>Confirmer · +{DISCARD_GC[card.rarity]} GC</button>
+          }}>Confirmer · +{DISCARD_GC[card.rarity]} GC · +{SHARDS_DISCARD[card.rarity]} ✦</button>
         ) : (
-          <button className="btn ghost small" onClick={() => setConfirm(true)}>Défausser · +{DISCARD_GC[card.rarity]} GC</button>
+          <button className="btn ghost small" onClick={() => setConfirm(true)}>Défausser · +{DISCARD_GC[card.rarity]} GC · +{SHARDS_DISCARD[card.rarity]} ✦</button>
         )}
         <div className="two">
           <button className="btn ghost small" onClick={async () => g.say(await shareCards([card], g.player.name ?? "Joueur"))}>Partager</button>

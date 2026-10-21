@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import {
-  autoDeck as autoDeckFn, buyBooster, newId, claimLogin, createAccount, discardCard, discardMany as discardManyFn,
+  autoDeck as autoDeckFn, buyBooster, craftCard as craftCardFn, newId, claimLogin, createAccount, discardCard, discardMany as discardManyFn,
   openPendingBooster, parisDay, setDeck as setDeckFn, setName as setNameFn, validateSession,
   type OwnedCard, type PendingBooster, type PlayerState,
 } from "@/lib/game";
@@ -70,8 +70,10 @@ interface Game {
   validate: () => string | null;
   claim: () => string | null;
   buy: () => { error: string } | { boosterId: string };
-  discard: (cardId: string) => { gained: number } | { error: string };
-  discardMany: (ids: string[]) => { gained: number; count: number } | { error: string };
+  discard: (cardId: string) => { gained: number; shards: number } | { error: string };
+  discardMany: (ids: string[]) => { gained: number; shards: number; count: number } | { error: string };
+  /** Forge : fabrique une carte choisie avec des éclats. */
+  craft: (exerciseSlug: string, rarity: Rarity) => { card: OwnedCard } | { error: string };
   setName: (name: string) => string | null;
   setDeck: (ids: string[]) => string | null;
   autoDeck: () => string | null;
@@ -461,14 +463,21 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const r = discardCard(live.current.player, cardId);
       if (!r.ok) return { error: r.error };
       commit({ ...live.current, player: trk(r.state, "discard") });
-      return { gained: r.gained };
+      return { gained: r.gained, shards: r.shards };
     },
 
     discardMany: (ids) => {
       const r = discardManyFn(live.current.player, ids);
       if (!r.ok) return { error: r.error };
       commit({ ...live.current, player: trk(r.state, "discard") });
-      return { gained: r.gained, count: r.count };
+      return { gained: r.gained, shards: r.shards, count: r.count };
+    },
+
+    craft: (exerciseSlug, rarity) => {
+      const r = craftCardFn(live.current.player, exerciseSlug, rarity, secureRng);
+      if (!r.ok) return { error: r.error };
+      commit({ ...live.current, player: trk(r.state, "craft") });
+      return { card: r.card };
     },
 
     setName: (name) => {

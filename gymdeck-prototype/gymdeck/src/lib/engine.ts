@@ -1,6 +1,6 @@
 import {
-  BoosterKind, CARDS_PER_BOOSTER, DECK_SIZE, EXERCISES, NORMAL_WEIGHTS, PASSIVE_TENTHS, PITY_THRESHOLD,
-  RARITIES, RARITY_RANK, STAT_RANGE, WELCOME2_WEIGHTS, type Rarity,
+  BoosterKind, CARDS_PER_BOOSTER, DECK_SIZE, EXERCISES, LR_PITY_THRESHOLD, NORMAL_WEIGHTS, PASSIVE_TENTHS, PITY_THRESHOLD,
+  RARITIES, RARITY_RANK, SESSION_WEIGHTS, STAT_RANGE, WELCOME2_WEIGHTS, type Rarity,
 } from "./config";
 import type { Rng } from "./rng";
 
@@ -28,7 +28,21 @@ export interface CardData {
 export type Weights = Record<Rarity, number>;
 
 export function weightsFor(kind: BoosterKind): Weights {
-  return kind === "welcome2" ? WELCOME2_WEIGHTS : NORMAL_WEIGHTS;
+  if (kind === "welcome2" || kind === "streak") return WELCOME2_WEIGHTS;
+  if (kind === "session") return SESSION_WEIGHTS;
+  return NORMAL_WEIGHTS;
+}
+
+/** Fabrique une carte d'un exercice et d'une rareté choisis (Forge) : stats et passif tirés comme dans un booster. */
+export function makeChosenCard(rng: Rng, exerciseSlug: string, rarity: Rarity): CardData {
+  const range = STAT_RANGE[rarity];
+  return {
+    exerciseSlug,
+    rarity,
+    atq: rng.int(range.min, range.max),
+    def: rng.int(range.min, range.max),
+    passive: rarity === "UR" || rarity === "LR" ? drawPassive(rng, rarity) : null,
+  };
 }
 
 export function drawRarity(rng: Rng, weights: Weights): Rarity {
@@ -56,15 +70,8 @@ export function drawPassive(rng: Rng, rarity: "UR" | "LR"): Passive {
 
 /** Génère une carte complète : exercice, stats ATQ/DEF indépendantes, passif si UR/LR. */
 export function makeCard(rng: Rng, rarity: Rarity): CardData {
-  const range = STAT_RANGE[rarity];
   const exercise = EXERCISES[rng.int(0, EXERCISES.length - 1)]!;
-  return {
-    exerciseSlug: exercise.slug,
-    rarity,
-    atq: rng.int(range.min, range.max),
-    def: rng.int(range.min, range.max),
-    passive: rarity === "UR" || rarity === "LR" ? drawPassive(rng, rarity) : null,
-  };
+  return makeChosenCard(rng, exercise.slug, rarity);
 }
 
 export const isTop = (r: Rarity) => r === "UR" || r === "LR";
@@ -73,8 +80,11 @@ export interface BoosterResult {
   cards: CardData[];
   /** Nouveau compteur de pity après ce booster. */
   pityAfter: number;
+  /** Nouveau compteur de boosters sans LR. */
+  lrPityAfter: number;
   /** Garanties déclenchées (utile pour l'affichage et les tests). */
   pityTriggered: boolean;
+  lrPityTriggered: boolean;
   rPlusTriggered: boolean;
 }
 
@@ -90,19 +100,29 @@ function lowestIndex(rarities: Rarity[]): number {
 /**
  * Ouvre un booster (5 cartes). Ordre des règles :
  *  1. tirage des 5 raretés avec la table du booster ;
- *  2. pity : si 11 boosters consécutifs sans UR/LR et aucune UR/LR ici → une carte devient UR ;
- *  3. garantie R+ : si les 5 cartes sont C → une devient R ;
- *  4. génération des exemplaires (exercice, stats, passif).
- * Un booster contenant au moins une UR/LR remet le compteur à zéro, sinon il l'incrémente.
+ *  2. filet LR : si 149 boosters consécutifs sans LR et aucune LR ici → une carte devient LR ;
+ *  3. pity : si 11 boosters consécutifs sans UR/LR et aucune UR/LR ici → une carte devient UR ;
+ *  4. garantie R+ : si les 5 cartes sont C → une devient R ;
+ *  5. génération des exemplaires (exercice, stats, passif).
+ * Un booster contenant au moins une UR/LR remet le compteur UR à zéro, sinon il l'incrémente ; idem pour le compteur LR.
  */
-export function openBooster(rng: Rng, kind: BoosterKind, pityBefore: number, force?: Rarity): BoosterResult {
+export function openBooster(rng: Rng, kind: BoosterKind, pityBefore: number, force?: Rarity, lrPityBefore = 0): BoosterResult {
   const weights = weightsFor(kind);
   const rarities: Rarity[] = Array.from({ length: CARDS_PER_BOOSTER }, () => drawRarity(rng, weights));
 
-  // Booster de test : une carte de la rareté demandée est garantie, le compteur de pity ne bouge pas.
+  // Booster de test : une carte de la rareté demandée est garantie, les compteurs ne bougent pas.
   if (force) {
     rarities[rng.int(0, rarities.length - 1)] = force;
-    return { cards: rarities.map((r) => makeCard(rng, r)), pityAfter: pityBefore, pityTriggered: false, rPlusTriggered: false };
+    return {
+      cards: rarities.map((r) => makeCard(rng, r)), pityAfter: pityBefore, lrPityAfter: lrPityBefore,
+      pityTriggered: false, lrPityTriggered: false, rPlusTriggered: false,
+    };
+  }
+
+  let lrPityTriggered = false;
+  if (lrPityBefore >= LR_PITY_THRESHOLD - 1 && !rarities.includes("LR")) {
+    rarities[lowestIndex(rarities)] = "LR";
+    lrPityTriggered = true;
   }
 
   let pityTriggered = false;
@@ -120,7 +140,8 @@ export function openBooster(rng: Rng, kind: BoosterKind, pityBefore: number, for
 
   const cards = rarities.map((r) => makeCard(rng, r));
   const pityAfter = rarities.some(isTop) ? 0 : pityBefore + 1;
-  return { cards, pityAfter, pityTriggered, rPlusTriggered };
+  const lrPityAfter = rarities.includes("LR") ? 0 : lrPityBefore + 1;
+  return { cards, pityAfter, lrPityAfter, pityTriggered, lrPityTriggered, rPlusTriggered };
 }
 
 // ───────────── Deck ─────────────

@@ -18,7 +18,8 @@ export function passiveLabel(p: Passive): string {
   return passiveLines(p).join(" · ") + " du deck";
 }
 
-export function Card({ card, count, holo = true, cap = true }: { card: CardData; count?: number; holo?: boolean; cap?: boolean }) {
+/** `hideStats` : aperçu (Forge) où ATQ et DEF ne sont pas encore tirées. */
+export function Card({ card, count, holo = true, cap = true, hideStats = false }: { card: CardData; count?: number; holo?: boolean; cap?: boolean; hideStats?: boolean }) {
   const L = FRAME_LAYOUT[card.rarity];
   const ex = exerciseBySlug(card.exerciseSlug);
   const bandH = (L.statsBottom - L.statsTop) * 144; // en cqw
@@ -60,10 +61,10 @@ export function Card({ card, count, holo = true, cap = true }: { card: CardData;
         <div className="stats">
           <Swords style={{ width: `calc(var(--b) * .38)`, height: `calc(var(--b) * .38)` }} />
           <span className="lab" style={{ fontSize: `calc(var(--b) * .27)` }}>ATQ</span>
-          <span className="val" style={{ fontSize: `calc(var(--b) * .44)` }}>{card.atq}</span>
+          <span className="val" style={{ fontSize: `calc(var(--b) * .44)` }}>{hideStats ? "?" : card.atq}</span>
           <Shield style={{ width: `calc(var(--b) * .38)`, height: `calc(var(--b) * .38)` }} />
           <span className="lab" style={{ fontSize: `calc(var(--b) * .27)` }}>DEF</span>
-          <span className="val" style={{ fontSize: `calc(var(--b) * .44)` }}>{card.def}</span>
+          <span className="val" style={{ fontSize: `calc(var(--b) * .44)` }}>{hideStats ? "?" : card.def}</span>
         </div>
         {top && card.passive && (
           <>

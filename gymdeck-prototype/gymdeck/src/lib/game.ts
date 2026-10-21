@@ -1,7 +1,8 @@
 import {
-  BOOSTER_PRICE_GC, BoosterKind, DAILY_LOGIN_GC, DECK_SIZE, DISCARD_GC, EXERCISES, LOGIN_CYCLE, PARIS_TZ, RARITIES, type Rarity,
+  BOOSTER_PRICE_GC, BoosterKind, DAILY_LOGIN_GC, DECK_SIZE, DISCARD_GC, EXERCISES, LOGIN_CYCLE, PARIS_TZ, RARITIES,
+  SHARDS_CRAFT, SHARDS_DISCARD, type Rarity,
 } from "./config";
-import { CardData, bestDeckIds, openBooster, validateDeck } from "./engine";
+import { CardData, bestDeckIds, makeChosenCard, openBooster, validateDeck } from "./engine";
 import type { Rng } from "./rng";
 import type { MarketState } from "./market";
 import type { Extra } from "./progress";
@@ -29,6 +30,10 @@ export interface PlayerState {
   cards: OwnedCard[];
   deck: string[]; // ids de cartes
   pityCounter: number;
+  /** Boosters ouverts d'affilée sans LR (filet de sécurité LR ; absent sur les anciennes sauvegardes = 0). */
+  lrPityCounter?: number;
+  /** Éclats de la Forge, gagnés en défaussant des cartes (absent sur les anciennes sauvegardes = 0). */
+  shards?: number;
   lastSessionDay: string | null;
   loginCount: number;
   lastLoginDay: string | null;
@@ -123,35 +128,52 @@ export function openPendingBooster(
   s: PlayerState,
   boosterId: string,
   rng: Rng,
-): Result<{ state: PlayerState; cards: OwnedCard[]; pityTriggered: boolean; rPlusTriggered: boolean }> {
+): Result<{ state: PlayerState; cards: OwnedCard[]; pityTriggered: boolean; lrPityTriggered: boolean; rPlusTriggered: boolean }> {
   const booster = s.boosters.find((b) => b.id === boosterId);
   if (!booster) return { ok: false, error: "Booster introuvable." };
-  const res = openBooster(rng, booster.kind, s.pityCounter, booster.force);
+  const res = openBooster(rng, booster.kind, s.pityCounter, booster.force, s.lrPityCounter ?? 0);
   let seq = s.seq;
   const cards: OwnedCard[] = res.cards.map((c) => ({ ...c, id: newId(), obtainedSeq: ++seq }));
   return {
     ok: true,
     cards,
     pityTriggered: res.pityTriggered,
+    lrPityTriggered: res.lrPityTriggered,
     rPlusTriggered: res.rPlusTriggered,
     state: {
       ...s,
       boosters: s.boosters.filter((b) => b.id !== boosterId),
       cards: [...s.cards, ...cards],
       pityCounter: res.pityAfter,
+      lrPityCounter: res.lrPityAfter,
       seq,
     },
   };
 }
 
-/** Défausse : rapporte des GC selon la rareté. Impossible tant que la carte est dans le deck. */
-export function discardCard(s: PlayerState, cardId: string): Result<{ state: PlayerState; gained: number }> {
+/** Défausse : rapporte des GC et des éclats de Forge selon la rareté. Impossible tant que la carte est dans le deck. */
+export function discardCard(s: PlayerState, cardId: string): Result<{ state: PlayerState; gained: number; shards: number }> {
   const card = s.cards.find((c) => c.id === cardId);
   if (!card) return { ok: false, error: "Carte introuvable." };
   if (s.deck.includes(cardId)) return { ok: false, error: "Retire d'abord cette carte de ton deck." };
   if (atWorkshop(s, cardId)) return { ok: false, error: "Cette carte est chez Basile : attends la fin de l’expertise." };
   const gained = DISCARD_GC[card.rarity];
-  return { ok: true, gained, state: { ...s, gc: s.gc + gained, cards: s.cards.filter((c) => c.id !== cardId) } };
+  const shards = SHARDS_DISCARD[card.rarity];
+  return {
+    ok: true, gained, shards,
+    state: { ...s, gc: s.gc + gained, shards: (s.shards ?? 0) + shards, cards: s.cards.filter((c) => c.id !== cardId) },
+  };
+}
+
+/** Forge : fabrique la carte de son choix (exercice + rareté) en dépensant des éclats. */
+export function craftCard(s: PlayerState, exerciseSlug: string, rarity: Rarity, rng: Rng): Result<{ state: PlayerState; card: OwnedCard }> {
+  if (!EXERCISES.some((e) => e.slug === exerciseSlug)) return { ok: false, error: "Exercice introuvable." };
+  if (!RARITIES.includes(rarity)) return { ok: false, error: "Rareté inconnue." };
+  const cost = SHARDS_CRAFT[rarity];
+  const have = s.shards ?? 0;
+  if (have < cost) return { ok: false, error: `Il manque ${cost - have} éclat${cost - have > 1 ? "s" : ""}.` };
+  const card: OwnedCard = { ...makeChosenCard(rng, exerciseSlug, rarity), id: newId(), obtainedSeq: s.seq + 1 };
+  return { ok: true, card, state: { ...s, shards: have - cost, seq: s.seq + 1, cards: [...s.cards, card] } };
 }
 
 /** Définit le deck (5 cartes max, un exemplaire par exercice). */
@@ -206,13 +228,17 @@ export function duplicateIds(s: PlayerState): string[] {
   return out;
 }
 
-export function discardMany(s: PlayerState, ids: string[]): Result<{ state: PlayerState; gained: number; count: number }> {
+export function discardMany(s: PlayerState, ids: string[]): Result<{ state: PlayerState; gained: number; shards: number; count: number }> {
   const set = new Set(ids);
   const removable = s.cards.filter((c) => set.has(c.id) && !s.deck.includes(c.id) && !atWorkshop(s, c.id));
   if (removable.length === 0) return { ok: false, error: "Rien à défausser." };
   const gained = removable.reduce((sum, c) => sum + DISCARD_GC[c.rarity], 0);
+  const shards = removable.reduce((sum, c) => sum + SHARDS_DISCARD[c.rarity], 0);
   const gone = new Set(removable.map((c) => c.id));
-  return { ok: true, gained, count: removable.length, state: { ...s, gc: s.gc + gained, cards: s.cards.filter((c) => !gone.has(c.id)) } };
+  return {
+    ok: true, gained, shards, count: removable.length,
+    state: { ...s, gc: s.gc + gained, shards: (s.shards ?? 0) + shards, cards: s.cards.filter((c) => !gone.has(c.id)) },
+  };
 }
 
 /** Carte en cours d'expertise chez Basile (verrouillée : ni vente, ni échange, ni défausse). */

@@ -40,10 +40,28 @@ export const WELCOME2_WEIGHTS: Record<Rarity, number> = {
   LR: 30, // 0,3 %
 };
 
+/** Booster de séance : un peu meilleur que les autres pour récompenser le vrai entraînement (SR et SSR en hausse, UR / LR inchangées). */
+export const SESSION_WEIGHTS: Record<Rarity, number> = {
+  C: 5870, // 58,7 %
+  R: 2400, // 24 %
+  SR: 1100, // 11 %
+  SSR: 500, // 5 %
+  UR: 100, // 1 %
+  LR: 30, // 0,3 %
+};
+
 export const DISCARD_GC: Record<Rarity, number> = { C: 1, R: 2, SR: 4, SSR: 6, UR: 12, LR: 25 };
 
 export const CARDS_PER_BOOSTER = 5;
 export const PITY_THRESHOLD = 12; // le 12e booster garantit une UR après 11 sans UR/LR
+/** Filet de sécurité LR : le 150e booster d'affilée sans LR en contient forcément une. */
+export const LR_PITY_THRESHOLD = 150;
+/** Booster bonus de série : offert tous les 7 jours de série (avec les taux du booster de bienvenue amélioré). */
+export const STREAK_BOOSTER_EVERY = 7;
+
+/** Forge : éclats gagnés en défaussant une carte, et prix pour fabriquer la carte de son choix. */
+export const SHARDS_DISCARD: Record<Rarity, number> = { C: 1, R: 3, SR: 10, SSR: 30, UR: 100, LR: 300 };
+export const SHARDS_CRAFT: Record<Rarity, number> = { C: 10, R: 30, SR: 100, SSR: 300, UR: 1000, LR: 3000 };
 export const BOOSTER_PRICE_GC = 75;
 export const DAILY_LOGIN_GC = 5;
 export const LOGIN_CYCLE = 7;
@@ -59,7 +77,7 @@ export const PASSIVE_TENTHS = {
   LR: { single: { min: 50, max: 70 }, both: { min: 25, max: 35 } },
 } as const;
 
-export type BoosterKind = "welcome1" | "welcome2" | "session" | "login" | "shop" | "pass";
+export type BoosterKind = "welcome1" | "welcome2" | "session" | "login" | "shop" | "pass" | "streak";
 
 export type MuscleGroup = "pecs" | "epaules" | "dos" | "bras" | "jambes" | "abdos" | "cardio";
 
@@ -126,7 +144,7 @@ export const EXERCISES: Exercise[] = [
 ];
 
 // Garde-fou : une table de probabilités incorrecte doit empêcher le démarrage.
-for (const [name, table] of [["NORMAL", NORMAL_WEIGHTS], ["WELCOME2", WELCOME2_WEIGHTS]] as const) {
+for (const [name, table] of [["NORMAL", NORMAL_WEIGHTS], ["WELCOME2", WELCOME2_WEIGHTS], ["SESSION", SESSION_WEIGHTS]] as const) {
   const sum = Object.values(table).reduce((a, b) => a + b, 0);
   if (sum !== 10000) throw new Error(`Table ${name} : somme ${sum} ≠ 10000`);
 }

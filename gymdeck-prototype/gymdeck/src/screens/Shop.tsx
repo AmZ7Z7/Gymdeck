@@ -11,7 +11,7 @@ import type { OpenPage } from "@/app/page";
 import { readyCount } from "@/lib/grading";
 
 const KIND_LABEL: Record<BoosterKind, string> = {
-  welcome1: "Bienvenue", welcome2: "Bienvenue ✦", session: "Séance", login: "Connexion", shop: "Boutique", pass: "Passe de saison",
+  welcome1: "Bienvenue", welcome2: "Bienvenue ✦", session: "Séance", login: "Connexion", shop: "Boutique", pass: "Passe de saison", streak: "Série ✦",
 };
 
 export function Shop({ openPage, seg }: { openPage: OpenPage; seg?: React.ReactNode }) {
