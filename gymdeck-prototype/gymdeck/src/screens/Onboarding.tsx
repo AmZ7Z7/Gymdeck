@@ -35,7 +35,8 @@ export function Onboarding() {
       const e = create ? await g.signUp(email, pw, name) : await g.signIn(email, pw);
       if (e === "confirm") { setInfo("Compte créé ! Clique sur le lien reçu par e-mail, puis reviens te connecter."); setMode("login"); return; }
       if (e) { setErr(e); return; }
-      g.openFirstBooster();
+      // un joueur qui se reconnecte arrive sur l'accueil : on n'ouvre pas un de ses boosters à sa place
+      if (create) g.openFirstBooster();
     } finally { setBusy(false); }
   };
 
