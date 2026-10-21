@@ -96,7 +96,7 @@ function Shell() {
   if (!g.ready) return <div className="app" id="app-root"><div className="boot"><img className="wm" src="/assets/ui/wordmark.webp" alt="GymDeck" /></div></div>;
 
   const needsName = !g.account || !g.player.name;
-  const ready = claimableCount(g.player, g.day) + readyCount(g.player, g.gameNow());
+  const ready = claimableCount(g.player, g.day, g.gameNow()) + readyCount(g.player, g.gameNow());
   const stock = g.player.boosters.length;
   const canDuel = g.deckCards.length >= 5 && g.duelsLeft > 0;
   const fullPage = page === "atelier";

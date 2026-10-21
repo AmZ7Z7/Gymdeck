@@ -1,4 +1,4 @@
-import { COMMUNITY_GC, DUEL, EXERCISES, GROUPS, PASS, PASS_REWARDS, RARITIES, RARITY_RANK, type MuscleGroup, type Rarity } from "./config";
+import { COMMUNITY_GC, DUEL, EXERCISES, GROUPS, PARIS_TZ, PASS, PASS_REWARDS, RARITIES, RARITY_RANK, type MuscleGroup, type Rarity } from "./config";
 import type { Consigne, DefenseRecord, DuelDay, DuelRecord } from "./duel";
 import { deckPower } from "./engine";
 import { newId, parisDay, type PlayerState, type Result } from "./game";
@@ -71,6 +71,14 @@ export function weekOf(day: string): string {
   const d = new Date(dayMs(day));
   const wd = (d.getUTCDay() + 6) % 7; // lundi = 0
   return new Date(d.getTime() - wd * DAY).toISOString().slice(0, 10);
+}
+/** Minuit à Paris pour ce jour, en ms (heure d'été : UTC+2, heure d'hiver : UTC+1). */
+export function parisMidnight(day: string): number {
+  const utc = dayMs(day);
+  const zone = new Intl.DateTimeFormat("en-US", { timeZone: PARIS_TZ, timeZoneName: "shortOffset" })
+    .formatToParts(new Date(utc)).find((p) => p.type === "timeZoneName")?.value ?? "";
+  const m = /GMT([+-]\d+)/.exec(zone);
+  return utc - (m ? Number(m[1]) : 1) * 3_600_000;
 }
 export const seasonOf = (day: string) => day.slice(0, 7);
 export function seasonProgress(day: string): number {
@@ -387,7 +395,7 @@ export function claimAchievement(s: PlayerState, id: string): Result<{ state: Pl
 }
 
 /** Nombre de récompenses prêtes à récupérer (pastille sur l'accueil). */
-export function claimableCount(s: PlayerState, day: string): number {
+export function claimableCount(s: PlayerState, day: string, nowMs = Date.parse(`${day}T12:00:00Z`)): number {
   const e = s.extra;
   if (!e) return 0;
   let n = 0;
@@ -399,7 +407,7 @@ export function claimableCount(s: PlayerState, day: string): number {
   for (const g of GROUPS) for (const t of SET_TIERS) if (!e.setsClaimed.includes(`${g.id}:${t.id}`) && setProgress(s, g.id, t.minRarity).done) n++;
   if (e.pendingSeason) n++;
   n += passClaimable(e, day).length;
-  const ch = challengeState(e, day, Date.parse(`${day}T12:00:00Z`));
+  const ch = challengeState(e, day, nowMs);
   if (ch.claimable) n++;
   return n;
 }
@@ -469,7 +477,7 @@ export const challengeOf = (week: string) => CHALLENGES[hash(`defi:${week}`) % C
 export function challengeState(e: Extra, day: string, nowMs: number) {
   const week = weekOf(day);
   const c = challengeOf(week);
-  const start = Date.parse(`${week}T00:00:00+02:00`);
+  const start = parisMidnight(week);
   const t = Math.max(0, Math.min(1, (nowMs - start) / (7 * DAY)));
   const pace = 1.08 + (hash(`pace:${week}`) % 40) / 100; // 1,08 à 1,47 : objectif atteint avant la fin
   const mine = e.week === week ? countOf(e.weekly, c.kinds) : 0;

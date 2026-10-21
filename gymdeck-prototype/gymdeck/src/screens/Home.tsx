@@ -29,7 +29,7 @@ export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: OpenPag
   useEffect(() => { if (g.ready && e.tutorialDone === false && !g.opening) setTuto(true); }, [g.ready, e.tutorialDone, g.opening]);
   const missions = dailyMissions(g.day);
   const mDone = missions.filter((m) => missionProgress(e, "daily", m).done).length;
-  const ready = claimableCount(player, g.day);
+  const ready = claimableCount(player, g.day, g.gameNow());
   const streak = streakNow(e, g.day);
   const showReminder = !g.sessionDoneToday && reminderDue(e.reminder, now);
   const stock = player.boosters.length;

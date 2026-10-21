@@ -31,7 +31,7 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
   const [tuto, setTuto] = useState(false);
   const [out, setOut] = useState(false);
   const e = g.extra;
-  const ready = claimableCount(p, g.day);
+  const ready = claimableCount(p, g.day, g.gameNow());
   const showcase = e.showcase.map((id) => p.cards.find((c) => c.id === id)).filter((c) => !!c);
   useSyncExternalStore(subscribeSound, soundSnapshot, () => "0:0.50");
   const muted = isMuted();

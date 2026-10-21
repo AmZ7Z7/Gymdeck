@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { COMMUNITY_GC, PASS, PASS_REWARDS } from "../src/lib/config";
 import { createAccount, type PlayerState } from "../src/lib/game";
-import { addPassXp, challengeState, claimChallenge, claimMission, claimPass, normalize, passClaimable, passLevel, passOf, track } from "../src/lib/progress";
+import { addPassXp, challengeState, claimChallenge, claimMission, claimPass, normalize, parisMidnight, passClaimable, passLevel, passOf, track } from "../src/lib/progress";
 import { finalRank } from "../src/lib/social";
 import { seededRng } from "../src/lib/rng";
 
@@ -62,5 +62,10 @@ describe("défi de la semaine", () => {
     expect(r.state.gc).toBe(t.gc + COMMUNITY_GC);
     expect(passOf(r.state.extra!, "2026-10-18").xp - passOf(t.extra!, "2026-10-18").xp).toBe(PASS.weeklyChallenge);
     expect(claimChallenge(r.state, "2026-10-18", sunday).ok).toBe(false);
+  });
+
+  it("la semaine commence à minuit heure de Paris, en été comme en hiver", () => {
+    expect(parisMidnight("2026-10-12")).toBe(Date.parse("2026-10-12T00:00:00+02:00"));
+    expect(parisMidnight("2026-11-02")).toBe(Date.parse("2026-11-02T00:00:00+01:00"));
   });
 });
