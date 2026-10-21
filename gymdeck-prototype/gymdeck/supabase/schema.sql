@@ -57,3 +57,45 @@ select cron.schedule(
     ) < now() - interval '3 years';
   $job$
 );
+
+-- ───────── Notifications ─────────
+-- Un abonnement par téléphone / navigateur, avec les notifications choisies par le joueur.
+create table if not exists public.push_subscriptions (
+  endpoint   text primary key,
+  user_id    uuid not null references auth.users (id) on delete cascade,
+  p256dh     text not null,
+  auth       text not null,
+  prefs      jsonb not null default '{"session": true, "grading": true, "streak": true}',
+  sent       jsonb not null default '{}',
+  updated_at timestamptz not null default now()
+);
+alter table public.push_subscriptions enable row level security;
+
+drop policy if exists "lecture de ses abonnements" on public.push_subscriptions;
+create policy "lecture de ses abonnements" on public.push_subscriptions
+  for select using (auth.uid() = user_id);
+drop policy if exists "création de ses abonnements" on public.push_subscriptions;
+create policy "création de ses abonnements" on public.push_subscriptions
+  for insert with check (auth.uid() = user_id);
+drop policy if exists "mise à jour de ses abonnements" on public.push_subscriptions;
+create policy "mise à jour de ses abonnements" on public.push_subscriptions
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "suppression de ses abonnements" on public.push_subscriptions;
+create policy "suppression de ses abonnements" on public.push_subscriptions
+  for delete using (auth.uid() = user_id);
+
+-- Toutes les 15 minutes, Supabase appelle la fonction « send-notifications ».
+-- Ce bloc contient un code secret : il n'est PAS lancé avec le reste du fichier. La version complète, avec le code,
+-- est dans le guide d'installation des notifications (fichier local, jamais envoyé sur GitHub).
+-- create extension if not exists pg_net with schema extensions;
+-- select cron.schedule(
+--   'gymdeck-notifications',
+--   '*/15 * * * *',
+--   $job$
+--     select net.http_post(
+--       url := 'https://kanlcoioqhesebtoimrq.supabase.co/functions/v1/send-notifications',
+--       headers := jsonb_build_object('Content-Type', 'application/json', 'x-cron-secret', '<CRON_SECRET>'),
+--       body := '{}'::jsonb
+--     );
+--   $job$
+-- );

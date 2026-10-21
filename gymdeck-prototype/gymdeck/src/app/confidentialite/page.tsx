@@ -19,6 +19,7 @@ export default function Confidentialite() {
         <li><b>Données de jeu</b> : cartes collectionnées, boosters ouverts, monnaie du jeu (GC), progression, séries de jours, missions, résultats des combats et classements.</li>
         <li><b>Données sociales</b> : liste d’amis, vitrine, échanges de cartes et enchères, si vous utilisez ces fonctions.</li>
         <li><b>Séances déclarées</b> : les jours où vous validez une séance ou que vous cochez dans le calendrier, pour obtenir des récompenses dans le jeu. Seule la date est enregistrée.</li>
+        <li><b>Notifications</b> : si vous les activez, l’identifiant technique fourni par votre navigateur pour vous les envoyer, et les types de notifications choisis.</li>
         <li><b>Données techniques</b> : informations de connexion nécessaires au fonctionnement et à la sécurité du site (journaux techniques de l’hébergeur).</li>
       </ul>
       <p>GymDeck ne collecte aucune donnée bancaire, aucune donnée de santé (poids, mensurations, état de santé) et aucune donnée de localisation précise.</p>
@@ -30,6 +31,7 @@ export default function Confidentialite() {
         <li>Faire fonctionner les fonctions sociales : amis, échanges, enchères, classements.</li>
         <li>Assurer la sécurité du site et empêcher la triche (intérêt légitime).</li>
         <li>Vous rappeler vos séances, uniquement si vous le demandez : le jeu crée un fichier d’agenda que vous ajoutez vous-même à votre calendrier (consentement, que vous pouvez retirer à tout moment en supprimant l’événement de votre agenda).</li>
+        <li>Vous envoyer des notifications (rappel de séance, expertise de Basile terminée, série en danger), uniquement si vous les activez (consentement). Vous pouvez les couper à tout moment dans Profil → Notifications ou dans les réglages de votre téléphone.</li>
       </ul>
       <p>Vos données ne sont jamais vendues ni utilisées à des fins publicitaires.</p>
 
@@ -41,6 +43,7 @@ export default function Confidentialite() {
       <ul>
         <li><b>Vercel Inc.</b> (hébergement du site, États-Unis).</li>
         <li><b>Supabase Inc.</b> (base de données et comptes utilisateurs), avec un stockage des données dans l’Union européenne.</li>
+        <li>Si vous activez les notifications : le service de notification de votre navigateur ou téléphone (Apple, Google ou Mozilla selon l’appareil), qui achemine le message jusqu’à vous.</li>
       </ul>
       <p>Lorsque des données sont traitées hors de l’Union européenne, ces prestataires s’appuient sur les garanties prévues par le RGPD (clauses contractuelles types de la Commission européenne et/ou cadre de protection des données UE–États-Unis).</p>
 

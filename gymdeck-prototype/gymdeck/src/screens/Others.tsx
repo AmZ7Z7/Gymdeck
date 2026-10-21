@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Card } from "@/components/Card";
 import { Tutorial } from "@/components/Tutorial";
 import type { OpenPage, Tab } from "@/app/page";
@@ -18,6 +18,8 @@ import { getVolume, isMuted, setMuted, setVolume, soundSnapshot, subscribeSound 
 import { daysBetween, streakNow, trainingDays, weekOf } from "@/lib/progress";
 import { shareStreak } from "@/lib/share";
 import { LegalLinks } from "@/components/LegalPage";
+import { DEFAULT_PREFS, disablePush, enablePush, loadPrefs, pushConfigured, pushSupport, savePrefs } from "@/lib/push";
+import type { PushPrefs } from "@/lib/cloud";
 
 export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => void }) {
   const g = useGame();
@@ -31,6 +33,7 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
   const [rem, setRem] = useState(false);
   const [tuto, setTuto] = useState(false);
   const [out, setOut] = useState(false);
+  const [notif, setNotif] = useState(false);
   const [del, setDel] = useState(false);
   const [delText, setDelText] = useState("");
   const [delErr, setDelErr] = useState<string | null>(null);
@@ -91,6 +94,7 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
         <button className="linkrow" onClick={() => openPage("friends")}><span>Amis et échanges</span><span>{e.friends.length > 0 ? e.friends.length : "›"}</span></button>
         <button className="linkrow" onClick={() => openPage("atelier")}><span>Atelier de Basile (expertise)</span><span>{gradeReady > 0 ? <span className="tabbadge" style={{ position: "static", display: "inline-grid" }}>{gradeReady}</span> : g.grading.length > 0 ? `${g.grading.length} en cours` : "›"}</span></button>
         <button className="linkrow" onClick={() => setRem(true)}><span>Rappel de séance</span><span>{e.reminder ? `${e.reminder.time}` : "›"}</span></button>
+        <button className="linkrow" onClick={() => setNotif(true)}><span>Notifications</span><span>›</span></button>
         <button className="linkrow" onClick={() => setTuto(true)}><span>Revoir le tutoriel</span><span>›</span></button>
         <button className="linkrow" onClick={() => { g.resetCombatTuto(); g.say("Le guide reviendra à ton prochain combat"); }}><span>Revoir le guide des combats</span><span>›</span></button>
         <button className="linkrow" onClick={() => setOdds(true)}><span>Taux de drop et garanties</span><span>›</span></button>
@@ -153,6 +157,7 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
         </Sheet>
       )}
       {rem && <ReminderSheet onClose={() => setRem(false)} />}
+      {notif && <NotifSheet onClose={() => setNotif(false)} openReminder={() => { setNotif(false); setRem(true); }} />}
       {out && (
         <Sheet onClose={() => setOut(false)} label="Se déconnecter">
           <div className="sheet-title">Se déconnecter ?</div>
@@ -195,7 +200,7 @@ function ReminderSheet({ onClose }: { onClose: () => void }) {
   return (
     <Sheet onClose={onClose} label="Rappel de séance">
       <div className="sheet-title">Rappel de séance</div>
-      <p>Choisis tes jours et ton heure. Tu verras un rappel dans l’appli, et tu peux l’ajouter à ton agenda pour être prévenu même appli fermée.</p>
+      <p>Choisis tes jours et ton heure. Tu verras un rappel dans l’appli ; pour être prévenu même appli fermée, active les notifications (Profil → Notifications) ou ajoute-le à ton agenda.</p>
       <div className="daypick">
         {DAY_LABELS.map((l, i) => <button key={i} className={days.includes(i) ? "on" : ""} aria-pressed={days.includes(i)} onClick={() => toggle(i)}>{l}</button>)}
       </div>
@@ -207,6 +212,93 @@ function ReminderSheet({ onClose }: { onClose: () => void }) {
   );
 }
 
+const NOTIF_ROWS: { id: keyof PushPrefs; label: string }[] = [
+  { id: "session", label: "Rappel de séance" },
+  { id: "grading", label: "Expertise de Basile prête" },
+  { id: "streak", label: "Série en danger" },
+];
+
+/** Notifications sur le téléphone : activation, choix des 3 types, désactivation. */
+function NotifSheet({ onClose, openReminder }: { onClose: () => void; openReminder: () => void }) {
+  const g = useGame();
+  const [prefs, setPrefs] = useState<PushPrefs | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const support = pushSupport();
+  const online = !!g.account?.cloud;
+  const rem = g.extra.reminder;
+
+  useEffect(() => {
+    let alive = true;
+    if (online && pushConfigured && support === "ok") void loadPrefs().then((p) => { if (alive) { setPrefs(p); setLoading(false); } });
+    else setLoading(false);
+    return () => { alive = false; };
+  }, [online, support]);
+
+  const enable = async () => {
+    setBusy(true); setMsg(null);
+    const err = await enablePush(DEFAULT_PREFS);
+    setBusy(false);
+    if (err) setMsg(err); else { setPrefs(DEFAULT_PREFS); g.say("Notifications activées"); }
+  };
+  const toggle = async (id: keyof PushPrefs) => {
+    if (!prefs) return;
+    const next = { ...prefs, [id]: !prefs[id] };
+    setPrefs(next);
+    const err = await savePrefs(next);
+    if (err) { setPrefs(prefs); setMsg(err); }
+  };
+  const disable = async () => {
+    setBusy(true);
+    await disablePush();
+    setBusy(false);
+    setPrefs(null);
+    g.say("Notifications désactivées sur ce téléphone");
+  };
+
+  return (
+    <Sheet onClose={onClose} label="Notifications">
+      <div className="sheet-title">Notifications</div>
+      {!online ? (
+        <p>Les notifications marchent avec un compte en ligne. Crée un compte (ou connecte-toi) pour les activer.</p>
+      ) : !pushConfigured ? (
+        <p>Les notifications ne sont pas encore activées sur ce site. Reviens bientôt !</p>
+      ) : support === "install" ? (
+        <p>Sur iPhone, ajoute d’abord GymDeck à ton écran d’accueil : dans Safari, touche <b>Partager</b> puis <b>Sur l’écran d’accueil</b>. Ouvre ensuite GymDeck depuis son icône et reviens ici.</p>
+      ) : support === "unsupported" ? (
+        <p>Ce navigateur ne permet pas les notifications. Essaie avec Chrome ou Safari à jour.</p>
+      ) : loading ? (
+        <p>…</p>
+      ) : !prefs ? (
+        <>
+          <p>Reçois un rappel pour ta séance, un message quand Basile a fini d’expertiser ta carte, et une alerte quand ta série est en danger. Même appli fermée.</p>
+          <button className="btn primary" disabled={busy} onClick={() => void enable()}>{busy ? "…" : "Activer les notifications"}</button>
+        </>
+      ) : (
+        <>
+          <div className="panel settings">
+            {NOTIF_ROWS.map((r, i) => (
+              <div className="set-row" key={r.id} style={i === NOTIF_ROWS.length - 1 ? { borderBottom: 0 } : undefined}>
+                <span>{r.label}</span>
+                <button role="switch" aria-checked={prefs[r.id]} aria-label={r.label} className={`switch ${prefs[r.id] ? "on" : ""}`} onClick={() => void toggle(r.id)}><i /></button>
+              </div>
+            ))}
+          </div>
+          <p className="fine" style={{ marginTop: 8 }}>
+            {rem
+              ? <>Rappel de séance : {rem.days.map((d) => DAY_LABELS[d]).join(" ")} à {rem.time}. </>
+              : <>Pour le rappel de séance, choisis d’abord tes jours et ton heure. </>}
+            <button className="textbtn" style={{ padding: 0 }} onClick={openReminder}>{rem ? "Modifier" : "Choisir"}</button>
+          </p>
+          <button className="btn ghost small" disabled={busy} onClick={() => void disable()}>Désactiver sur ce téléphone</button>
+        </>
+      )}
+      {msg && <span className="autherr" role="alert">{msg}</span>}
+      <button className="btn ghost small" onClick={onClose}>Fermer</button>
+    </Sheet>
+  );
+}
 
 /** Statistiques personnelles : régularité, séries, combats (sans suivi détaillé des séances). */
 function Stats() {

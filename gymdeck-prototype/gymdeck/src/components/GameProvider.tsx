@@ -25,6 +25,7 @@ import {
   cloudDeleteAccount, cloudEnabled, cloudLoad, cloudResetPassword, cloudSave, cloudSession, cloudSignIn, cloudSignOut, cloudSignUp, cloudStamp,
 } from "@/lib/cloud";
 import { changedElsewhere, startupChoice, type SyncInfo } from "@/lib/sync";
+import { disablePush } from "@/lib/push";
 import type { MuscleGroup, Rarity } from "@/lib/config";
 import { sfx } from "@/lib/sound";
 import { DECK_SIZE, type BoosterKind } from "@/lib/config";
@@ -674,7 +675,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     signOut: async () => {
       const acc = accountRef.current;
-      if (acc?.cloud) { await push(); await cloudSignOut(); }
+      if (acc?.cloud) { await push(); await disablePush(); await cloudSignOut(); }
       setSync(null);
       saveAccount(null);
       commit({ player: normalizeState(createAccount(), secureRng, parisDay(new Date())), opening: null });

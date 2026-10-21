@@ -56,6 +56,43 @@ export async function cloudSignIn(email: string, password: string): Promise<Auth
   } catch (e) { return { ok: false, error: e instanceof Error ? e.message : "Erreur réseau." }; }
 }
 
+/* ───────── Notifications : un abonnement par téléphone (table push_subscriptions) ───────── */
+
+export interface PushPrefs { session: boolean; grading: boolean; streak: boolean }
+export interface PushSub { endpoint: string; p256dh: string; auth: string }
+
+/** Enregistre (ou met à jour) l'abonnement de ce téléphone pour le joueur connecté. */
+export async function cloudSavePush(sub: PushSub, prefs: PushPrefs): Promise<string | null> {
+  try {
+    const c = await client();
+    const { data } = await c.auth.getUser();
+    if (!data.user) return "Connecte-toi d’abord.";
+    const { error } = await c.from("push_subscriptions").upsert(
+      { ...sub, user_id: data.user.id, prefs, updated_at: new Date().toISOString() },
+      { onConflict: "endpoint" },
+    );
+    return error ? frenchError(error.message) : null;
+  } catch (e) { return e instanceof Error ? e.message : "Erreur réseau."; }
+}
+
+export async function cloudLoadPushPrefs(endpoint: string): Promise<PushPrefs | null> {
+  try {
+    const { data } = await (await client()).from("push_subscriptions").select("prefs").eq("endpoint", endpoint).maybeSingle();
+    return data ? (data.prefs as PushPrefs) : null;
+  } catch { return null; }
+}
+
+export async function cloudUpdatePushPrefs(endpoint: string, prefs: PushPrefs): Promise<string | null> {
+  try {
+    const { error } = await (await client()).from("push_subscriptions").update({ prefs, updated_at: new Date().toISOString() }).eq("endpoint", endpoint);
+    return error ? frenchError(error.message) : null;
+  } catch (e) { return e instanceof Error ? e.message : "Erreur réseau."; }
+}
+
+export async function cloudDeletePush(endpoint: string) {
+  try { await (await client()).from("push_subscriptions").delete().eq("endpoint", endpoint); } catch { /* ignoré */ }
+}
+
 /** Supprime définitivement le compte connecté et sa sauvegarde (fonction delete_my_account de supabase/schema.sql). */
 export async function cloudDeleteAccount(): Promise<string | null> {
   try {
