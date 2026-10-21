@@ -5,12 +5,19 @@ import { useGame } from "./GameProvider";
 import { Sheet } from "./Sheet";
 import { IconFlask } from "./Icons";
 
+/**
+ * Comptes qui gardent la fiole même quand elle est masquée pour tout le monde : identifiants Supabase (UID)
+ * séparés par des virgules, dans la variable NEXT_PUBLIC_TEST_TOOLS_USERS sur Vercel.
+ */
+const TESTERS = (process.env.NEXT_PUBLIC_TEST_TOOLS_USERS ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+
 /** Bouton discret (fiole) + panneau d'outils de test (le seul endroit). Masqué en mettant NEXT_PUBLIC_HIDE_TEST_TOOLS=1 sur Vercel. */
 export function TestPanel() {
   const g = useGame();
   const [open, setOpen] = useState(false);
   const [resetAsk, setResetAsk] = useState(false);
-  if (process.env.NEXT_PUBLIC_HIDE_TEST_TOOLS === "1") return null;
+  const tester = !!g.account?.userId && TESTERS.includes(g.account.userId);
+  if (process.env.NEXT_PUBLIC_HIDE_TEST_TOOLS === "1" && !tester) return null;
   const run = (fn: () => void, msg?: string) => { fn(); setOpen(false); if (msg) g.say(msg); };
   const t = g.tools;
   return (
