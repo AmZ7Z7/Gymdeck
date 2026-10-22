@@ -18,6 +18,7 @@ import { getVolume, isMuted, setMuted, setVolume, soundSnapshot, subscribeSound 
 import { daysBetween, streakNow, trainingDays, weekOf } from "@/lib/progress";
 import { shareStreak } from "@/lib/share";
 import { LegalLinks } from "@/components/LegalPage";
+import { InstallTip } from "@/components/InstallTip";
 import { DEFAULT_PREFS, disablePush, enablePush, loadPrefs, pushConfigured, pushSupport, savePrefs } from "@/lib/push";
 import type { PushPrefs } from "@/lib/cloud";
 
@@ -34,6 +35,7 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
   const [tuto, setTuto] = useState(false);
   const [out, setOut] = useState(false);
   const [notif, setNotif] = useState(false);
+  const [install, setInstall] = useState(false);
   const [del, setDel] = useState(false);
   const [delText, setDelText] = useState("");
   const [delErr, setDelErr] = useState<string | null>(null);
@@ -95,6 +97,7 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
         <button className="linkrow" onClick={() => openPage("atelier")}><span>Atelier de Basile (expertise)</span><span>{gradeReady > 0 ? <span className="tabbadge" style={{ position: "static", display: "inline-grid" }}>{gradeReady}</span> : g.grading.length > 0 ? `${g.grading.length} en cours` : "›"}</span></button>
         <button className="linkrow" onClick={() => setRem(true)}><span>Rappel de séance</span><span>{e.reminder ? `${e.reminder.time}` : "›"}</span></button>
         <button className="linkrow" onClick={() => setNotif(true)}><span>Notifications</span><span>›</span></button>
+        <button className="linkrow" onClick={() => setInstall(true)}><span>Mettre GymDeck sur l’écran d’accueil</span><span>›</span></button>
         <button className="linkrow" onClick={() => setTuto(true)}><span>Revoir le tutoriel</span><span>›</span></button>
         <button className="linkrow" onClick={() => { g.resetCombatTuto(); g.say("Le guide reviendra à ton prochain combat"); }}><span>Revoir le guide des combats</span><span>›</span></button>
         <button className="linkrow" onClick={() => setOdds(true)}><span>Taux de drop et garanties</span><span>›</span></button>
@@ -157,6 +160,7 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
         </Sheet>
       )}
       {rem && <ReminderSheet onClose={() => setRem(false)} />}
+      {install && <InstallTip auto={false} onClose={() => setInstall(false)} />}
       {notif && <NotifSheet onClose={() => setNotif(false)} openReminder={() => { setNotif(false); setRem(true); }} />}
       {out && (
         <Sheet onClose={() => setOut(false)} label="Se déconnecter">

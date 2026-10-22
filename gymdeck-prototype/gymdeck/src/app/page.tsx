@@ -24,8 +24,10 @@ import { Season } from "@/screens/Season";
 import { applyTheme } from "@/lib/theme";
 import { unlockAudio } from "@/lib/sound";
 import { TestPanel } from "@/components/TestPanel";
+import { InstallTip } from "@/components/InstallTip";
 import { Card } from "@/components/Card";
 import type { CardData } from "@/lib/engine";
+import { EXERCISES, RARITIES } from "@/lib/config";
 
 /** Pages ouvertes depuis un onglet (avec un bouton retour). */
 export type Page = "missions" | "friends" | "calendar" | "atelier" | "season" | "forge";
@@ -151,6 +153,7 @@ function Shell() {
             </nav>
           )}
           <TestPanel />
+          {g.extra.tutorialDone && <InstallTip />}
         </>
       )}
       {g.toast && <div className="toast" role="status" key={g.toast}>{g.toast}</div>}
@@ -158,37 +161,56 @@ function Shell() {
   );
 }
 
-/** Sur ordinateur : un mot d'accueil à côté du téléphone. */
+/** Nombre de cartes différentes à collectionner (chaque exercice existe dans toutes les raretés). */
+const CARD_COUNT = EXERCISES.length * RARITIES.length;
+
+/** Sur ordinateur : présentation du jeu à côté du téléphone. */
 function DesktopAside() {
   return (
     <aside className="desk-aside" aria-hidden>
       <img src="/assets/ui/wordmark.webp" alt="" />
       <p className="da-tag">Ta séance, ton booster.</p>
+      <div className="da-count">
+        <b>{CARD_COUNT}</b>
+        <span>cartes à collectionner<small>et bien d’autres à venir très bientôt : personnages de la salle, culture muscu…</small></span>
+      </div>
       <ul>
-        <li><b>1</b>Valide ta séance, ouvre un booster</li>
-        <li><b>2</b>Collectionne 32 exercices en 6 raretés</li>
-        <li><b>3</b>Compose ton deck et affronte les autres</li>
+        <li><b>1</b>Va à la salle, valide ta séance : un booster t’attend</li>
+        <li><b>2</b>Ouvre-le et collectionne les cartes, de C à la légendaire LR</li>
+        <li><b>3</b>Compose ton deck et affronte les autres joueurs</li>
       </ul>
+      <div className="da-chips"><span>100 % gratuit</span><span>Cartes holographiques</span><span>Marché aux enchères</span></div>
       <p className="da-fine">Pensé pour le téléphone : ouvre GymDeck sur ton mobile et ajoute-le à ton écran d’accueil.</p>
     </aside>
   );
 }
 
-/** Sur grand écran : trois cartes en éventail (décor). */
-const FAN: CardData[] = [
-  { exerciseSlug: "gainage", rarity: "SSR", atq: 742, def: 688, passive: null },
-  { exerciseSlug: "leg-extension", rarity: "LR", atq: 1560, def: 1490, passive: { type: "BOTH", atqTenths: 31, defTenths: 29 }, grade: 9 },
+/** Sur grand écran : un booster d'où sortent des cartes, qui s'ouvrent en éventail (décor). */
+const SHOWCASE: CardData[] = [
+  { exerciseSlug: "squat", rarity: "SR", atq: 468, def: 431, passive: null },
+  { exerciseSlug: "gainage", rarity: "SSR", atq: 742, def: 688, passive: null, grade: 8 },
+  { exerciseSlug: "leg-extension", rarity: "LR", atq: 1560, def: 1490, passive: { type: "BOTH", atqTenths: 31, defTenths: 29 }, grade: 10 },
   { exerciseSlug: "developpe-incline", rarity: "UR", atq: 1104, def: 966, passive: { type: "ATQ", atqTenths: 36, defTenths: 0 } },
+  { exerciseSlug: "rameur", rarity: "R", atq: 288, def: 301, passive: null },
 ];
-function DesktopFan() {
-  return <div className="desk-fan" aria-hidden>{FAN.map((c, i) => <div className="df" key={i}><Card card={c} /></div>)}</div>;
+function DesktopShowcase() {
+  return (
+    <div className="desk-show" aria-hidden>
+      <span className="ds-glow" />
+      <span className="ds-rays" />
+      {SHOWCASE.map((c, i) => (
+        <div className={`ds-card ds-c${i}`} key={i}><div className="ds-float"><Card card={c} /></div></div>
+      ))}
+      <img className="ds-pack" src="/assets/ui/booster.webp" alt="" draggable={false} />
+    </div>
+  );
 }
 
 export default function Page() {
   return (
     <MotionConfig reducedMotion="user">
       <DesktopAside />
-      <DesktopFan />
+      <DesktopShowcase />
       <GameProvider><Shell /></GameProvider>
     </MotionConfig>
   );

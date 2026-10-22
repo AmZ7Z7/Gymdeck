@@ -843,6 +843,13 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
   .desk-aside ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
   .desk-aside li { display: flex; align-items: center; gap: 12px; font-size: 17px; color: #d5dbee; }
   .desk-aside li b { width: 30px; height: 30px; flex: none; display: grid; place-items: center; border-radius: 9px; background: var(--lime); color: #0a0d14; font-family: var(--display); font-style: italic; font-size: 19px; }
+  .da-count { display: flex; align-items: center; gap: 14px; margin: 0 0 22px; padding: 14px 16px; border-radius: 16px; border: 1px solid #2a3350;
+    background: linear-gradient(135deg, rgba(200,243,29,.12), rgba(124,58,237,.14)); }
+  .da-count > b { font-family: var(--display); font-style: italic; font-weight: 800; font-size: 58px; line-height: .9; color: var(--lime); text-shadow: 0 0 22px rgba(200,243,29,.35); }
+  .da-count > span { font-family: var(--display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 22px; line-height: 1.05; color: var(--text); }
+  .da-count small { display: block; margin-top: 5px; font-family: var(--body); font-style: normal; font-weight: 400; text-transform: none; font-size: 13px; line-height: 1.35; color: #cfd6e8; }
+  .da-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+  .da-chips span { padding: 5px 11px; border-radius: 99px; border: 1px solid #3a4466; background: rgba(10,14,26,.7); font-size: 13px; font-weight: 600; color: #d5dbee; }
   .da-fine { margin-top: 22px; font-size: 14px; color: var(--muted); line-height: 1.45; max-width: 320px; }
 }
 
@@ -880,15 +887,45 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 @media (prefers-reduced-motion: reduce) { .cgrid > .ccell, .agrid > .acell { animation: none; } }
 
 /* Sur grand écran : un éventail de cartes à droite du téléphone */
-.desk-fan { display: none; }
+/* Sur grand écran : un booster d'où sortent des cartes qui s'ouvrent en éventail */
+.desk-show { display: none; }
 @media (min-width: 1180px) and (min-height: 700px) {
-  .desk-fan { display: block; position: fixed; top: 50%; left: calc(50% + 215px + 90px); width: 300px; height: 380px; transform: translateY(-50%); pointer-events: none; }
-  .desk-fan .df { position: absolute; left: 50%; top: 50%; width: 170px; margin: -122px 0 0 -85px; filter: drop-shadow(0 18px 30px rgba(0,0,0,.6)); }
-  .desk-fan .df:nth-child(1) { transform: translateX(-78px) rotate(-14deg); }
-  .desk-fan .df:nth-child(2) { transform: translateY(-14px); z-index: 2; }
-  .desk-fan .df:nth-child(3) { transform: translateX(78px) rotate(14deg); }
-  .desk-fan::before { content: ""; position: absolute; inset: -20%; border-radius: 50%; background: radial-gradient(circle, rgba(200,243,29,.16), rgba(124,58,237,.14) 45%, transparent 70%); filter: blur(10px); }
+  .desk-show { display: block; position: fixed; top: 50%; left: calc(50% + 215px + 80px); width: 380px; height: 560px; transform: translateY(-50%); pointer-events: none; }
+  .ds-glow { position: absolute; left: 50%; top: 42%; width: 520px; height: 520px; margin: -260px 0 0 -260px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(200,243,29,.22), rgba(124,58,237,.18) 42%, transparent 68%); filter: blur(12px); animation: dsPulse 4s ease-in-out infinite; }
+  .ds-rays { position: absolute; left: 50%; top: 60%; width: 560px; height: 560px; margin: -280px 0 0 -280px; border-radius: 50%; opacity: .32;
+    background: repeating-conic-gradient(from 0deg, rgba(244,255,196,.55) 0 3deg, transparent 3deg 15deg);
+    -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 62%); mask-image: radial-gradient(circle, #000 18%, transparent 62%); animation: dsSpin 40s linear infinite; }
+  /* le paquet, devant : les cartes sortent de derrière lui, par le haut */
+  .ds-pack { position: absolute; left: 50%; bottom: 0; width: 190px; margin-left: -95px; z-index: 10; filter: drop-shadow(0 22px 34px rgba(0,0,0,.7)); animation: dsPack 3.2s ease-in-out infinite; }
+  .ds-card { position: absolute; left: 50%; bottom: 150px; width: 132px; margin-left: -66px; transform-origin: 50% 100%;
+    filter: drop-shadow(0 16px 26px rgba(0,0,0,.6)); opacity: 0; animation: dsOut 1.1s cubic-bezier(.2,.9,.25,1.15) forwards; animation-delay: var(--d); }
+  .ds-float { animation: dsFloat 4.2s ease-in-out infinite; animation-delay: var(--fd); }
+  .ds-c0 { --x: -116px; --y: -28px; --r: -24deg; --d: .35s; --fd: -.6s; z-index: 1; }
+  .ds-c1 { --x: -60px; --y: -92px; --r: -12deg; --d: .55s; --fd: -1.8s; z-index: 2; }
+  .ds-c2 { --x: 0px; --y: -138px; --r: 0deg; --d: .95s; --fd: -2.6s; z-index: 5; }
+  .ds-c3 { --x: 60px; --y: -92px; --r: 12deg; --d: .75s; --fd: -1.1s; z-index: 2; }
+  .ds-c4 { --x: 116px; --y: -28px; --r: 24deg; --d: .45s; --fd: -3.2s; z-index: 1; }
+  .ds-c2 .ds-float { animation-duration: 3.4s; }
 }
+/* écrans de PC plus étroits : le tout un peu plus petit pour ne jamais sortir de l'écran */
+@media (min-width: 1180px) and (max-width: 1499px) and (min-height: 700px) {
+  .desk-show { left: calc(50% + 215px + 55px); transform: translateY(-50%) scale(.8); transform-origin: 50% 50%; }
+}
+@keyframes dsOut {
+  0% { opacity: 0; transform: translate(0, 140px) rotate(0) scale(.62); }
+  25% { opacity: 1; }
+  100% { opacity: 1; transform: translate(var(--x), var(--y)) rotate(var(--r)) scale(1); }
+}
+@keyframes dsFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+@keyframes dsPack { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-6px) rotate(-1deg); } }
+@keyframes dsPulse { 0%, 100% { opacity: .85; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
+@keyframes dsSpin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .ds-card { animation: none; opacity: 1; transform: translate(var(--x), var(--y)) rotate(var(--r)); }
+  .ds-float, .ds-pack, .ds-glow, .ds-rays { animation: none; }
+}
+
 .myrank .rec small { display: block; font-size: 11px; color: var(--muted); }
 
 /* ═════════════════════════ Combats v11 ═════════════════════════ */
@@ -1343,3 +1380,22 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .gb-sub { font-size: 13px; color: #cfd6e8; }
 .gb-sub i { font-style: normal; font-weight: 800; }
 .movebtn { display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }
+
+/* ───────── Tuto « écran d'accueil » ───────── */
+.installtip { display: grid; gap: 10px; text-align: center; }
+.installtip .it-icon { width: 64px; height: 64px; border-radius: 16px; justify-self: center; box-shadow: 0 6px 18px rgba(0,0,0,.5), 0 0 0 1px #2a3350; }
+.installtip p { margin: 0; color: #cfd6e8; font-size: 15px; }
+.it-steps { list-style: none; margin: 4px 0; padding: 0; display: grid; gap: 8px; text-align: left; counter-reset: it; }
+.it-steps li { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: rgba(10,14,26,.8); border: 1px solid var(--line); font-size: 15px; line-height: 1.3; }
+.it-steps li::before { counter-increment: it; content: counter(it); flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 7px; background: var(--lime); color: #0a0d14; font-family: var(--display); font-style: italic; font-weight: 800; }
+.it-ico { flex: none; width: 34px; height: 34px; display: grid; place-items: center; border-radius: 9px; background: #1b2236; color: #4da3ff; }
+.it-ico svg { width: 22px; height: 22px; }
+.it-ico.it-txt { width: auto; padding: 0 8px; font-size: 13px; font-weight: 700; color: #4da3ff; }
+.it-arrow { font-size: 30px; line-height: 1; color: var(--lime); animation: itBounce 1.1s ease-in-out infinite; }
+@keyframes itBounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(8px); } }
+@media (prefers-reduced-motion: reduce) { .it-arrow { animation: none; } }
+@media (min-width: 1180px) and (max-width: 1339px) and (min-height: 700px) {
+  .desk-show { left: calc(50% + 215px + 30px); transform: translateY(-50%) scale(.66); }
+}
+/* trop étroit pour le booster à côté du téléphone : on le cache */
+@media (max-width: 1239px) { .desk-show { display: none !important; } }
