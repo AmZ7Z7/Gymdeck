@@ -104,43 +104,45 @@ export interface Exercise {
   name: string;
   image: string;
   group: MuscleGroup;
+  /** Lien vers une vidéo du mouvement (vide : le bouton « Voir le mouvement » ouvre une recherche YouTube). */
+  lienMouvement: string;
   fit?: ArtFit;
 }
 
 /** Catalogue (32 exercices illustrés). */
 export const EXERCISES: Exercise[] = [
-  { slug: "developpe-couche", name: "Développé couché haltères", image: "/assets/exercises/developpe-couche.webp", group: "pecs" },
-  { slug: "developpe-incline", name: "Développé incliné haltères", image: "/assets/exercises/developpe-incline.webp", group: "pecs" },
-  { slug: "developpe-militaire", name: "Développé militaire", image: "/assets/exercises/developpe-militaire.webp", group: "epaules" },
-  { slug: "tirage-vertical", name: "Tirage vertical", image: "/assets/exercises/tirage-vertical.webp", group: "dos" },
-  { slug: "rowing-barre", name: "Rowing barre", image: "/assets/exercises/rowing-barre.webp", group: "dos" },
-  { slug: "souleve-de-terre", name: "Soulevé de terre", image: "/assets/exercises/souleve-de-terre.webp", group: "jambes" },
-  { slug: "hip-thrust", name: "Hip thrust", image: "/assets/exercises/hip-thrust.webp", group: "jambes" },
-  { slug: "curl-biceps", name: "Curl biceps haltères", image: "/assets/exercises/curl-biceps.webp", group: "bras" },
-  { slug: "elevations-laterales", name: "Élévations latérales", image: "/assets/exercises/elevations-laterales.webp", group: "epaules" },
-  { slug: "squat", name: "Squat barre", image: "/assets/exercises/squat.webp", group: "jambes" },
-  { slug: "presse-a-cuisses", name: "Presse à cuisses", image: "/assets/exercises/presse-a-cuisses.webp", group: "jambes", fit: { y: -10 } },
-  { slug: "crunch-poulie", name: "Crunch poulie", image: "/assets/exercises/crunch-poulie.webp", group: "abdos" },
-  { slug: "leg-curl-assis", name: "Leg curl assis", image: "/assets/exercises/leg-curl-assis.webp", group: "jambes" },
-  { slug: "extension-triceps-corde", name: "Extension triceps corde", image: "/assets/exercises/extension-triceps-corde.webp", group: "bras" },
-  { slug: "developpe-poitrine-machine", name: "Développé poitrine machine", image: "/assets/exercises/developpe-poitrine-machine.webp", group: "pecs" },
-  { slug: "rowing-poulie-basse", name: "Rowing poulie basse", image: "/assets/exercises/rowing-poulie-basse.webp", group: "dos" },
-  { slug: "leg-extension", name: "Leg extension", image: "/assets/exercises/leg-extension.webp", group: "jambes" },
-  { slug: "gainage", name: "Gainage", image: "/assets/exercises/gainage.webp", group: "abdos", fit: { s: 0.93, y: -32 } },
-  { slug: "tractions-assistees", name: "Tractions assistées", image: "/assets/exercises/tractions-assistees.webp", group: "dos" },
-  { slug: "curl-marteau", name: "Curl marteau", image: "/assets/exercises/curl-marteau.webp", group: "bras" },
-  { slug: "extension-triceps-overhead", name: "Extension triceps au-dessus de la tête", image: "/assets/exercises/extension-triceps-overhead.webp", group: "bras" },
-  { slug: "velo-de-salle", name: "Vélo de salle", image: "/assets/exercises/velo-de-salle.webp", group: "cardio" },
-  { slug: "developpe-couche-barre", name: "Développé couché barre", image: "/assets/exercises/developpe-couche-barre.webp", group: "pecs" },
-  { slug: "developpe-militaire-halteres", name: "Développé militaire haltères", image: "/assets/exercises/developpe-militaire-halteres.webp", group: "epaules" },
-  { slug: "ecarte-poulie", name: "Écarté à la poulie", image: "/assets/exercises/ecarte-poulie.webp", group: "pecs" },
-  { slug: "rameur", name: "Rameur", image: "/assets/exercises/rameur.webp", group: "cardio" },
-  { slug: "fentes-halteres", name: "Fentes haltères", image: "/assets/exercises/fentes-halteres.webp", group: "jambes" },
-  { slug: "mollets-debout", name: "Mollets debout machine", image: "/assets/exercises/mollets-debout.webp", group: "jambes" },
-  { slug: "extension-lombaire", name: "Extension lombaire", image: "/assets/exercises/extension-lombaire.webp", group: "dos" },
-  { slug: "hack-squat", name: "Hack squat", image: "/assets/exercises/hack-squat.webp", group: "jambes" },
-  { slug: "face-pull", name: "Face pull", image: "/assets/exercises/face-pull.webp", group: "epaules" },
-  { slug: "course-tapis", name: "Course sur tapis", image: "/assets/exercises/course-tapis.webp", group: "cardio" },
+  { slug: "developpe-couche", name: "Développé couché haltères", image: "/assets/exercises/developpe-couche.webp", group: "pecs", lienMouvement: "" },
+  { slug: "developpe-incline", name: "Développé incliné haltères", image: "/assets/exercises/developpe-incline.webp", group: "pecs", lienMouvement: "" },
+  { slug: "developpe-militaire", name: "Développé militaire", image: "/assets/exercises/developpe-militaire.webp", group: "epaules", lienMouvement: "" },
+  { slug: "tirage-vertical", name: "Tirage vertical", image: "/assets/exercises/tirage-vertical.webp", group: "dos", lienMouvement: "" },
+  { slug: "rowing-barre", name: "Rowing barre", image: "/assets/exercises/rowing-barre.webp", group: "dos", lienMouvement: "" },
+  { slug: "souleve-de-terre", name: "Soulevé de terre", image: "/assets/exercises/souleve-de-terre.webp", group: "jambes", lienMouvement: "" },
+  { slug: "hip-thrust", name: "Hip thrust", image: "/assets/exercises/hip-thrust.webp", group: "jambes", lienMouvement: "" },
+  { slug: "curl-biceps", name: "Curl biceps haltères", image: "/assets/exercises/curl-biceps.webp", group: "bras", lienMouvement: "" },
+  { slug: "elevations-laterales", name: "Élévations latérales", image: "/assets/exercises/elevations-laterales.webp", group: "epaules", lienMouvement: "" },
+  { slug: "squat", name: "Squat barre", image: "/assets/exercises/squat.webp", group: "jambes", lienMouvement: "" },
+  { slug: "presse-a-cuisses", name: "Presse à cuisses", image: "/assets/exercises/presse-a-cuisses.webp", group: "jambes", fit: { y: -10 }, lienMouvement: "" },
+  { slug: "crunch-poulie", name: "Crunch poulie", image: "/assets/exercises/crunch-poulie.webp", group: "abdos", lienMouvement: "" },
+  { slug: "leg-curl-assis", name: "Leg curl assis", image: "/assets/exercises/leg-curl-assis.webp", group: "jambes", lienMouvement: "" },
+  { slug: "extension-triceps-corde", name: "Extension triceps corde", image: "/assets/exercises/extension-triceps-corde.webp", group: "bras", lienMouvement: "" },
+  { slug: "developpe-poitrine-machine", name: "Développé poitrine machine", image: "/assets/exercises/developpe-poitrine-machine.webp", group: "pecs", lienMouvement: "" },
+  { slug: "rowing-poulie-basse", name: "Rowing poulie basse", image: "/assets/exercises/rowing-poulie-basse.webp", group: "dos", lienMouvement: "" },
+  { slug: "leg-extension", name: "Leg extension", image: "/assets/exercises/leg-extension.webp", group: "jambes", lienMouvement: "" },
+  { slug: "gainage", name: "Gainage", image: "/assets/exercises/gainage.webp", group: "abdos", fit: { s: 0.93, y: -32 }, lienMouvement: "" },
+  { slug: "tractions-assistees", name: "Tractions assistées", image: "/assets/exercises/tractions-assistees.webp", group: "dos", lienMouvement: "" },
+  { slug: "curl-marteau", name: "Curl marteau", image: "/assets/exercises/curl-marteau.webp", group: "bras", lienMouvement: "" },
+  { slug: "extension-triceps-overhead", name: "Extension triceps au-dessus de la tête", image: "/assets/exercises/extension-triceps-overhead.webp", group: "bras", lienMouvement: "" },
+  { slug: "velo-de-salle", name: "Vélo de salle", image: "/assets/exercises/velo-de-salle.webp", group: "cardio", lienMouvement: "" },
+  { slug: "developpe-couche-barre", name: "Développé couché barre", image: "/assets/exercises/developpe-couche-barre.webp", group: "pecs", lienMouvement: "" },
+  { slug: "developpe-militaire-halteres", name: "Développé militaire haltères", image: "/assets/exercises/developpe-militaire-halteres.webp", group: "epaules", lienMouvement: "" },
+  { slug: "ecarte-poulie", name: "Écarté à la poulie", image: "/assets/exercises/ecarte-poulie.webp", group: "pecs", lienMouvement: "" },
+  { slug: "rameur", name: "Rameur", image: "/assets/exercises/rameur.webp", group: "cardio", lienMouvement: "" },
+  { slug: "fentes-halteres", name: "Fentes haltères", image: "/assets/exercises/fentes-halteres.webp", group: "jambes", lienMouvement: "" },
+  { slug: "mollets-debout", name: "Mollets debout machine", image: "/assets/exercises/mollets-debout.webp", group: "jambes", lienMouvement: "" },
+  { slug: "extension-lombaire", name: "Extension lombaire", image: "/assets/exercises/extension-lombaire.webp", group: "dos", lienMouvement: "" },
+  { slug: "hack-squat", name: "Hack squat", image: "/assets/exercises/hack-squat.webp", group: "jambes", lienMouvement: "" },
+  { slug: "face-pull", name: "Face pull", image: "/assets/exercises/face-pull.webp", group: "epaules", lienMouvement: "" },
+  { slug: "course-tapis", name: "Course sur tapis", image: "/assets/exercises/course-tapis.webp", group: "cardio", lienMouvement: "" },
 ];
 
 // Garde-fou : une table de probabilités incorrecte doit empêcher le démarrage.
@@ -149,14 +151,18 @@ for (const [name, table] of [["NORMAL", NORMAL_WEIGHTS], ["WELCOME2", WELCOME2_W
   if (sum !== 10000) throw new Error(`Table ${name} : somme ${sum} ≠ 10000`);
 }
 
-/** Position (en fraction de la hauteur de la carte) des bandeaux de chaque cadre, mesurée sur les images. */
-export const FRAME_LAYOUT: Record<Rarity, { nameTop: number; statsTop: number; statsBottom: number }> = {
-  C: { nameTop: 0.731, statsTop: 0.827, statsBottom: 0.949 },
-  R: { nameTop: 0.724, statsTop: 0.817, statsBottom: 0.956 },
-  SR: { nameTop: 0.743, statsTop: 0.834, statsBottom: 0.961 },
-  SSR: { nameTop: 0.686, statsTop: 0.788, statsBottom: 0.953 },
-  UR: { nameTop: 0.735, statsTop: 0.812, statsBottom: 0.931 },
-  LR: { nameTop: 0.678, statsTop: 0.771, statsBottom: 0.937 },
+/**
+ * Position des bandeaux de chaque cadre, mesurée sur les images (nameTop / statsTop / statsBottom : fraction de la hauteur).
+ * gradeX / gradeTop : centre horizontal et haut (fractions de la largeur et de la hauteur) du patch de note, posé sur les traits
+ * décoratifs de l'en-tête.
+ */
+export const FRAME_LAYOUT: Record<Rarity, { nameTop: number; statsTop: number; statsBottom: number; gradeX: number; gradeTop: number }> = {
+  C: { nameTop: 0.731, statsTop: 0.827, statsBottom: 0.949, gradeX: 0.589, gradeTop: 0.035 },
+  R: { nameTop: 0.724, statsTop: 0.817, statsBottom: 0.956, gradeX: 0.554, gradeTop: 0.036 },
+  SR: { nameTop: 0.743, statsTop: 0.834, statsBottom: 0.961, gradeX: 0.507, gradeTop: 0.036 },
+  SSR: { nameTop: 0.686, statsTop: 0.788, statsBottom: 0.953, gradeX: 0.554, gradeTop: 0.038 },
+  UR: { nameTop: 0.735, statsTop: 0.812, statsBottom: 0.931, gradeX: 0.468, gradeTop: 0.037 },
+  LR: { nameTop: 0.678, statsTop: 0.771, statsBottom: 0.937, gradeX: 0.49, gradeTop: 0.048 },
 };
 
 export const RARITY_COLOR: Record<Rarity, string> = {
@@ -172,6 +178,10 @@ export const exerciseBySlug = (slug: string): Exercise =>
   EXERCISES.find((e) => e.slug === slug) ?? EXERCISES[0]!;
 
 export const groupOfSlug = (slug: string): MuscleGroup => exerciseBySlug(slug).group;
+
+/** Vidéo du mouvement : le lien de l'exercice, sinon une recherche YouTube « [nom] exécution ». */
+export const movementUrl = (e: Exercise) =>
+  e.lienMouvement || `https://www.youtube.com/results?search_query=${encodeURIComponent(`${e.name} exécution`)}`;
 
 // ───────────── Expertise des cartes (atelier de Basile) ─────────────
 
@@ -297,6 +307,13 @@ export const CAPACITIES: Record<MuscleGroup, CapacityDef> = {
 };
 /** Capacité commune des cartes C, R et SR. */
 export const SECOND_WIND = { kind: "second" as CapKind, name: "Second souffle", color: "#c9d1de" };
+
+/** Icône de chaque capacité (public/assets/capacities, version optimisée ; originaux dans assets-src/capacites). */
+export const CAP_ICON: Record<CapKind, string> = {
+  power: "coup-puissant", counter: "contre-attaque", feint: "feinte", combo: "enchainement",
+  wall: "mur", heal: "recuperation", replay: "endurance", second: "second-souffle",
+};
+export const capIconSrc = (k: CapKind) => `/assets/capacities/${CAP_ICON[k]}.png`;
 
 /** Triangle des groupes : chaque groupe bat le suivant. Les bras sont neutres. */
 export const BEATS: Partial<Record<MuscleGroup, MuscleGroup>> = {

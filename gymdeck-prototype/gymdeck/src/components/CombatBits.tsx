@@ -1,26 +1,21 @@
 "use client";
 
-import { DUEL, GROUPS, RARITY_COLOR, CAPACITIES, SECOND_WIND, type CapKind, type MuscleGroup } from "@/lib/config";
+import { DUEL, GROUPS, RARITY_COLOR, CAPACITIES, SECOND_WIND, capIconSrc, type CapKind, type MuscleGroup } from "@/lib/config";
 import { BEATS } from "@/lib/config";
 import { capacityOf, capacityText, combatPower, deckBonus, groupOf, groupShort, teamHp, POSTURE_INFO } from "@/lib/duel";
 import type { CardData } from "@/lib/engine";
-import { GroupIcon, IconBolt, IconCombo, IconEye, IconFist, IconHeartPlus, IconReturn, IconWind, Shield } from "./Icons";
+import { GroupIcon } from "./Icons";
 
-const ICONS: Record<CapKind, (p: React.SVGProps<SVGSVGElement>) => React.JSX.Element> = {
-  power: IconFist, counter: IconReturn, feint: IconEye, combo: IconCombo, wall: Shield, heal: IconHeartPlus, replay: IconBolt, second: IconWind,
-};
-
-/** Icône d'une capacité (chacune a sa forme et sa couleur). */
-export function CapIcon({ kind, ...p }: React.SVGProps<SVGSVGElement> & { kind: CapKind }) {
-  const I = ICONS[kind];
-  return <I {...p} />;
+/** Icône d'une capacité : l'image fournie, sans fond ni cadre (décorative : le nom est toujours écrit à côté ou en libellé). */
+export function CapIcon({ kind, className = "" }: { kind: CapKind; className?: string }) {
+  return <img className={`capimg ${className}`} src={capIconSrc(kind)} alt="" draggable={false} decoding="async" />;
 }
 
-/** Pastille ronde de capacité (posée sur les cartes SSR, UR et LR). */
+/** Symbole de la capacité de combat d'une carte (à droite du nom sur les cartes, ou seul). */
 export function CapDot({ card, size }: { card: Pick<CardData, "exerciseSlug" | "rarity">; size?: number }) {
   const c = capacityOf(card);
   return (
-    <span className={`capdot k-${c.kind}`} style={{ ["--cc" as string]: c.color, ...(size ? { width: size, height: size } : {}) }} title={c.name} aria-label={`Capacité : ${c.name}`}>
+    <span className={`capdot k-${c.kind}`} style={size ? { width: size, height: size } : undefined} title={`Capacité : ${c.name}`} role="img" aria-label={`Capacité : ${c.name}`}>
       <CapIcon kind={c.kind} />
     </span>
   );

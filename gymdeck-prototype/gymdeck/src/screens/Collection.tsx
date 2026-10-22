@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
-import { Card, Medal, CardBack, Tilt, passiveLabel } from "@/components/Card";
+import { Card, CardBack, GradeBanner, Tilt, passiveLabel } from "@/components/Card";
 import { Extensions } from "@/screens/Missions";
 import { shareCards } from "@/lib/share";
 import { GcPill, Wordmark } from "@/components/Bits";
@@ -12,7 +12,7 @@ import { Sheet } from "@/components/Sheet";
 import { CombatInfo } from "@/components/CombatBits";
 import { gradeBonus } from "@/lib/grading";
 import { sfx } from "@/lib/sound";
-import { DISCARD_GC, EXERCISES, SHARDS_DISCARD, GRADE_LABEL, GRADE_PRICE, GROUPS, RARITIES, RARITY_COLOR, RARITY_RANK, exerciseBySlug, gradeColor, type MuscleGroup, type Rarity } from "@/lib/config";
+import { DISCARD_GC, EXERCISES, SHARDS_DISCARD, GRADE_PRICE, GROUPS, RARITIES, RARITY_COLOR, RARITY_RANK, exerciseBySlug, movementUrl, type MuscleGroup, type Rarity } from "@/lib/config";
 import { atWorkshop } from "@/lib/game";
 import type { OpenPage } from "@/app/page";
 import { formatDuration } from "@/components/Bits";
@@ -239,6 +239,7 @@ function Detail({ slug, startId, onClose, onGrade }: { slug: string; startId: st
 
   return (
     <Sheet onClose={onClose} variant="center" label={exerciseBySlug(slug).name}>
+      <GradeBanner card={card} />
       <motion.div key={card.id} className="cardwrap" initial={{ rotateY: -28, scale: 0.9, opacity: 0 }} animate={{ rotateY: 0, scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 260, damping: 22 }} style={{ transformPerspective: 900 }}>
         <Tilt><Card card={card} /></Tilt>
       </motion.div>
@@ -250,7 +251,6 @@ function Detail({ slug, startId, onClose, onGrade }: { slug: string; startId: st
           const sg = (n: number) => (n > 0 ? `+${n}` : `${n}`);
           return (
             <div className="gradeinfo">
-              <div><Medal grade={card.grade} className="sm" />Note de Basile : <b style={{ color: gradeColor(card.grade) }}>{card.grade}/10 · {GRADE_LABEL[card.grade]}</b></div>
               <div className={`gi-eff ${b.pct > 0 ? "up" : b.pct < 0 ? "down" : ""}`}>{b.pct === 0 ? "La note ne change pas les stats." : <>Effet de la note : {sg(b.pct)} % · <b>{sg(b.atq)} ATQ</b> · <b>{sg(b.def)} DEF</b></>}</div>
             </div>
           );
@@ -259,6 +259,7 @@ function Detail({ slug, startId, onClose, onGrade }: { slug: string; startId: st
       </div>
       <CombatInfo card={card} />
       <div className="acts">
+        <a className="btn ghost small movebtn" href={movementUrl(exerciseBySlug(slug))} target="_blank" rel="noopener noreferrer">Voir le mouvement ↗</a>
         {copies.length > 1 && (
           <div className="navrow">
             <button aria-label="Exemplaire précédent" onClick={() => { setConfirm(false); setI((i - 1 + copies.length) % copies.length); }}><IconBack width={24} height={24} /></button>

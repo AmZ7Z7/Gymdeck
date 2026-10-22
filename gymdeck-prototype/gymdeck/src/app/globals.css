@@ -656,8 +656,6 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .sheet:focus { outline: none; }
 
 /* ───────── Tampon de note (expertise de Basile) ───────── */
-.card .seal { position: absolute; left: 4.2%; top: 9.2%; width: 16.5%; z-index: 3; pointer-events: none; filter: drop-shadow(0 .8cqw 1.4cqw rgba(0,0,0,.6)); }
-.card .seal .medal b { font-size: 9.6cqw; }
 .medal { position: relative; display: inline-grid; place-items: center; width: 100%; aspect-ratio: 1; font-style: normal; vertical-align: middle; flex: none; }
 .medal img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; }
 .medal b { position: relative; font-family: var(--display); font-style: italic; font-weight: 800; line-height: 1; letter-spacing: -.02em; margin-right: .06em; font-size: 1em;
@@ -896,12 +894,13 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 /* ═════════════════════════ Combats v11 ═════════════════════════ */
 
 /* pastille de capacité */
-.capdot { --cc: #c8f31d; display: inline-grid; place-items: center; flex: none; width: 26px; height: 26px; border-radius: 50%; color: #0a0d14;
-  background: radial-gradient(circle at 35% 30%, #fff 0%, var(--cc) 38%, color-mix(in srgb, var(--cc) 55%, #000) 100%);
-  box-shadow: 0 0 0 2px #0a0d14, 0 0 10px color-mix(in srgb, var(--cc) 70%, transparent); }
-.capdot svg { width: 64%; height: 64%; stroke-width: 2.4; }
-.capdot.big { width: 46px; height: 46px; }
-.card .capdot { position: absolute; z-index: 3; left: 6%; top: 11.5%; width: 15cqw; height: 15cqw; box-shadow: 0 0 0 .9cqw #0a0d14, 0 0 3cqw color-mix(in srgb, var(--cc) 75%, transparent); }
+.capdot { display: inline-grid; place-items: center; flex: none; width: 30px; height: 30px; }
+.capimg { display: block; width: 100%; height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.capdot.big { width: 56px; height: 56px; }
+/* sur la carte : à droite du nom, dans une zone réservée (le nom ne passe jamais dessous) */
+.card .nameband.withcap { right: 22%; }
+.card .capslot { position: absolute; right: 7.2%; width: 14.5cqw; display: grid; place-items: center; z-index: 3; }
+.card .capslot .capdot { width: 14.5cqw; height: 14.5cqw; }
 
 /* section « En combat » */
 .combatinfo { --cc: #c8f31d; width: 100%; max-width: 340px; display: grid; gap: 8px; padding: 12px; border-radius: 14px; text-align: left;
@@ -1029,12 +1028,13 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .ptag.none { background: transparent; border: 1px dashed #3a4466; color: var(--muted); }
 .p-force { --pc: #ff6a4d; } .p-technique { --pc: #c8f31d; } .p-garde { --pc: #4da3ff; }
 .ctag { background: color-mix(in srgb, var(--cc) 22%, #0d1220); border: 1px solid var(--cc); color: var(--cc); }
-.ctag svg { width: 13px; height: 13px; }
+.ctag svg, .ctag .capimg { width: 16px; height: 16px; }
 .ttag.up { background: rgba(200,243,29,.16); color: var(--lime); }
 .ttag.down { background: rgba(255,90,90,.16); color: #ff8a8a; }
 .advtag { position: absolute; left: 50%; top: -9px; translate: -50% 0; z-index: 4; padding: 1px 8px; border-radius: 99px; background: #ffb020; color: #0a0d14; font-size: 11px; font-weight: 800; white-space: nowrap; }
 
 .capfx { position: absolute; inset: -6% -4%; z-index: 6; display: grid; place-items: center; align-content: center; gap: 4px; pointer-events: none; color: var(--cc); text-align: center; }
+.capfx .capimg { width: 84px; height: 84px; }
 .capfx svg { width: 70px; height: 70px; filter: drop-shadow(0 0 14px var(--cc)) drop-shadow(0 0 26px var(--cc)); stroke-width: 2.4; }
 .capfx b { font-family: var(--display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 22px; line-height: 1; color: #fff; text-shadow: 0 0 12px var(--cc), 0 2px 0 #000; }
 .capfx-ring { position: absolute; left: 50%; top: 45%; width: 150px; height: 150px; margin: -75px 0 0 -75px; border-radius: 50%; border: 4px solid var(--cc); box-shadow: 0 0 30px var(--cc), inset 0 0 30px var(--cc); animation: capRing .9s ease-out forwards; }
@@ -1062,7 +1062,8 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .cacts { display: grid; grid-template-columns: 1.35fr 1fr; gap: 8px; }
 .capbtn { --cc: #c8f31d; position: relative; overflow: hidden; display: flex; align-items: center; gap: 8px; height: 56px; padding: 0 10px; border-radius: 14px; text-align: left;
   border: 1.5px solid color-mix(in srgb, var(--cc) 35%, #2a3350); background: #0f1528; color: #8c96b4; }
-.capbtn > svg { position: relative; z-index: 1; width: 26px; height: 26px; flex: none; }
+.capbtn > svg, .capbtn > .capimg { position: relative; z-index: 1; width: 26px; height: 26px; flex: none; }
+.capbtn > .capimg { width: 30px; height: 30px; }
 .capfill { position: absolute; left: 0; top: 0; bottom: 0; background: linear-gradient(90deg, color-mix(in srgb, var(--cc) 10%, transparent), color-mix(in srgb, var(--cc) 30%, transparent)); transition: width .5s ease; }
 .capt { position: relative; z-index: 1; min-width: 0; display: grid; }
 .capt b { font-family: var(--display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 17px; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -1268,7 +1269,6 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .sheet .board .brow { width: 100%; text-align: left; align-items: center; }
 .view.noanim .screen { animation: none; }
 .stickybar { position: sticky; bottom: 0; z-index: 4; padding: 12px 0 4px; margin-top: 10px; background: linear-gradient(180deg, transparent, var(--bg) 35%); }
-.card.graded .capdot { top: 23.5%; left: 6.7%; width: 13.5cqw; height: 13.5cqw; }
 .gradeinfo { margin-top: 6px; display: grid; gap: 3px; }
 .gi-eff { font-size: 14px; color: var(--muted); }
 .gi-eff.up b { color: var(--lime); }
@@ -1310,3 +1310,36 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .textbtn.danger { display: block; margin: 12px auto 0; color: #ff8a8a; font-size: 14px; text-decoration: underline; text-underline-offset: 2px; }
 .btn.primary.danger { background: #e5484d; color: #fff; box-shadow: none; }
 .btn.primary.danger:disabled { opacity: .45; }
+
+/* ───────── Patch de note (expertise de Basile) ─────────
+   Rectangle biseauté, effet métal discret ; seul le patch change de couleur selon la note. */
+.gpatch { --gb: #cbd5e1; --gl: #8a97a8; --gf: #111827; position: relative; display: inline-grid; place-items: center;
+  clip-path: polygon(16% 0, 84% 0, 100% 24%, 100% 76%, 84% 100%, 16% 100%, 0 76%, 0 24%); background: var(--gl); }
+.gpatch b { position: absolute; inset: var(--gw, 2px); display: grid; place-items: center; clip-path: inherit;
+  background: linear-gradient(165deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,0) 42%, rgba(0,0,0,.12) 100%), var(--gb);
+  color: var(--gf); font-family: var(--display); font-style: italic; font-weight: 800; line-height: 1; letter-spacing: -.02em; padding-right: .04em; }
+.gpatch.t13 { --gb: #b7794b; --gl: #6e4123; }
+.gpatch.t45 { --gb: #cbd5e1; --gl: #7b8798; }
+.gpatch.t67 { --gb: #60a5fa; --gl: #1d4ed8; }
+.gpatch.t8 { --gb: #c4b5fd; --gl: #6d5bd0; }
+.gpatch.t9 { --gb: #f5c451; --gl: #a87512; }
+.gpatch.t10 { --gb: #161b22; --gl: #f5c451; --gf: #fff6d5; }
+.gpatch.t10 b { background: linear-gradient(165deg, rgba(255,255,255,.14) 0%, rgba(255,255,255,0) 45%), var(--gb); }
+/* sur la carte : largeur fixe (assez pour « 10 »), chiffre qui occupe presque toute la hauteur */
+.gpatch.oncard { position: absolute; z-index: 4; width: 17cqw; height: 11.5cqw; translate: -50% 0; --gw: .75cqw; filter: drop-shadow(0 .5cqw .8cqw rgba(0,0,0,.55)); }
+.gpatch.oncard b { font-size: 10.6cqw; }
+.gpatch.big { width: 74px; height: 54px; --gw: 3px; flex: none; }
+.gpatch.big b { font-size: 46px; }
+
+/* Grand bandeau de certification (fiche détaillée) */
+.gbanner { display: flex; align-items: center; gap: 12px; width: min(100%, 320px); margin: 0 auto 10px; padding: 10px 12px 10px 14px; border-radius: 12px;
+  background: linear-gradient(135deg, #10172a, #0a0f1c); border: 1.5px solid var(--gl, #3a4466); box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 8px 20px rgba(0,0,0,.35); }
+.gbanner.t13 { --gl: #b7794b; } .gbanner.t45 { --gl: #cbd5e1; } .gbanner.t67 { --gl: #60a5fa; }
+.gbanner.t8 { --gl: #c4b5fd; } .gbanner.t9 { --gl: #f5c451; } .gbanner.t10 { --gl: #f5c451; }
+.gb-l { flex: 1; min-width: 0; display: grid; gap: 2px; text-align: left; }
+.gb-l img { height: 18px; width: auto; justify-self: start; }
+.gb-cert { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.gb-name { font-family: var(--display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 18px; line-height: 1.05; }
+.gb-sub { font-size: 13px; color: #cfd6e8; }
+.gb-sub i { font-style: normal; font-weight: 800; }
+.movebtn { display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; }

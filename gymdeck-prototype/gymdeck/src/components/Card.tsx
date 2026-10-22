@@ -47,16 +47,26 @@ export function Card({ card, count, holo = true, cap = true, hideStats = false }
       />
       <img className="brand" src="/assets/ui/wordmark.webp" alt="" draggable={false} decoding="async" />
       <span className="badge" style={{ color }}>{card.rarity}</span>
+      {/* note de Basile : patch posé sur les traits décoratifs de l'en-tête (rien du tout si la carte n'est pas notée) */}
+      {card.grade ? <GradePatch grade={card.grade} className="oncard" style={{ left: `${L.gradeX * 100}%`, top: `${L.gradeTop * 100}%` }} /> : null}
       <div
-        className="nameband"
+        className={`nameband ${cap ? "withcap" : ""}`}
         style={{
           top: `${L.nameTop * 100}%`,
           height: `${(L.statsTop - L.nameTop) * 100}%`,
-          ...(ex.name.length > 30 ? { fontSize: "5.6cqw" } : ex.name.length > 16 ? { fontSize: "6.9cqw", whiteSpace: "nowrap" } : {}),
+          // avec le symbole de capacité à droite, un nom long passe sur deux lignes au lieu de rétrécir
+          ...(cap
+            ? (ex.name.length > 30 ? { fontSize: "5.3cqw" } : ex.name.length > 16 ? { fontSize: "6.2cqw" } : {})
+            : (ex.name.length > 30 ? { fontSize: "5.6cqw" } : ex.name.length > 16 ? { fontSize: "6.9cqw", whiteSpace: "nowrap" } : {})),
         }}
       >
         {ex.name}
       </div>
+      {cap && (
+        <span className="capslot" style={{ top: `${L.nameTop * 100}%`, height: `${(L.statsTop - L.nameTop) * 100}%` }}>
+          <CapDot card={card} />
+        </span>
+      )}
       <div className="statband" style={{ top: `${L.statsTop * 100}%`, height: `${(L.statsBottom - L.statsTop) * 100}%`, ["--b" as string]: `${bandH}cqw` }}>
         <div className="stats">
           <Swords style={{ width: `calc(var(--b) * .38)`, height: `calc(var(--b) * .38)` }} />
@@ -77,19 +87,36 @@ export function Card({ card, count, holo = true, cap = true, hideStats = false }
           </>
         )}
       </div>
-      {cap && (card.rarity === "SSR" || top) && <CapDot card={card} />}
-      {card.grade ? <GradeSeal grade={card.grade} /> : null}
       {count && count > 1 ? <span className="count">×{count}</span> : null}
     </div>
   );
 }
 
-/** Médaille de Basile posée sur une carte expertisée (note de 1 à 10). */
-export function GradeSeal({ grade }: { grade: number }) {
+/** Couleur du patch selon la note : bronze 1-3, argent 4-5, bleu 6-7, violet 8, or 9, platine noir 10. */
+export const gradeTier = (g: number) => (g >= 10 ? "t10" : g === 9 ? "t9" : g === 8 ? "t8" : g >= 6 ? "t67" : g >= 4 ? "t45" : "t13");
+
+/** Patch de certification : rectangle biseauté, uniquement le chiffre de la note. */
+export function GradePatch({ grade, className = "", style }: { grade: number; className?: string; style?: React.CSSProperties }) {
   return (
-    <span className="seal" aria-label={`Note de Basile : ${grade} sur 10 (${GRADE_LABEL[grade]})`} title={`Note ${grade}/10 · ${GRADE_LABEL[grade]}`}>
-      <Medal grade={grade} />
+    <span className={`gpatch ${gradeTier(grade)} ${className}`} style={style} role="img" aria-label={`Note de Basile : ${grade} sur 10 (${GRADE_LABEL[grade]})`} title={`Note ${grade}/10 · ${GRADE_LABEL[grade]}`}>
+      <b>{grade}</b>
     </span>
+  );
+}
+
+/** Grand bandeau de certification (fiche détaillée uniquement) : identité GymDeck, carte, et note dans son patch. */
+export function GradeBanner({ card }: { card: CardData }) {
+  if (!card.grade) return null;
+  return (
+    <div className={`gbanner ${gradeTier(card.grade)}`}>
+      <div className="gb-l">
+        <img src="/assets/ui/wordmark.webp" alt="GymDeck" draggable={false} />
+        <span className="gb-cert">Expertisée par Basile</span>
+        <b className="gb-name">{exerciseBySlug(card.exerciseSlug).name}</b>
+        <span className="gb-sub"><i style={{ color: RARITY_COLOR[card.rarity] }}>{card.rarity}</i> · {GRADE_LABEL[card.grade]}</span>
+      </div>
+      <GradePatch grade={card.grade} className="big" />
+    </div>
   );
 }
 
