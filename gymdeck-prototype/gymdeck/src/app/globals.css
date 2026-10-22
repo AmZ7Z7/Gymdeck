@@ -897,15 +897,23 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
     background: repeating-conic-gradient(from 0deg, rgba(244,255,196,.55) 0 3deg, transparent 3deg 15deg);
     -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 62%); mask-image: radial-gradient(circle, #000 18%, transparent 62%); animation: dsSpin 40s linear infinite; }
   /* le paquet, devant : les cartes sortent de derrière lui, par le haut */
-  .ds-pack { position: absolute; left: 50%; bottom: 0; width: 190px; margin-left: -95px; z-index: 10; filter: drop-shadow(0 22px 34px rgba(0,0,0,.7)); animation: dsPack 3.2s ease-in-out infinite; }
+  .ds-pack { position: absolute; left: 50%; bottom: 0; width: 190px; aspect-ratio: 640 / 949; margin-left: -95px; z-index: 10; filter: drop-shadow(0 22px 34px rgba(0,0,0,.7));
+    animation: dsShake .62s ease-in both, dsPack 3.2s ease-in-out 1.7s infinite; }
+  .ds-pack img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  /* le paquet est coupé à 19 % de sa hauteur : le haut s'arrache et s'envole */
+  .ds-body { clip-path: polygon(0% 19%, 10% 17.4%, 20% 19.6%, 30% 17.8%, 40% 20%, 50% 18%, 60% 19.4%, 70% 17.2%, 80% 19.8%, 90% 18.2%, 100% 19.2%, 100% 100%, 0 100%); }
+  .ds-flap { clip-path: polygon(0 0, 100% 0, 100% 19.2%, 90% 18.2%, 80% 19.8%, 70% 17.2%, 60% 19.4%, 50% 18%, 40% 20%, 30% 17.8%, 20% 19.6%, 10% 17.4%, 0% 19%); transform-origin: 85% 19%; animation: dsFlap .7s cubic-bezier(.3,.6,.4,1) .6s forwards; }
+  .ds-tear { position: absolute; left: -6%; right: -6%; top: 19%; height: 10px; margin-top: -5px; border-radius: 50%; opacity: 0;
+    background: radial-gradient(ellipse at center, #fff 0%, #f4ffc4 35%, rgba(200,243,29,.5) 60%, transparent 75%); filter: blur(1px);
+    animation: dsTear 1.1s ease-out .55s forwards; }
   .ds-card { position: absolute; left: 50%; bottom: 150px; width: 132px; margin-left: -66px; transform-origin: 50% 100%;
     filter: drop-shadow(0 16px 26px rgba(0,0,0,.6)); opacity: 0; animation: dsOut 1.1s cubic-bezier(.2,.9,.25,1.15) forwards; animation-delay: var(--d); }
   .ds-float { animation: dsFloat 4.2s ease-in-out infinite; animation-delay: var(--fd); }
-  .ds-c0 { --x: -116px; --y: -28px; --r: -24deg; --d: .35s; --fd: -.6s; z-index: 1; }
-  .ds-c1 { --x: -60px; --y: -92px; --r: -12deg; --d: .55s; --fd: -1.8s; z-index: 2; }
-  .ds-c2 { --x: 0px; --y: -138px; --r: 0deg; --d: .95s; --fd: -2.6s; z-index: 5; }
-  .ds-c3 { --x: 60px; --y: -92px; --r: 12deg; --d: .75s; --fd: -1.1s; z-index: 2; }
-  .ds-c4 { --x: 116px; --y: -28px; --r: 24deg; --d: .45s; --fd: -3.2s; z-index: 1; }
+  .ds-c0 { --x: -116px; --y: -28px; --r: -24deg; --d: 1.05s; --fd: -.6s; z-index: 1; }
+  .ds-c1 { --x: -60px; --y: -92px; --r: -12deg; --d: 1.25s; --fd: -1.8s; z-index: 2; }
+  .ds-c2 { --x: 0px; --y: -138px; --r: 0deg; --d: 1.65s; --fd: -2.6s; z-index: 5; }
+  .ds-c3 { --x: 60px; --y: -92px; --r: 12deg; --d: 1.45s; --fd: -1.1s; z-index: 2; }
+  .ds-c4 { --x: 116px; --y: -28px; --r: 24deg; --d: 1.15s; --fd: -3.2s; z-index: 1; }
   .ds-c2 .ds-float { animation-duration: 3.4s; }
 }
 /* écrans de PC plus étroits : le tout un peu plus petit pour ne jamais sortir de l'écran */
@@ -918,12 +926,30 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
   100% { opacity: 1; transform: translate(var(--x), var(--y)) rotate(var(--r)) scale(1); }
 }
 @keyframes dsFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-9px); } }
+@keyframes dsShake {
+  0% { transform: translateY(30px) scale(.92); opacity: 0; }
+  25% { transform: translateY(0) scale(1); opacity: 1; }
+  40%, 60%, 80% { transform: rotate(-3deg) scale(1.03); }
+  50%, 70%, 90% { transform: rotate(3deg) scale(1.04); }
+  100% { transform: rotate(0) scale(1); }
+}
+@keyframes dsFlap {
+  0% { transform: translate(0, 0) rotate(0); opacity: 1; }
+  30% { transform: translate(4px, -14px) rotate(6deg); opacity: 1; }
+  100% { transform: translate(70px, -190px) rotate(38deg); opacity: 0; }
+}
+@keyframes dsTear {
+  0% { opacity: 0; transform: scaleX(.2); }
+  20% { opacity: 1; transform: scaleX(1.1) scaleY(2.4); }
+  100% { opacity: 0; transform: scaleX(1.3) scaleY(.6); }
+}
 @keyframes dsPack { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-6px) rotate(-1deg); } }
 @keyframes dsPulse { 0%, 100% { opacity: .85; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
 @keyframes dsSpin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) {
   .ds-card { animation: none; opacity: 1; transform: translate(var(--x), var(--y)) rotate(var(--r)); }
-  .ds-float, .ds-pack, .ds-glow, .ds-rays { animation: none; }
+  .ds-float, .ds-pack, .ds-glow, .ds-rays, .ds-tear { animation: none; }
+  .ds-flap { animation: none; opacity: 0; }
 }
 
 .myrank .rec small { display: block; font-size: 11px; color: var(--muted); }
@@ -1399,3 +1425,24 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 }
 /* trop étroit pour le booster à côté du téléphone : on le cache */
 @media (max-width: 1239px) { .desk-show { display: none !important; } }
+/* UR / LR : symbole de capacité en bas à droite, à côté du passif */
+.card .capband { flex: none; display: grid; place-items: center; margin-left: 1cqw; }
+.card .capband .capdot { width: 12.5cqw; height: 12.5cqw; }
+.card .statband.withcap { right: 6.5%; gap: 1cqw; --vs: .4; --is: .33; --ls: .24; }
+.card .statband.withcap .stats { column-gap: 1.6cqw; }
+.card .statband.withcap .sep { margin: 1.2cqw 2.2cqw 1.2cqw 2.4cqw; }
+.card .statband.withcap .passive small { font-size: 3.8cqw; }
+.card .statband.withcap .passive b { font-size: 6.4cqw; }
+.card .statband.withcap .passive.both small { font-size: 3.3cqw; }
+.card .statband.withcap .passive.both b { font-size: 5cqw; }
+.card .statband.withcap .passive em { font-size: 4cqw; }
+/* Forge : mode d'emploi et progression vers la carte choisie */
+.forgehow { display: grid; gap: 10px; margin-bottom: 12px; }
+.forgehow .fh-title { font-family: var(--display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 20px; }
+.forgehow ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.forgehow li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.35; color: #d5dbee; }
+.forgehow li i { flex: none; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 7px; background: #8fe0ff; color: #0a0d14; font-family: var(--display); font-weight: 800; font-size: 14px; }
+.forgehow li b { color: var(--text); }
+.fp-prog { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; font-size: 13px; color: #8fe0ff; font-weight: 700; }
+.fp-prog .progress { margin: 0; }
+.fp-prog .progress i { background: linear-gradient(90deg, #3cc4ff, #8fe0ff); }

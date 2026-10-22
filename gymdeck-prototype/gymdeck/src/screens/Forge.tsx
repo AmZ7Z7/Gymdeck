@@ -12,7 +12,7 @@ import {
   EXERCISES, GROUPS, RARITIES, RARITY_COLOR, SHARDS_CRAFT, SHARDS_DISCARD, STAT_RANGE, exerciseBySlug, type MuscleGroup, type Rarity,
 } from "@/lib/config";
 import type { CardData } from "@/lib/engine";
-import type { OwnedCard } from "@/lib/game";
+import { duplicateIds, type OwnedCard } from "@/lib/game";
 
 /** La Forge : les éclats gagnés en défaussant des cartes permettent de fabriquer la carte de son choix. */
 export function Forge({ back, initialSlug }: { back: () => void; initialSlug?: string | null }) {
@@ -23,6 +23,10 @@ export function Forge({ back, initialSlug }: { back: () => void; initialSlug?: s
   const [group, setGroup] = useState<MuscleGroup | null>(null);
   const [confirm, setConfirm] = useState(false);
   const [made, setMade] = useState<OwnedCard | null>(null);
+  const [recycle, setRecycle] = useState(false);
+  // doublons : on garde la meilleure carte de chaque exercice et rareté (jamais celles du deck ni celles chez Basile)
+  const dups = useMemo(() => duplicateIds(g.player), [g.player]);
+  const dupShards = dups.reduce((s, id) => s + SHARDS_DISCARD[g.player.cards.find((c) => c.id === id)!.rarity], 0);
 
   const cost = SHARDS_CRAFT[rarity];
   const missing = cost - shards;
@@ -54,6 +58,21 @@ export function Forge({ back, initialSlug }: { back: () => void; initialSlug?: s
         <span className="t">{shards}<small> éclats</small></span>
       </div>
 
+      {/* mode d'emploi toujours visible : d'où viennent les éclats et à quoi ils servent */}
+      <div className="panel forgehow">
+        <div className="fh-title">Comment ça marche ?</div>
+        <ol>
+          <li><i>1</i><span><b>Défausse</b> tes cartes en double : chacune te rapporte des <b>éclats ✦</b> (de {SHARDS_DISCARD.C} pour une C à {SHARDS_DISCARD.LR} pour une LR).</span></li>
+          <li><i>2</i><span><b>Accumule</b> tes éclats : ils restent à toi, sans limite de temps.</span></li>
+          <li><i>3</i><span><b>Fabrique</b> ici la carte de ton choix : tu choisis l’exercice et la rareté.</span></li>
+        </ol>
+        {dups.length > 0 ? (
+          <button className="btn primary small" onClick={() => setRecycle(true)}>Recycler mes {dups.length} doublon{dups.length > 1 ? "s" : ""} · +{dupShards} ✦</button>
+        ) : (
+          <p className="fine" style={{ textAlign: "center" }}>Aucun doublon à recycler pour l’instant : ouvre des boosters !</p>
+        )}
+      </div>
+
       <div className="chips" role="tablist" aria-label="Rareté">
         {RARITIES.map((r) => (
           <button key={r} role="tab" aria-selected={rarity === r} className={`chip ${rarity === r ? "on" : ""}`} style={{ ["--c" as string]: RARITY_COLOR[r] }} onClick={() => setRarity(r)}>{r}</button>
@@ -66,6 +85,10 @@ export function Forge({ back, initialSlug }: { back: () => void; initialSlug?: s
           <div className="fp-name">{exerciseBySlug(slug).name}</div>
           <div style={{ color: RARITY_COLOR[rarity], fontWeight: 800 }}>Carte {rarity}{owned.has(`${slug}|${rarity}`) ? " · déjà dans ta collection" : ""}</div>
           <div className="fine">ATQ et DEF tirées au hasard entre {range.min} et {range.max}{rarity === "UR" || rarity === "LR" ? ", avec un passif" : ""}, comme dans un booster.</div>
+          <div className="fp-prog" aria-label={`${Math.min(shards, cost)} éclats sur ${cost}`}>
+            <div className="progress"><i style={{ width: `${Math.min(100, (shards / cost) * 100)}%` }} /></div>
+            <span>{Math.min(shards, cost)} / {cost} ✦</span>
+          </div>
           <button className="btn primary small" disabled={missing > 0} onClick={() => setConfirm(true)}>
             {missing > 0 ? `Il manque ${missing} ✦` : `Fabriquer · ${cost} ✦`}
           </button>
@@ -105,6 +128,19 @@ export function Forge({ back, initialSlug }: { back: () => void; initialSlug?: s
         </div>
       </div>
 
+      {recycle && (
+        <Sheet onClose={() => setRecycle(false)} label="Recycler les doublons">
+          <div className="sheet-title">Recycler les doublons ?</div>
+          <p>Pour chaque exercice et chaque rareté, on garde ta <b>meilleure carte</b>. {dups.length > 1 ? `Les ${dups.length} cartes en trop sont recyclées` : "La carte en trop est recyclée"} : <b style={{ color: "#8fe0ff" }}>+{dupShards} éclats ✦</b> (et quelques GC). Les cartes de ton deck, notées ou chez Basile ne sont jamais touchées.</p>
+          <p className="fine">Action définitive.</p>
+          <button className="btn primary" onClick={() => {
+            const r = g.discardMany(dups);
+            setRecycle(false);
+            if ("gained" in r) { sfx.coin(); g.say(`+${r.shards} éclats ✦ · +${r.gained} GC`); } else g.say(r.error);
+          }}>Recycler · +{dupShards} ✦</button>
+          <button className="btn ghost small" onClick={() => setRecycle(false)}>Annuler</button>
+        </Sheet>
+      )}
       {confirm && (
         <Sheet onClose={() => setConfirm(false)} label="Confirmer la fabrication">
           <div className="sheet-title">Fabriquer ?</div>

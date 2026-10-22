@@ -62,6 +62,8 @@ function Shell() {
   const [dir, setDir] = useState(0);
   const [noAnim, setNoAnim] = useState(false);
   const tabRef = useRef<Tab>("home");
+  const pageRef = useRef<Page | null>(null);
+  pageRef.current = page;
   useEffect(() => { applyTheme(); }, []);
 
   // L'onglet est gardé dans l'adresse (#collection…) : un rechargement ou le bouton retour ne renvoie plus à l'accueil.
@@ -69,6 +71,8 @@ function Shell() {
     const read = () => {
       const h = window.location.hash.replace("#", "");
       const pg = PAGES.find((x) => PAGE_HASH[x] === h) ?? null;
+      // retour (geste ou bouton du téléphone) depuis une page : l'écran revient en glissant depuis la gauche
+      if (pageRef.current && !pg) { setNoAnim(false); setDir(-1); }
       setPage(pg);
       if (!pg) { const t = isTab(h) ? h : LEGACY[h] ?? "home"; tabRef.current = t; setTab(t); }
     };
@@ -78,6 +82,11 @@ function Shell() {
   }, []);
 
   const go = useCallback((t: Tab) => {
+    // toucher l'onglet déjà ouvert : on remonte en haut de l'écran, comme dans la plupart des applis
+    if (t === tabRef.current && !pageRef.current) {
+      document.querySelector(".view .screen")?.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
     // Boosters ↔ Marché : même onglet, on change de partie sans animation d'arrivée
     setNoAnim(barOf(t) === barOf(tabRef.current) && t !== tabRef.current);
     setDir(Math.sign(tabIndex(t) - tabIndex(tabRef.current)));
@@ -92,9 +101,13 @@ function Shell() {
     setDir(1);
     setPageArg(cardId ?? null);
     setPage(p);
-    try { window.history.replaceState(null, "", `#${PAGE_HASH[p]}`); } catch { /* ignoré */ }
+    // nouvelle entrée d'historique : le geste « retour » du téléphone ferme la page au lieu de quitter GymDeck
+    try { window.history.pushState({ gdPage: true }, "", `#${PAGE_HASH[p]}`); } catch { /* ignoré */ }
   };
-  const closePage = () => { go(tab); setDir(-1); };
+  const closePage = () => {
+    if ((window.history.state as { gdPage?: boolean } | null)?.gdPage) { window.history.back(); return; }
+    go(tab); setDir(-1);
+  };
 
   if (!g.ready) return <div className="app" id="app-root"><div className="boot"><img className="wm" src="/assets/ui/wordmark.webp" alt="GymDeck" /></div></div>;
 
@@ -161,8 +174,8 @@ function Shell() {
   );
 }
 
-/** Nombre de cartes différentes à collectionner (chaque exercice existe dans toutes les raretés). */
-const CARD_COUNT = EXERCISES.length * RARITIES.length;
+/** Nombre de cartes à collectionner, arrondi à la cinquantaine en dessous (« plus de 150 »). */
+const CARD_COUNT = Math.floor((EXERCISES.length * RARITIES.length) / 50) * 50;
 
 /** Sur ordinateur : présentation du jeu à côté du téléphone. */
 function DesktopAside() {
@@ -171,15 +184,15 @@ function DesktopAside() {
       <img src="/assets/ui/wordmark.webp" alt="" />
       <p className="da-tag">Ta séance, ton booster.</p>
       <div className="da-count">
-        <b>{CARD_COUNT}</b>
-        <span>cartes à collectionner<small>et bien d’autres à venir très bientôt : personnages de la salle, culture muscu…</small></span>
+        <b>{CARD_COUNT}+</b>
+        <span>cartes à collectionner<small>et bien d’autres à venir très bientôt</small></span>
       </div>
       <ul>
         <li><b>1</b>Va à la salle, valide ta séance : un booster t’attend</li>
         <li><b>2</b>Ouvre-le et collectionne les cartes, de C à la légendaire LR</li>
         <li><b>3</b>Compose ton deck et affronte les autres joueurs</li>
       </ul>
-      <div className="da-chips"><span>100 % gratuit</span><span>Cartes holographiques</span><span>Marché aux enchères</span></div>
+      <div className="da-chips"><span>100 % gratuit</span></div>
       <p className="da-fine">Pensé pour le téléphone : ouvre GymDeck sur ton mobile et ajoute-le à ton écran d’accueil.</p>
     </aside>
   );
@@ -201,7 +214,12 @@ function DesktopShowcase() {
       {SHOWCASE.map((c, i) => (
         <div className={`ds-card ds-c${i}`} key={i}><div className="ds-float"><Card card={c} /></div></div>
       ))}
-      <img className="ds-pack" src="/assets/ui/booster.webp" alt="" draggable={false} />
+      {/* le paquet se déchire : le haut s'arrache et s'envole, la lumière jaillit, puis les cartes sortent */}
+      <div className="ds-pack">
+        <img className="ds-body" src="/assets/ui/booster.webp" alt="" draggable={false} />
+        <img className="ds-flap" src="/assets/ui/booster.webp" alt="" draggable={false} />
+        <span className="ds-tear" />
+      </div>
     </div>
   );
 }

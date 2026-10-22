@@ -25,6 +25,9 @@ export function Card({ card, count, holo = true, cap = true, hideStats = false }
   const bandH = (L.statsBottom - L.statsTop) * 144; // en cqw
   const color = RARITY_COLOR[card.rarity as Rarity];
   const top = card.rarity === "UR" || card.rarity === "LR";
+  // UR / LR : le symbole de capacité va en bas à droite, à côté du passif ; sinon à droite du nom
+  const capInBand = cap && top && !!card.passive;
+  const capByName = cap && !capInBand;
   return (
     <div className={`card ${card.grade ? "graded" : ""}`}>
       <img className="frame" src={`/assets/frames/${card.rarity}.webp`} alt="" draggable={false} decoding="async" />
@@ -50,31 +53,31 @@ export function Card({ card, count, holo = true, cap = true, hideStats = false }
       {/* note de Basile : patch posé sur les traits décoratifs de l'en-tête (rien du tout si la carte n'est pas notée) */}
       {card.grade ? <GradePatch grade={card.grade} className="oncard" style={{ left: `${L.gradeX * 100}%`, top: `${L.gradeTop * 100}%` }} /> : null}
       <div
-        className={`nameband ${cap ? "withcap" : ""}`}
+        className={`nameband ${capByName ? "withcap" : ""}`}
         style={{
           top: `${L.nameTop * 100}%`,
           height: `${(L.statsTop - L.nameTop) * 100}%`,
           // avec le symbole de capacité à droite, un nom long passe sur deux lignes au lieu de rétrécir
-          ...(cap
+          ...(capByName
             ? (ex.name.length > 30 ? { fontSize: "5.3cqw" } : ex.name.length > 16 ? { fontSize: "6.2cqw" } : {})
             : (ex.name.length > 30 ? { fontSize: "5.6cqw" } : ex.name.length > 16 ? { fontSize: "6.9cqw", whiteSpace: "nowrap" } : {})),
         }}
       >
         {ex.name}
       </div>
-      {cap && (
+      {capByName && (
         <span className="capslot" style={{ top: `${L.nameTop * 100}%`, height: `${(L.statsTop - L.nameTop) * 100}%` }}>
           <CapDot card={card} />
         </span>
       )}
-      <div className="statband" style={{ top: `${L.statsTop * 100}%`, height: `${(L.statsBottom - L.statsTop) * 100}%`, ["--b" as string]: `${bandH}cqw` }}>
+      <div className={`statband ${capInBand ? "withcap" : ""}`} style={{ top: `${L.statsTop * 100}%`, height: `${(L.statsBottom - L.statsTop) * 100}%`, ["--b" as string]: `${bandH}cqw` }}>
         <div className="stats">
-          <Swords style={{ width: `calc(var(--b) * .38)`, height: `calc(var(--b) * .38)` }} />
-          <span className="lab" style={{ fontSize: `calc(var(--b) * .27)` }}>ATQ</span>
-          <span className="val" style={{ fontSize: `calc(var(--b) * .44)` }}>{hideStats ? "?" : card.atq}</span>
-          <Shield style={{ width: `calc(var(--b) * .38)`, height: `calc(var(--b) * .38)` }} />
-          <span className="lab" style={{ fontSize: `calc(var(--b) * .27)` }}>DEF</span>
-          <span className="val" style={{ fontSize: `calc(var(--b) * .44)` }}>{hideStats ? "?" : card.def}</span>
+          <Swords style={{ width: `calc(var(--b) * var(--is, .38))`, height: `calc(var(--b) * var(--is, .38))` }} />
+          <span className="lab" style={{ fontSize: `calc(var(--b) * var(--ls, .27))` }}>ATQ</span>
+          <span className="val" style={{ fontSize: `calc(var(--b) * var(--vs, .44))` }}>{hideStats ? "?" : card.atq}</span>
+          <Shield style={{ width: `calc(var(--b) * var(--is, .38))`, height: `calc(var(--b) * var(--is, .38))` }} />
+          <span className="lab" style={{ fontSize: `calc(var(--b) * var(--ls, .27))` }}>DEF</span>
+          <span className="val" style={{ fontSize: `calc(var(--b) * var(--vs, .44))` }}>{hideStats ? "?" : card.def}</span>
         </div>
         {top && card.passive && (
           <>
@@ -84,6 +87,7 @@ export function Card({ card, count, holo = true, cap = true, hideStats = false }
               {passiveLines(card.passive).map((l) => <b key={l}>{l}</b>)}
               {card.passive.type !== "BOTH" && <em>du deck</em>}
             </div>
+            {capInBand && <span className="capband"><CapDot card={card} /></span>}
           </>
         )}
       </div>

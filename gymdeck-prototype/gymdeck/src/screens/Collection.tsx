@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Card, CardBack, GradeBanner, Tilt, passiveLabel } from "@/components/Card";
 import { Extensions } from "@/screens/Missions";
 import { shareCards } from "@/lib/share";
@@ -52,13 +52,25 @@ function compare(sort: Sort) {
 
 const bestFirst = (a: OwnedCard, b: OwnedCard) => RARITY_RANK[b.rarity] - RARITY_RANK[a.rarity] || b.atq + b.def - (a.atq + a.def);
 
+/** Réglages de la collection gardés pendant que l'appli est ouverte : on les retrouve en revenant sur l'onglet. */
+const memo: { q: string; rarity: Rarity | null; view: "exercise" | "all" | "ext"; sort: Sort; group: MuscleGroup | null; scroll: number } =
+  { q: "", rarity: null, view: "exercise", sort: "catalog", group: null, scroll: 0 };
+
 export function Collection({ openPage }: { openPage: OpenPage }) {
   const g = useGame();
-  const [q, setQ] = useState("");
-  const [rarity, setRarity] = useState<Rarity | null>(null);
-  const [view, setView] = useState<"exercise" | "all" | "ext">("exercise");
-  const [sort, setSort] = useState<Sort>("catalog");
-  const [group, setGroup] = useState<MuscleGroup | null>(null);
+  const [q, setQ] = useState(memo.q);
+  const [rarity, setRarity] = useState<Rarity | null>(memo.rarity);
+  const [view, setView] = useState<"exercise" | "all" | "ext">(memo.view);
+  const [sort, setSort] = useState<Sort>(memo.sort);
+  const [group, setGroup] = useState<MuscleGroup | null>(memo.group);
+  const screen = useRef<HTMLDivElement>(null);
+  Object.assign(memo, { q, rarity, view, sort, group });
+  // position de défilement : retrouvée au retour, gardée au départ
+  useLayoutEffect(() => {
+    const el = screen.current;
+    if (el && memo.scroll) el.scrollTop = memo.scroll;
+    return () => { if (el) memo.scroll = el.scrollTop; };
+  }, []);
   const [detail, setDetail] = useState<{ slug: string; id: string } | null>(null);
   const [cleaning, setCleaning] = useState(false);
 
@@ -101,7 +113,7 @@ export function Collection({ openPage }: { openPage: OpenPage }) {
   const rarityOwned = rarity ? slots.filter((s) => s.best).length : null;
 
   return (
-    <div className="screen">
+    <div className="screen" ref={screen}>
       <div className="topbar"><Wordmark /><GcPill gc={player.gc} /></div>
       <h1 className="title" style={{ marginTop: 14, marginBottom: 8 }}>Ma collection</h1>
       <div className="statsline">
