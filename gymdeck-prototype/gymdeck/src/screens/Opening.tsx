@@ -656,6 +656,12 @@ function Summary({ go }: { go: (t: Tab) => void }) {
         ))}
       </div>
 
+      {o.guest ? (
+        <div className="acts-col">
+          <p className="guestcta">Crée ton compte pour garder ces cartes et ouvrir 2 boosters de plus</p>
+          <button className="btn primary" onClick={() => g.closeOpening()}>Créer mon compte</button>
+        </div>
+      ) : (
       <div className="acts-col">
         {nextBooster && (
           <button className="btn primary" onClick={() => g.startOpening(nextBooster.id)}>
@@ -669,6 +675,7 @@ function Summary({ go }: { go: (t: Tab) => void }) {
         <button className="btn ghost small" onClick={() => { g.closeOpening(); go("collection"); }}>Voir ma collection</button>
         <button className="link center" onClick={() => { g.closeOpening(); go("home"); }}>Retour à l’accueil</button>
       </div>
+      )}
     </div>
   );
 }

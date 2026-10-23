@@ -125,7 +125,9 @@ function Shell() {
 
   return (
     <div className="app" id="app-root" onPointerDownCapture={unlockAudio}>
-      {needsName ? (
+      {needsName && g.opening?.guest ? (
+        <Opening key={g.opening.boosterId} go={() => g.closeOpening()} />
+      ) : needsName ? (
         <Onboarding />
       ) : g.opening ? (
         <Opening key={g.opening.boosterId} go={go} />

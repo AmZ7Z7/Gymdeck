@@ -26,6 +26,7 @@ import {
 } from "@/lib/cloud";
 import { changedElsewhere, startupChoice, type SyncInfo } from "@/lib/sync";
 import { disablePush } from "@/lib/push";
+import { addGuestCards, loadGuest, saveGuest } from "@/lib/guest";
 import type { MuscleGroup, Rarity } from "@/lib/config";
 import { sfx } from "@/lib/sound";
 import { DECK_SIZE, type BoosterKind } from "@/lib/config";
@@ -50,6 +51,8 @@ export interface OpeningSession {
   isNew?: boolean[];
   /** Garantie UR déclenchée par ce booster. */
   pityTriggered?: boolean;
+  /** Booster invité, ouvert avant la création du compte. */
+  guest?: boolean;
 }
 
 interface Persisted { player: PlayerState; opening: OpeningSession | null }
@@ -113,6 +116,12 @@ interface Game {
   trade: (botId: string, myCardId: string, offerIndex: number) => { error: string } | { gaveId: string; gotId: string };
   /** Lance l'ouverture du premier booster en stock (après la création du compte). */
   openFirstBooster: () => void;
+  /** Le booster invité (sans compte) a déjà été ouvert sur ce navigateur. */
+  guestUsed: boolean;
+  /** Cartes du booster invité en attente d'un compte. */
+  guestCards: number;
+  /** Ouvre le booster gratuit sans compte (un seul par navigateur). */
+  openGuestBooster: () => void;
   finishTutorial: () => void;
   setReminder: (r: Extra["reminder"]) => void;
   /** Coche / décoche un jour passé au calendrier. Renvoie un message d'erreur ou null. */
@@ -180,6 +189,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const [opening, setOpening] = useState<OpeningSession | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [account, setAccount] = useState<Account | null>(null);
+  const [guest, setGuest] = useState<{ used: boolean; cards: number }>({ used: false, cards: 0 });
   const accountRef = useRef<Account | null>(null);
   const syncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -255,6 +265,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     }
     accountRef.current = acc;
     setAccount(acc);
+    const gr = loadGuest();
+    setGuest({ used: !!gr, cards: gr?.cards.length ?? 0 });
     setReady(true);
   }, [saveAccount]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -365,6 +377,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const today = parisDay(new Date(Date.now() + (player.extra?.dayShift ?? 0) * 86_400_000));
 
+  /** Nouveau compte : ajoute les cartes du booster invité à la partie, puis les retire du navigateur. */
+  const withGuestCards = (s: PlayerState): PlayerState => {
+    const gr = loadGuest();
+    if (!gr?.cards.length) return s;
+    saveGuest({ cards: [], used: true });
+    setGuest({ used: true, cards: 0 });
+    return addGuestCards(s, gr.cards);
+  };
+
   const tools_advanceDays = (n: number) => {
     const p = live.current.player;
     const e = p.extra;
@@ -402,6 +423,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const shown = revealOrder(r.cards).map((i) => r.cards[i]!);
       const known = new Set(p.cards.map((c) => `${c.exerciseSlug}|${c.rarity}`));
       const fresh = shown.map((c: OwnedCard) => { const k = `${c.exerciseSlug}|${c.rarity}`; const n = !known.has(k); known.add(k); return n; });
+      // booster invité : les cartes sont aussi gardées à part, pour les ajouter au compte qui sera créé
+      if (o.guest) { saveGuest({ cards: r.cards, used: true }); setGuest({ used: true, cards: r.cards.length }); }
       commit({
         player: trk(r.state, "open"),
         opening: {
@@ -437,7 +460,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       commit({ player: p, opening: { ...o, index: i } });
     },
 
-    closeOpening: () => commit({ player: live.current.player, opening: null }),
+    closeOpening: () => {
+      const { player: p, opening: o } = live.current;
+      // booster invité refermé sans l'ouvrir : il disparaît (il reste disponible sur l'accueil)
+      const keep = o?.guest && o.phase === "closed" ? { ...p, boosters: p.boosters.filter((b) => b.id !== o.boosterId) } : p;
+      commit({ player: keep, opening: null });
+    },
 
     validate: () => {
       const r = validateSession(live.current.player, clock());
@@ -638,7 +666,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       if (!r.ok) return r.error;
       if (r.needsConfirm || !r.user) return "confirm";
       saveAccount({ email: r.user.email, cloud: true, userId: r.user.id });
-      const fresh = normalizeState({ ...createAccount(), name: nm.state.name }, secureRng, parisDay(new Date()));
+      const fresh = withGuestCards(normalizeState({ ...createAccount(), name: nm.state.name }, secureRng, parisDay(new Date())));
       setSync({ userId: r.user.id, base: null, dirty: false, savedAt: Date.now() });
       commit({ player: fresh, opening: null });
       void push();
@@ -655,7 +683,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const saved = await cloudLoad(uid);
       if (saved) adopt(saved.state, saved.updatedAt, uid);
       else {
-        const base = normalizeState({ ...createAccount(), name: r.user.name ?? email.split("@")[0] }, secureRng, parisDay(new Date()));
+        // première connexion d'un compte tout juste créé (après la confirmation par e-mail) : les cartes invitées le rejoignent
+        const base = withGuestCards(normalizeState({ ...createAccount(), name: r.user.name ?? email.split("@")[0] }, secureRng, parisDay(new Date())));
         setSync({ userId: uid, base: null, dirty: false, savedAt: Date.now() });
         commit({ player: base, opening: null });
         void push();
@@ -669,6 +698,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const r = setNameFn(live.current.player, name);
       if (!r.ok) return r.error;
       saveAccount({ email: email.trim(), cloud: false });
+      // mode test : la partie du navigateur devient le compte, les cartes invitées y sont déjà
+      if (loadGuest()?.cards.length) { saveGuest({ cards: [], used: true }); setGuest({ used: true, cards: 0 }); }
       commit({ ...live.current, player: r.state });
       return null;
     },
@@ -753,6 +784,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const b = p.boosters[0];
       if (b) commit({ player: p, opening: { boosterId: b.id, kind: b.kind, phase: "closed", cardIds: [], revealed: [], index: 0 } });
     },
+    guestUsed: guest.used,
+    guestCards: guest.cards,
+    openGuestBooster: () => {
+      if (loadGuest() || accountRef.current) return;
+      const p = live.current.player;
+      // tiré comme un booster de séance (probabilités normales), sans toucher aux 2 boosters de bienvenue
+      const b: PendingBooster = { id: newId(), kind: "session" };
+      commit({ player: { ...p, boosters: [...p.boosters, b] }, opening: { boosterId: b.id, kind: b.kind, phase: "closed", cardIds: [], revealed: [], index: 0, guest: true } });
+    },
     finishTutorial: () => {
       const p = live.current.player;
       if (p.extra && !p.extra.tutorialDone) commit({ ...live.current, player: { ...p, extra: { ...p.extra, tutorialDone: true } } });
@@ -815,7 +855,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       addGc: (n) => commit({ ...live.current, player: { ...live.current.player, gc: live.current.player.gc + n } }),
       reset: () => commit({ player: normalizeState({ ...createAccount(), name: live.current.player.name }, secureRng, parisDay(new Date())), opening: null }),
     },
-  }), [ready, player, opening, toast, today, account, say, commit, runSync, saveAccount, adopt, push, reconcile]);
+  }), [ready, player, opening, toast, today, account, guest, say, commit, runSync, saveAccount, adopt, push, reconcile]);
 
   return <Ctx.Provider value={game}>{children}</Ctx.Provider>;
 }
