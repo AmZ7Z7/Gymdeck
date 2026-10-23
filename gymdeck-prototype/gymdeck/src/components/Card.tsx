@@ -32,7 +32,7 @@ export function Card({ card, count, holo = true, cap = true, hideStats = false }
   return (
     <div
       className={`card ${card.grade ? "graded" : ""} ${holo ? `fxl fxl-${tier} fxl-${card.rarity}` : ""}`}
-      style={holo ? { ["--rc" as string]: color, ["--fmask" as string]: `url(/assets/frames/${card.rarity}.webp)`, ["--hmask" as string]: `url(/assets/frames/${card.rarity}-shine.webp)` } : undefined}
+      style={holo ? { ["--rc" as string]: color, ["--fmask" as string]: `url(/assets/frames/${card.rarity}.webp)` } : undefined}
     >
       <img className="frame" src={`/assets/frames/${card.rarity}.webp`} alt="" draggable={false} decoding="async" />
       <img

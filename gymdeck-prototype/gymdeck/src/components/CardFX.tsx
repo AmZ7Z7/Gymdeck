@@ -50,7 +50,7 @@ export function CardFX({ card, tilt = true, className = "" }: { card: CardData; 
     <div
       ref={ref}
       className={`cfx cfx-${tier} cfx-${card.rarity} ${moving ? "cfx-tilt" : ""} ${className}`}
-      style={{ ["--rc" as string]: RARITY_COLOR[card.rarity], ["--fmask" as string]: `url(/assets/frames/${card.rarity}.webp)`, ["--hmask" as string]: `url(/assets/frames/${card.rarity}-shine.webp)` }}
+      style={{ ["--rc" as string]: RARITY_COLOR[card.rarity], ["--fmask" as string]: `url(/assets/frames/${card.rarity}.webp)` }}
       onPointerMove={move}
       onPointerLeave={leave}
       onPointerUp={leave}
