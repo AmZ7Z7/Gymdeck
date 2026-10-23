@@ -7,6 +7,7 @@ import "@fontsource/barlow-condensed/700-italic.css";
 import "@fontsource/barlow-condensed/800-italic.css";
 import "@fontsource/barlow-condensed/700.css";
 import "./globals.css";
+import "./card-fx.css";
 
 export const metadata: Metadata = {
   title: "GymDeck",
