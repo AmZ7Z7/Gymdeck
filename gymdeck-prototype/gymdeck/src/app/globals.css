@@ -268,6 +268,30 @@ button.cell { display: block; text-align: left; }
 .field label { font-size: 14px; color: var(--muted); }
 .field input { height: 54px; border-radius: 12px; border: 1px solid var(--line); background: rgba(10,14,26,.9); padding: 0 16px; font-size: 20px; outline: 0; }
 .field input:focus { border-color: var(--lime); }
+/* textes d'exemple des champs : assez clairs pour le contraste AA (4,5:1), mais distincts d'un texte saisi */
+.field input::placeholder { color: #8f98ae; opacity: 1; }
+
+/* ───────── Accueil (avant le compte) ───────── */
+/* rien ne se tasse quand la page dépasse l'écran : elle défile */
+.onboard > * { flex-shrink: 0; }
+.onboard h1 + .obsub { margin: -6px 0 0; text-align: center; text-wrap: balance; font-size: 17px; font-weight: 600; color: #dfe4f3; }
+/* éventail de 3 cartes, téléphone seulement */
+.obfan { position: relative; height: 158px; flex: none; margin: 4px 0 2px; }
+.obfan-c { position: absolute; left: 50%; top: 6px; width: 98px; margin-left: -49px; transform-origin: 50% 110%; }
+.obfan-0 { transform: translateX(-74px) rotate(-14deg); }
+.obfan-1 { transform: translateY(-4px) scale(1.06); z-index: 2; }
+.obfan-2 { transform: translateX(74px) rotate(14deg); }
+.obfan .cfx-sparks i { animation-name: cfxSparkSmall; }
+@keyframes cfxSparkSmall { 0% { opacity: 0; transform: translateY(0) scale(.5); } 15% { opacity: 1; } 100% { opacity: 0; transform: translateY(-70px) scale(1); } }
+@media (min-width: 1180px) and (min-height: 700px) { .obfan { display: none; } }
+/* booster gratuit sans compte */
+.btn.guestbtn { height: 60px; font-size: 22px; color: #0a0d14; background: linear-gradient(100deg, #ffd36b, #ff8a3d 45%, #ff4fa3); box-shadow: 0 0 22px rgba(255,138,61,.35); }
+.guestcta { margin: 0; padding: 12px 14px; border-radius: 12px; text-align: center; font-weight: 600; font-size: 16px; line-height: 1.35; color: #0a0d14; background: var(--lime); }
+.acts-col .guestcta { margin-bottom: 4px; }
+/* bouton d'inscription : badge « 2 boosters offerts » bien visible */
+.btn.signupbtn { height: auto; min-height: 78px; padding: 10px 18px; flex-direction: column; gap: 5px; font-size: 21px; line-height: 1.02; text-align: center; }
+.giftbadge { order: -1; padding: 3px 11px; border-radius: 99px; background: #0a0d14; color: var(--lime); font-size: 15px; letter-spacing: .04em; }
+.obfine { text-align: center; color: #b4bcd2; font-size: 13.5px; }
 
 /* ───────── Collection ───────── */
 .seg { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; border-radius: 12px; background: rgba(10,14,26,.85); border: 1px solid var(--line); margin: 6px 0 10px; }

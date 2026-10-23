@@ -1,11 +1,20 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useGame } from "@/components/GameProvider";
 import { LegalLinks } from "@/components/LegalPage";
+import { CardFX } from "@/components/CardFX";
+import type { CardData } from "@/lib/engine";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+/** Éventail de l'accueil : une rare, une très rare et une légendaire (décor, ne donne aucune carte). */
+const FAN: CardData[] = [
+  { exerciseSlug: "squat", rarity: "SR", atq: 468, def: 431, passive: null },
+  { exerciseSlug: "leg-extension", rarity: "LR", atq: 1560, def: 1490, passive: { type: "BOTH", atqTenths: 31, defTenths: 29 } },
+  { exerciseSlug: "gainage", rarity: "SSR", atq: 742, def: 688, passive: null },
+];
 
 /** Première arrivée : création de compte (ou connexion), puis ouverture directe du premier booster. */
 export function Onboarding() {
@@ -19,6 +28,9 @@ export function Onboarding() {
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const create = mode === "create";
+  const ctaRef = useRef<HTMLParagraphElement>(null);
+  // retour du booster invité : on descend directement au formulaire
+  useEffect(() => { if (g.guestCards > 0) ctaRef.current?.scrollIntoView({ block: "start" }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = async () => {
     setErr(null); setInfo(null);
@@ -51,11 +63,23 @@ export function Onboarding() {
     <motion.div className="onboard" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
       <img className="logohero wm" src="/assets/ui/wordmark.webp" alt="GymDeck" draggable={false} />
       <h1>Ta séance,<br />ton booster.</h1>
+      <p className="obsub">Le jeu de cartes à collectionner de la muscu.</p>
+      {/* téléphone : un éventail de vraies cartes (sur grand écran, la vitrine à droite les montre déjà) */}
+      <div className="obfan" aria-hidden>
+        {FAN.map((c, i) => <div key={c.rarity} className={`obfan-c obfan-${i}`}><CardFX card={c} tilt={false} /></div>)}
+      </div>
       <div className="steps3">
         <div><b>1</b> Valide ta séance du jour</div>
         <div><b>2</b> Ouvre ton booster de 5 cartes</div>
         <div><b>3</b> Compose ton deck de 5 exercices</div>
       </div>
+
+      {create && !g.guestUsed && (
+        <button className="btn guestbtn" onClick={g.openGuestBooster}>Ouvre ton premier booster gratuit</button>
+      )}
+      {create && g.guestCards > 0 && (
+        <p className="guestcta" role="status" ref={ctaRef}>Crée ton compte pour garder ces cartes et ouvrir 2 boosters de plus</p>
+      )}
 
       {cloud && (
         <div className="seg" style={{ marginBottom: 12 }}>
@@ -81,14 +105,15 @@ export function Onboarding() {
         </div>
         {err && <span className="autherr" role="alert">{err}</span>}
         {info && <span className="authinfo" role="status">{info}</span>}
-        <button className="btn primary" type="submit" disabled={busy}>{busy ? "…" : create ? "Créer mon compte" : "Me connecter"}</button>
+        <button className={`btn primary ${create ? "signupbtn" : ""}`} type="submit" disabled={busy}>
+          {busy ? "…" : create ? <>Créer mon compte et ouvrir mes boosters<span className="giftbadge">2 boosters offerts</span></> : "Me connecter"}
+        </button>
         {cloud && !create && <button type="button" className="textbtn" onClick={() => void forgot()}>Mot de passe oublié ?</button>}
       </form>
 
-      <p className="fine" style={{ textAlign: "center" }}>
-        {!cloud && "Mode test : ton compte reste sur ce téléphone et ton mot de passe n’est pas enregistré. "}
-        {create && g.player.boosters.length > 0 ? "2 boosters de bienvenue t’attendent. " : ""}
-        GymDeck est gratuit : les cartes et les GymCoins n’ont aucune valeur en argent. Réservé aux 15 ans et plus.
+      <p className="fine obfine">
+        Gratuit · les cartes et les GymCoins n’ont aucune valeur en argent · 15 ans et plus
+        {!cloud && <><br />Mode test : ton compte reste sur ce téléphone et ton mot de passe n’est pas enregistré.</>}
       </p>
       <LegalLinks />
     </motion.div>
