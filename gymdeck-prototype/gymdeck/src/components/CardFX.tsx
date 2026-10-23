@@ -3,10 +3,7 @@
 import { useEffect, useRef } from "react";
 import { RARITY_COLOR } from "@/lib/config";
 import type { CardData } from "@/lib/engine";
-import { Card } from "./Card";
-
-/** Niveau d'effet selon la rareté, de plus en plus spectaculaire (l'ordre C → LR ne change pas). */
-export const fxTier = (r: CardData["rarity"]) => (r === "C" ? "mat" : r === "R" || r === "SR" ? "rare" : r === "SSR" ? "metal" : "holo");
+import { Card, fxTier } from "./Card";
 
 const reduced = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -52,7 +49,7 @@ export function CardFX({ card, tilt = true, className = "" }: { card: CardData; 
   return (
     <div
       ref={ref}
-      className={`cfx cfx-${tier} cfx-${card.rarity} ${className}`}
+      className={`cfx cfx-${tier} cfx-${card.rarity} ${moving ? "cfx-tilt" : ""} ${className}`}
       style={{ ["--rc" as string]: RARITY_COLOR[card.rarity], ["--fmask" as string]: `url(/assets/frames/${card.rarity}.webp)` }}
       onPointerMove={move}
       onPointerLeave={leave}

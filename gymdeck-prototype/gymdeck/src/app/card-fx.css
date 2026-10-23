@@ -4,6 +4,8 @@
    Uniquement transform / opacity dans les animations : fluide sur un téléphone moyen. */
 
 .cfx { --fx-x: 0; --fx-y: 0; position: relative; isolation: isolate; }
+/* la carte s'incline sous le doigt au lieu de faire défiler la page */
+.cfx-tilt { touch-action: none; }
 .cfx-in { position: relative; transform: perspective(700px) rotateX(calc(var(--fx-y) * -9deg)) rotateY(calc(var(--fx-x) * 11deg)); transition: transform .2s ease-out; }
 /* reflets découpés à la forme de la carte (l'image du cadre sert de masque) */
 .cfx-sheen, .cfx-rainbow { position: absolute; inset: 0; pointer-events: none; overflow: hidden;
@@ -55,6 +57,22 @@
   .cfx-metal .cfx-sheen::before { transform: translateX(160%) skewX(-12deg); }
   .cfx-sparks { display: none; }
 }
+
+/* ═════════ Version légère et fixe (Card dans les grilles et listes) ═════════
+   Mêmes styles, sans animation ni lueur ni particules : des dizaines de cartes à l'écran restent fluides. */
+.fxl-sheen, .fxl-rainbow { position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+  -webkit-mask-image: var(--fmask); mask-image: var(--fmask); -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
+.card.fxl-mat > img.frame, .card.fxl-mat .art { filter: saturate(.9) contrast(.97); }
+.card.fxl-rare { filter: drop-shadow(0 0 1px var(--rc)) drop-shadow(0 0 4px color-mix(in srgb, var(--rc) 50%, transparent)); }
+.fxl-rare .fxl-sheen { mix-blend-mode: screen; background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.2) 48%, transparent 58%); }
+.card.fxl-metal { filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 5px color-mix(in srgb, var(--rc) 60%, transparent)); }
+.fxl-metal .fxl-sheen { mix-blend-mode: screen; background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,.4) 34%, transparent 46%), linear-gradient(160deg, rgba(255,255,255,.2), transparent 35%, transparent 70%, rgba(255,255,255,.15)); }
+.card.fxl-holo { filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 6px var(--rc)); }
+.fxl-rainbow { mix-blend-mode: color-dodge; opacity: .24;
+  background: repeating-linear-gradient(115deg, #ff3b6b 0%, #ffb020 5%, #f6ff3b 10%, #2dff8a 15%, #3cc4ff 20%, #8a5bff 25%, #ff4fa3 30%, #ff3b6b 33.33%); }
+.fxl-UR .fxl-rainbow { background: repeating-linear-gradient(115deg, #ffb020 0%, #fff4c2 6%, #ff8a3d 12%, #ffd36b 18%, #3cc4ff 24%, #ffb020 33.33%); }
+.fxl-LR .fxl-rainbow { opacity: .32; }
+.fxl-holo .fxl-sheen { mix-blend-mode: screen; background: radial-gradient(circle at 50% 35%, rgba(255,255,255,.28), transparent 40%); }
 
 /* ═════════ Ouverture : explosion de lumière de la couleur de la rareté (aperçu) ═════════ */
 .cfx-burst { position: absolute; inset: -40%; pointer-events: none; z-index: -1; border-radius: 50%; opacity: 0;

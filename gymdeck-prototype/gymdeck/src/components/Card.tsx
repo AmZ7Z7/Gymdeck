@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef } from "react";
 import { FRAME_LAYOUT, GRADE_LABEL, RARITY_COLOR, exerciseBySlug, gradeMedal, medalSrc, type Rarity } from "@/lib/config";
 import type { CardData, Passive } from "@/lib/engine";
 import { Shield, Swords } from "./Icons";
@@ -28,16 +27,14 @@ export function Card({ card, count, holo = true, cap = true, hideStats = false }
   // UR / LR : le symbole de capacité va en bas à droite, à côté du passif ; sinon à droite du nom
   const capInBand = cap && top && !!card.passive;
   const capByName = cap && !capInBand;
+  // effet de rareté, version légère et fixe (grilles, listes) ; la version animée complète est CardFX
+  const tier = fxTier(card.rarity);
   return (
-    <div className={`card ${card.grade ? "graded" : ""}`}>
+    <div
+      className={`card ${card.grade ? "graded" : ""} ${holo ? `fxl fxl-${tier} fxl-${card.rarity}` : ""}`}
+      style={holo ? { ["--rc" as string]: color, ["--fmask" as string]: `url(/assets/frames/${card.rarity}.webp)` } : undefined}
+    >
       <img className="frame" src={`/assets/frames/${card.rarity}.webp`} alt="" draggable={false} decoding="async" />
-      {holo && top && (
-        <span
-          className={`holo ${card.rarity === "LR" ? "lr" : "ur"}`}
-          style={{ ["--mask" as string]: `url(/assets/frames/${card.rarity}-shine.webp)` }}
-          aria-hidden
-        />
-      )}
       <img
         className="art"
         src={ex.image}
@@ -91,10 +88,15 @@ export function Card({ card, count, holo = true, cap = true, hideStats = false }
           </>
         )}
       </div>
+      {holo && tier !== "mat" && <span className="fxl-sheen" aria-hidden />}
+      {holo && tier === "holo" && <span className="fxl-rainbow" aria-hidden />}
       {count && count > 1 ? <span className="count">×{count}</span> : null}
     </div>
   );
 }
+
+/** Niveau d'effet selon la rareté, de plus en plus spectaculaire (l'ordre C → LR ne change pas). */
+export const fxTier = (r: Rarity) => (r === "C" ? "mat" : r === "R" || r === "SR" ? "rare" : r === "SSR" ? "metal" : "holo");
 
 /** Couleur du patch selon la note : bronze 1-3, argent 4-5, bleu 6-7, violet 8, or 9, platine noir 10. */
 export const gradeTier = (g: number) => (g >= 10 ? "t10" : g === 9 ? "t9" : g === 8 ? "t8" : g >= 6 ? "t67" : g >= 4 ? "t45" : "t13");
@@ -136,26 +138,4 @@ export function Medal({ grade, className = "" }: { grade: number; className?: st
 
 export function CardBack() {
   return <img src="/assets/ui/dos-carte.webp" alt="" draggable={false} />;
-}
-
-/** Carte qui s'incline sous le doigt et dont le reflet holographique suit le pointeur. */
-export function Tilt({ children, max = 12 }: { children: React.ReactNode; max?: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const set = (x: number, y: number, on: boolean) => {
-    const el = ref.current;
-    if (!el) return;
-    el.style.setProperty("--rx", on ? `${(0.5 - y) * 2 * max}deg` : "0deg");
-    el.style.setProperty("--ry", on ? `${(x - 0.5) * 2 * max}deg` : "0deg");
-    el.style.setProperty("--mx", `${x * 100}%`);
-    el.style.setProperty("--my", `${y * 100}%`);
-  };
-  const move = (e: React.PointerEvent) => {
-    const r = ref.current!.getBoundingClientRect();
-    set(Math.min(1, Math.max(0, (e.clientX - r.left) / r.width)), Math.min(1, Math.max(0, (e.clientY - r.top) / r.height)), true);
-  };
-  return (
-    <div ref={ref} className="tilt" onPointerMove={move} onPointerDown={move} onPointerLeave={() => set(0.5, 0.5, false)} onPointerUp={() => set(0.5, 0.5, false)}>
-      {children}
-    </div>
-  );
 }

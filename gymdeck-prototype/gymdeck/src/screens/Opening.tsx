@@ -2,7 +2,8 @@
 
 import { AnimatePresence, motion, useAnimationControls } from "framer-motion";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Card, CardBack } from "@/components/Card";
+import { CardBack } from "@/components/Card";
+import { CardFX } from "@/components/CardFX";
 import { Wordmark } from "@/components/Bits";
 import { shareCards } from "@/lib/share";
 import { useGame } from "@/components/GameProvider";
@@ -182,6 +183,14 @@ function Burst({ rarity, size }: { rarity: Rarity; size: number }) {
   );
   return (
     <div className="burst" aria-hidden>
+      {/* explosion de lumière de la couleur de la rareté, à chaque carte */}
+      <motion.i
+        className="glow"
+        style={{ width: size * 1.6, height: size * 1.6, marginLeft: -size * 0.8, marginTop: -size * 0.8, background: `radial-gradient(closest-side, #fff, ${color} 38%, transparent 72%)` }}
+        initial={{ scale: 0.3, opacity: 0.95 }}
+        animate={{ scale: top ? 1.8 : 1.3, opacity: 0 }}
+        transition={{ duration: top ? 1.1 : 0.75, ease: "easeOut" }}
+      />
       <motion.i
         className="ring"
         style={{ borderColor: color, boxShadow: `0 0 24px ${color}` }}
@@ -529,10 +538,11 @@ function Cards({ go, dealt }: { go: (t: Tab) => void; dealt: boolean }) {
                   className="flipper"
                   animate={{ rotateY: isShown ? 180 : 0 }}
                   initial={false}
-                  transition={{ duration: top ? 0.95 : 0.6, ease: [0.2, 0.8, 0.2, 1] }}
+                  // la légendaire se retourne au ralenti
+                  transition={{ duration: c.rarity === "LR" ? 1.5 : top ? 0.95 : 0.6, ease: [0.2, 0.8, 0.2, 1] }}
                 >
                   <div className="face back"><CardBack /></div>
-                  <div className="face front"><Card card={c} /></div>
+                  <div className="face front"><CardFX card={c} tilt={false} /></div>
                 </motion.div>
               </motion.div>
 
@@ -644,7 +654,7 @@ function Summary({ go }: { go: (t: Tab) => void }) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ type: "spring", stiffness: 260, damping: 22, delay: 0.08 * i }}
           >
-            <div className={`lootcard ${isTop(c.rarity) ? "top" : ""}`}><Card card={c} /></div>
+            <div className={`lootcard ${isTop(c.rarity) ? "top" : ""}`}><CardFX card={c} tilt={false} /></div>
             {o.isNew && <span className={`lt ${o.isNew[i] ? "yes" : ""}`}>{o.isNew[i] ? "NOUVEAU" : "DOUBLON"}</span>}
           </motion.div>
         ))}

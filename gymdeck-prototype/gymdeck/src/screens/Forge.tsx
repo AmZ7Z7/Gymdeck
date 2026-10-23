@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 import { useMemo, useState } from "react";
-import { Card, Tilt } from "@/components/Card";
+import { Card } from "@/components/Card";
+import { CardFX } from "@/components/CardFX";
 import { GcPill, Wordmark } from "@/components/Bits";
 import { useGame } from "@/components/GameProvider";
 import { IconBack } from "@/components/Icons";
@@ -152,7 +153,7 @@ export function Forge({ back, initialSlug }: { back: () => void; initialSlug?: s
       {made && (
         <Sheet onClose={() => setMade(null)} variant="center" label="Carte fabriquée">
           <motion.div className="cardwrap" initial={{ rotateY: 180, scale: 0.7, opacity: 0 }} animate={{ rotateY: 0, scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 200, damping: 20 }} style={{ transformPerspective: 900 }}>
-            <Tilt><Card card={made} /></Tilt>
+            <CardFX card={made} />
           </motion.div>
           <div className="sheet-title" style={{ textAlign: "center" }}>Carte forgée !</div>
           <p style={{ textAlign: "center" }}>Elle est dans ta collection.</p>

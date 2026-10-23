@@ -2,7 +2,8 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Card, CardBack, GradeBanner, Tilt, passiveLabel } from "@/components/Card";
+import { Card, CardBack, GradeBanner, passiveLabel } from "@/components/Card";
+import { CardFX } from "@/components/CardFX";
 import { Extensions } from "@/screens/Missions";
 import { shareCards } from "@/lib/share";
 import { GcPill, Wordmark } from "@/components/Bits";
@@ -253,7 +254,7 @@ function Detail({ slug, startId, onClose, onGrade }: { slug: string; startId: st
     <Sheet onClose={onClose} variant="center" label={exerciseBySlug(slug).name}>
       <GradeBanner card={card} />
       <motion.div key={card.id} className="cardwrap" initial={{ rotateY: -28, scale: 0.9, opacity: 0 }} animate={{ rotateY: 0, scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 260, damping: 22 }} style={{ transformPerspective: 900 }}>
-        <Tilt><Card card={card} /></Tilt>
+        <CardFX card={card} />
       </motion.div>
       <div style={{ textAlign: "center", fontSize: 15, color: "#cfd6e8" }}>
         {exerciseBySlug(card.exerciseSlug).name} · <b style={{ color: RARITY_COLOR[card.rarity] }}>{card.rarity}</b>
