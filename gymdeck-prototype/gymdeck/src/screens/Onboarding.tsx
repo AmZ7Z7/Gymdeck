@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useGame } from "@/components/GameProvider";
 import { LegalLinks } from "@/components/LegalPage";
 import { CardFX } from "@/components/CardFX";
+import { honorLine } from "@/lib/honor";
 import type { CardData } from "@/lib/engine";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -69,7 +70,7 @@ export function Onboarding() {
         {FAN.map((c, i) => <div key={c.rarity} className={`obfan-c obfan-${i}`}><CardFX card={c} tilt={false} /></div>)}
       </div>
       <div className="steps3">
-        <div><b>1</b><span>Valide ta séance du jour<small>On ne viendra pas vérifier. « J’y pensais très fort » ne compte pas comme une séance. 1 booster par jour.</small></span></div>
+        <div><b>1</b><span>Valide ta séance du jour<small>{honorLine(g.day, 2)} 1 booster par jour.</small></span></div>
         <div><b>2</b> Ouvre ton booster de 5 cartes</div>
         <div><b>3</b> Compose ton deck de 5 exercices</div>
       </div>
