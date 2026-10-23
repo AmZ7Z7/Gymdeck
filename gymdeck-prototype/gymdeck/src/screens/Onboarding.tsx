@@ -69,7 +69,7 @@ export function Onboarding() {
         {FAN.map((c, i) => <div key={c.rarity} className={`obfan-c obfan-${i}`}><CardFX card={c} tilt={false} /></div>)}
       </div>
       <div className="steps3">
-        <div><b>1</b><span>Valide ta séance du jour<small>Sur l’honneur : tu valides ta séance toi‑même, sans preuve à fournir. 1 booster de séance par jour maximum.</small></span></div>
+        <div><b>1</b><span>Valide ta séance du jour<small>On ne viendra pas vérifier. « J’y pensais très fort » ne compte pas comme une séance. 1 booster par jour.</small></span></div>
         <div><b>2</b> Ouvre ton booster de 5 cartes</div>
         <div><b>3</b> Compose ton deck de 5 exercices</div>
       </div>

@@ -19,6 +19,7 @@ import { claimableCount, dailyMissions, missionProgress, passClaimable, passLeve
 import { seasonNumber } from "./Season";
 import { reminderDue } from "@/lib/reminder";
 import { LegalLinks } from "@/components/LegalPage";
+import { honorLine } from "@/lib/honor";
 
 export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: OpenPage }) {
   const g = useGame();
@@ -95,7 +96,7 @@ export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: OpenPag
               {hasWelcome ? "Ouvrir mes boosters de bienvenue" : `Ouvrir un booster (${stock})`}
             </button>
           )}
-          <p className="hint">1 booster de séance par jour</p>
+          <p className="hint">1 booster de séance par jour<span className="honor">{honorLine(g.day, 0)}</span></p>
         </>
       ) : stock > 0 ? (
         <>
@@ -228,6 +229,7 @@ export function Home({ go, openPage }: { go: (t: Tab) => void; openPage: OpenPag
         <Sheet onClose={() => setConfirm(false)} label="Valider ma séance">
           <div className="sheet-title">Séance terminée ?</div>
           <p>Tu as fait ta séance aujourd’hui ? GymDeck te fait confiance : pas de preuve à fournir. Tu reçois un booster de séance.</p>
+          <p className="honor">{honorLine(g.day, 1)}</p>
           <button
             className="btn primary"
             onClick={() => {

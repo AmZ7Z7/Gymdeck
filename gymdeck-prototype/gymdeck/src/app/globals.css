@@ -65,6 +65,9 @@ input { font: inherit; color: inherit; }
 .btn.small { height: 44px; font-size: 20px; }
 .btn:disabled { opacity: .45; cursor: default; }
 .hint { text-align: center; color: #cfd6e8; font-size: 15px; margin: 10px 0 0; }
+/* petite phrase d'humour sur la validation « sur l'honneur », qui change chaque jour (src/lib/honor.ts) */
+.honor { display: block; margin-top: 4px; font-size: 13.5px; font-style: italic; color: #b4bcd2; line-height: 1.35; text-align: center; }
+.sheet p.honor { margin: -4px 0 4px; }
 
 h1.title { font-family: var(--display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 44px; line-height: 1; margin: 8px 0 14px; text-shadow: 0 2px 0 rgba(0,0,0,.4); }
 h2.section { font-family: var(--display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 32px; margin: 0; }
