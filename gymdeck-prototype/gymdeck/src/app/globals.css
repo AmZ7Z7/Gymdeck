@@ -275,6 +275,9 @@ button.cell { display: block; text-align: left; }
 /* rien ne se tasse quand la page dépasse l'écran : elle défile */
 .onboard > * { flex-shrink: 0; }
 .onboard h1 + .obsub { margin: -6px 0 0; text-align: center; text-wrap: balance; font-size: 17px; font-weight: 600; color: #dfe4f3; }
+/* étape 1 : comment marche la validation de séance (sur l'honneur) */
+.steps3 b { flex: none; }
+.steps3 small { display: block; margin-top: 3px; font-size: 13.5px; line-height: 1.3; color: #b4bcd2; }
 /* éventail de 3 cartes, téléphone seulement */
 .obfan { position: relative; height: 158px; flex: none; margin: 4px 0 2px; }
 .obfan-c { position: absolute; left: 50%; top: 6px; width: 98px; margin-left: -49px; transform-origin: 50% 110%; }
