@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { RARITY_COLOR } from "@/lib/config";
 import type { CardData } from "@/lib/engine";
-import { Card, fxTier } from "./Card";
+import { Card, frameSrc, fxTier } from "./Card";
 
 const reduced = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -50,7 +50,7 @@ export function CardFX({ card, tilt = true, className = "" }: { card: CardData; 
     <div
       ref={ref}
       className={`cfx cfx-${tier} cfx-${card.rarity} ${moving ? "cfx-tilt" : ""} ${className}`}
-      style={{ ["--rc" as string]: RARITY_COLOR[card.rarity], ["--fmask" as string]: `url(/assets/frames/${card.rarity}.webp)` }}
+      style={{ ["--rc" as string]: RARITY_COLOR[card.rarity], ["--fmask" as string]: `url(${frameSrc(card.rarity)})` }}
       onPointerMove={move}
       onPointerLeave={leave}
       onPointerUp={leave}

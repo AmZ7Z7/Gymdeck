@@ -83,26 +83,25 @@ h2.section { font-family: var(--display); font-style: italic; font-weight: 800; 
 .tab { position: relative; }
 
 /* Carte */
-.card { position: relative; width: 100%; aspect-ratio: 1000 / 1440; container-type: inline-size; user-select: none; -webkit-user-select: none; }
+.card { position: relative; width: 100%; aspect-ratio: 2 / 3; container-type: inline-size; user-select: none; -webkit-user-select: none; }
 .card > img.frame { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
-.card .art { position: absolute; left: 7%; right: 7%; width: 86%; object-fit: contain; object-position: center bottom; }
-.card .brand { position: absolute; left: 7%; top: 1.9%; width: 25.5%; height: auto; pointer-events: none; filter: drop-shadow(0 .4cqw .6cqw rgba(0,0,0,.55)); }
-.card .badge { position: absolute; right: 5.5%; top: 2.2%; width: 29%; height: 9.5%; display: grid; place-items: center; font-family: var(--display); font-style: italic; font-weight: 800; font-size: 11cqw; line-height: 1; }
-.card .nameband { position: absolute; left: 8.8%; right: 7%; display: flex; align-items: center; font-family: var(--display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 8.4cqw; line-height: .98; }
-.card .statband { position: absolute; left: 8.6%; right: 9.5%; display: flex; align-items: center; justify-content: space-between; gap: 2cqw; }
-.card .stats { display: grid; grid-template-columns: auto auto auto; align-items: center; column-gap: 2.4cqw; row-gap: .6cqw; }
-.card .stats svg { width: 7.6cqw; height: 7.6cqw; }
-.card .stats .lab { font-family: var(--display); font-style: italic; font-weight: 700; font-size: 5.4cqw; }
-.card .stats .val { font-family: var(--display); font-style: italic; font-weight: 800; font-size: 11.6cqw; line-height: .95; }
-.card .statband .stats { flex: none; }
-.card .sep { flex: none; align-self: stretch; width: .55cqw; margin: 1.2cqw 4cqw 1.2cqw 4.4cqw; border-radius: 1cqw; opacity: .85; }
-.card .passive { flex: 1; min-width: 0; white-space: nowrap; text-align: left; display: flex; flex-direction: column; justify-content: center; gap: .15cqw; font-family: var(--display); font-style: italic; color: #fff; line-height: 1; }
-.card .passive small { font-weight: 800; font-size: 4.3cqw; letter-spacing: .08em; color: var(--pc, var(--lime)); }
-.card .passive b { font-weight: 800; font-size: 7.4cqw; letter-spacing: .005em; line-height: 1.02; }
-.card .passive em { font-weight: 600; font-size: 4.6cqw; color: rgba(255,255,255,.78); line-height: 1; }
-.card .passive.both { gap: 0; }
-.card .passive.both small { font-size: 3.7cqw; }
-.card .passive.both b { font-size: 5.7cqw; line-height: 1; }
+/* cadres v2 (2:3) : les zones viennent de CARD_LAYOUT, toutes à 100 % du même conteneur, sans recadrage */
+.card .artwin { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.card .art { position: absolute; object-fit: contain; object-position: center bottom; }
+.card .badge { position: absolute; display: grid; place-items: center; font-family: var(--display); font-style: italic; font-weight: 800; font-size: 6.6cqw; line-height: 1; padding-right: 1.6cqw; }
+.card .nameband { position: absolute; display: flex; align-items: center; justify-content: center; text-align: center; font-family: var(--display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 6.4cqw; line-height: .98; padding: 0 2cqw; overflow: hidden; }
+.card .nameband > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.card .cstats { position: absolute; display: grid; grid-template-columns: auto auto 1fr; align-items: center; align-content: center; column-gap: 1.4cqw; row-gap: .4cqw; }
+.card .cstats svg { width: 4.6cqw; height: 4.6cqw; }
+.card .cstats .lab { font-family: var(--display); font-style: italic; font-weight: 700; font-size: 3.6cqw; }
+.card .cstats .val { font-family: var(--display); font-style: italic; font-weight: 800; font-size: 6.6cqw; line-height: .95; text-align: right; }
+.card .cability { position: absolute; display: grid; place-items: center; }
+.card .cability .capdot { width: 100%; height: 100%; }
+.card .cright { position: absolute; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; font-family: var(--display); font-style: italic; color: #fff; line-height: 1; overflow: hidden; }
+.card .cright .capname { font-weight: 800; font-size: 4.3cqw; line-height: 1.02; text-transform: uppercase; white-space: normal; padding: 0 .6cqw; }
+.card .cright small { font-weight: 800; font-size: 3.1cqw; letter-spacing: .08em; color: var(--pc, var(--lime)); }
+.card .cright b { font-weight: 800; font-size: 4.4cqw; line-height: 1.05; white-space: nowrap; }
+.card .cright em { font-weight: 600; font-size: 3cqw; color: rgba(255,255,255,.78); }
 .card .count { position: absolute; right: 9%; top: 14%; padding: 1cqw 3.4cqw; border-radius: 99px; background: rgba(0,0,0,.72); border: 1px solid rgba(255,255,255,.25); font-family: var(--display); font-weight: 800; font-size: 8cqw; }
 
 .strip { display: flex; gap: 12px; overflow-x: auto; margin: 0 -18px; padding: 4px 18px 10px; scrollbar-width: none; }
@@ -243,7 +242,7 @@ button.cell { display: block; text-align: left; }
 .stockbadge { position: absolute; right: 6%; top: 4%; min-width: 36px; height: 36px; border-radius: 18px; background: var(--lime); color: #0a0d14; display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 23px; padding: 0 9px; box-shadow: 0 0 14px rgba(200,243,29,.6); z-index: 3; }
 .minideck { display: block; width: 100%; text-align: left; margin-top: 16px; }
 .minideck .row { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; margin-top: 10px; }
-.minideck .slotmini { aspect-ratio: 1000 / 1440; border-radius: 6px; border: 1.5px dashed #3a4466; display: grid; place-items: center; color: #55607f; font-size: 22px; }
+.minideck .slotmini { aspect-ratio: 2 / 3; border-radius: 6px; border: 1.5px dashed #3a4466; display: grid; place-items: center; color: #55607f; font-size: 22px; }
 .minideck .tot { display: flex; gap: 14px; margin-top: 10px; font-family: var(--display); font-style: italic; font-weight: 800; font-size: 22px; }
 .progress { height: 8px; border-radius: 4px; background: #1d2540; overflow: hidden; }
 .progress > i { display: block; height: 100%; background: linear-gradient(90deg, var(--purple), var(--lime)); border-radius: 4px; }
@@ -329,7 +328,7 @@ button.cell { display: block; text-align: left; }
 .slot { grid-column: span 2; position: relative; display: block; text-align: left; }
 .slot:nth-child(4) { grid-column: 2 / span 2; }
 .slot:nth-child(5) { grid-column: 4 / span 2; }
-.slot.empty { aspect-ratio: 1000 / 1440; border-radius: 12px; border: 2px dashed #3a4466; background: rgba(10,14,26,.5); display: grid; place-items: center; color: #6b7694; padding: 0; }
+.slot.empty { aspect-ratio: 2 / 3; border-radius: 12px; border: 2px dashed #3a4466; background: rgba(10,14,26,.5); display: grid; place-items: center; color: #6b7694; padding: 0; }
 .slot.empty span { font-size: 44px; line-height: 1; color: var(--lime); }
 .slot.empty small { display: block; font-size: 12px; text-align: center; margin-top: -10px; }
 .slot .nm { margin-top: 4px; font-size: 12px; color: var(--muted); text-align: center; }
@@ -350,7 +349,7 @@ button.cell { display: block; text-align: left; }
 .pickhead .sheet-title { font-size: 30px; }
 .pickhead .cnt { font-family: var(--display); font-style: italic; font-weight: 800; font-size: 30px; color: var(--lime); }
 .pickdraft { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; }
-.pickdraft > button, .pickdraft > div { aspect-ratio: 1000 / 1440; border-radius: 6px; position: relative; display: block; }
+.pickdraft > button, .pickdraft > div { aspect-ratio: 2 / 3; border-radius: 6px; position: relative; display: block; }
 .pickdraft .e { border: 1.5px dashed #3a4466; }
 .picktot { display: flex; gap: 16px; font-family: var(--display); font-style: italic; font-weight: 800; font-size: 22px; align-items: baseline; }
 .picktot small { font-size: 14px; color: var(--lime); font-family: var(--body); font-style: normal; font-weight: 600; }
@@ -478,7 +477,7 @@ button.cell { display: block; text-align: left; }
 .frow .fn small { display: block; font-size: 13px; font-weight: 400; color: var(--muted); }
 .fsheet { flex: 1; min-height: 0; overflow-y: auto; padding: calc(env(safe-area-inset-top) + 14px) 18px calc(env(safe-area-inset-bottom) + 20px); }
 .show3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
-.show3 .slotmini.bigslot { aspect-ratio: 1000 / 1440; width: 100%; font-size: 30px; }
+.show3 .slotmini.bigslot { aspect-ratio: 2 / 3; width: 100%; font-size: 30px; }
 .code-line { margin-top: 10px; font-size: 14px; color: var(--muted); }
 .code-line b { color: var(--lime); letter-spacing: .06em; }
 .cgrid.four { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -979,9 +978,6 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .capimg { display: block; width: 100%; height: 100%; object-fit: contain; user-select: none; -webkit-user-drag: none; pointer-events: none; }
 .capdot.big { width: 56px; height: 56px; }
 /* sur la carte : à droite du nom, dans une zone réservée (le nom ne passe jamais dessous) */
-.card .nameband.withcap { right: 22%; }
-.card .capslot { position: absolute; right: 7.2%; width: 14.5cqw; display: grid; place-items: center; z-index: 3; }
-.card .capslot .capdot { width: 14.5cqw; height: 14.5cqw; }
 
 /* section « En combat » */
 .combatinfo { --cc: #c8f31d; width: 100%; max-width: 340px; display: grid; gap: 8px; padding: 12px; border-radius: 14px; text-align: left;
@@ -1023,7 +1019,7 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .cmatch { display: grid; gap: 10px; align-content: start; }
 .backrow { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; padding: 0 4px 8px; }
 .minib { position: relative; }
-.minib > img { width: 100%; display: block; aspect-ratio: 1000 / 1440; object-fit: fill; border-radius: 7%; }
+.minib > img { width: 100%; display: block; aspect-ratio: 2 / 3; object-fit: fill; border-radius: 7%; }
 .gchip { position: absolute; left: 50%; bottom: -8px; translate: -50% 0; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: #0d1220; border: 2px solid var(--gcol, #9aa3b8); color: var(--gcol, #fff); }
 .gchip svg { width: 15px; height: 15px; }
 .gchip.g-pecs { --gcol: #ff8a65; } .gchip.g-epaules { --gcol: #ffd23b; } .gchip.g-dos { --gcol: #3cc4ff; } .gchip.g-bras { --gcol: #b4bcd2; }
@@ -1095,8 +1091,8 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .mslots { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: center; min-height: 0; }
 .mslot { position: relative; display: grid; justify-items: center; align-content: center; gap: 6px; min-height: 0; }
 .slot-card { position: relative; width: min(100%, calc((100cqh - 74px) / 1.44)); }
-.flip { width: 100%; aspect-ratio: 1000 / 1440; perspective: 900px; }
-.slot-empty { width: 100%; aspect-ratio: 1000 / 1440; border-radius: 9%; border: 2px dashed #3a4466; display: grid; place-items: center; color: #6b7694; font-size: 14px; font-weight: 700; position: relative; overflow: hidden; }
+.flip { width: 100%; aspect-ratio: 2 / 3; perspective: 900px; }
+.slot-empty { width: 100%; aspect-ratio: 2 / 3; border-radius: 9%; border: 2px dashed #3a4466; display: grid; place-items: center; color: #6b7694; font-size: 14px; font-weight: 700; position: relative; overflow: hidden; }
 .slot-empty img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: fill; opacity: .55; }
 .slot-empty span { position: relative; font-family: var(--display); font-style: italic; font-weight: 800; font-size: 54px; color: #fff; text-shadow: 0 0 18px var(--purple); }
 .mslot.them .slot-empty { border: 0; }
@@ -1407,8 +1403,8 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .gpatch.t10 { --gb: #161b22; --gl: #f5c451; --gf: #fff6d5; }
 .gpatch.t10 b { background: linear-gradient(165deg, rgba(255,255,255,.14) 0%, rgba(255,255,255,0) 45%), var(--gb); }
 /* sur la carte : largeur fixe (assez pour « 10 »), chiffre qui occupe presque toute la hauteur */
-.gpatch.oncard { position: absolute; z-index: 4; width: 17cqw; height: 11.5cqw; translate: -50% 0; --gw: .75cqw; filter: drop-shadow(0 .5cqw .8cqw rgba(0,0,0,.55)); }
-.gpatch.oncard b { font-size: 10.6cqw; }
+.gpatch.oncard { position: absolute; z-index: 4; width: 14cqw; height: 9.5cqw; translate: -50% 0; --gw: .75cqw; filter: drop-shadow(0 .5cqw .8cqw rgba(0,0,0,.55)); }
+.gpatch.oncard b { font-size: 8.6cqw; }
 .gpatch.big { width: 74px; height: 54px; --gw: 3px; flex: none; }
 .gpatch.big b { font-size: 46px; }
 
@@ -1444,16 +1440,6 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 /* trop étroit pour le booster à côté du téléphone : on le cache */
 @media (max-width: 1239px) { .desk-show { display: none !important; } }
 /* UR / LR : symbole de capacité en bas à droite, à côté du passif */
-.card .capband { flex: none; display: grid; place-items: center; margin-left: 1cqw; }
-.card .capband .capdot { width: 12.5cqw; height: 12.5cqw; }
-.card .statband.withcap { right: 6.5%; gap: 1cqw; --vs: .4; --is: .33; --ls: .24; }
-.card .statband.withcap .stats { column-gap: 1.6cqw; }
-.card .statband.withcap .sep { margin: 1.2cqw 2.2cqw 1.2cqw 2.4cqw; }
-.card .statband.withcap .passive small { font-size: 3.8cqw; }
-.card .statband.withcap .passive b { font-size: 6.4cqw; }
-.card .statband.withcap .passive.both small { font-size: 3.3cqw; }
-.card .statband.withcap .passive.both b { font-size: 5cqw; }
-.card .statband.withcap .passive em { font-size: 4cqw; }
 /* Forge : mode d'emploi et progression vers la carte choisie */
 .forgehow { display: grid; gap: 10px; margin-bottom: 12px; }
 .forgehow .fh-title { font-family: var(--display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 20px; }

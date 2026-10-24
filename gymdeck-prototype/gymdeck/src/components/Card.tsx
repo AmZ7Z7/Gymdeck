@@ -1,9 +1,10 @@
 "use client";
 
-import { FRAME_LAYOUT, GRADE_LABEL, RARITY_COLOR, exerciseBySlug, gradeMedal, medalSrc, type Rarity } from "@/lib/config";
+import { CARD_LAYOUT, GRADE_LABEL, RARITY_COLOR, exerciseBySlug, gradeMedal, medalSrc, type Rarity } from "@/lib/config";
 import type { CardData, Passive } from "@/lib/engine";
 import { Shield, Swords } from "./Icons";
 import { CapDot } from "./CombatBits";
+import { capacityOf } from "@/lib/duel";
 
 const pct = (tenths: number) => `+${(tenths / 10).toFixed(1).replace(".", ",")} %`;
 
@@ -17,76 +18,63 @@ export function passiveLabel(p: Passive): string {
   return passiveLines(p).join(" · ") + " du deck";
 }
 
+/** Image du cadre v2 (carte vierge complète : fond + bordure, kit du 24 oct. 2026). */
+export const frameSrc = (r: Rarity) => `/assets/frames/v2/${r}.webp`;
+
+const pos = (b: { x: number; y: number; w: number; h: number }): React.CSSProperties => ({
+  left: `${b.x * 100}%`, top: `${b.y * 100}%`, width: `${b.w * 100}%`, height: `${b.h * 100}%`,
+});
+
 /** `hideStats` : aperçu (Forge) où ATQ et DEF ne sont pas encore tirées. */
 export function Card({ card, count, holo = true, cap = true, hideStats = false }: { card: CardData; count?: number; holo?: boolean; cap?: boolean; hideStats?: boolean }) {
-  const L = FRAME_LAYOUT[card.rarity];
+  const L = CARD_LAYOUT[card.rarity];
   const ex = exerciseBySlug(card.exerciseSlug);
-  const bandH = (L.statsBottom - L.statsTop) * 144; // en cqw
   const color = RARITY_COLOR[card.rarity as Rarity];
   const top = card.rarity === "UR" || card.rarity === "LR";
-  // UR / LR : le symbole de capacité va en bas à droite, à côté du passif ; sinon à droite du nom
-  const capInBand = cap && top && !!card.passive;
-  const capByName = cap && !capInBand;
+  const capa = capacityOf(card);
   // effet de rareté, version légère et fixe (grilles, listes) ; la version animée complète est CardFX
   const tier = fxTier(card.rarity);
+  const n = ex.name.length;
   return (
     <div
       className={`card ${card.grade ? "graded" : ""} ${holo ? `fxl fxl-${tier} fxl-${card.rarity}` : ""}`}
-      style={holo ? { ["--rc" as string]: color, ["--fmask" as string]: `url(/assets/frames/${card.rarity}.webp)` } : undefined}
+      style={holo ? { ["--rc" as string]: color, ["--fmask" as string]: `url(${frameSrc(card.rarity)})` } : undefined}
     >
-      <img className="frame" src={`/assets/frames/${card.rarity}.webp`} alt="" draggable={false} decoding="async" />
-      <img
-        className="art"
-        src={ex.image}
-        alt={ex.name}
-        draggable={false}
-        style={{
-          top: "8.5%", height: `${L.nameTop * 100 - 10}%`,
-          ...(ex.fit ? { transform: `translate(${ex.fit.x ?? 0}%, ${ex.fit.y ?? 0}%) scale(${ex.fit.s ?? 1})` } : {}),
-        }}
-      />
-      <img className="brand" src="/assets/ui/wordmark.webp" alt="" draggable={false} decoding="async" />
-      <span className="badge" style={{ color }}>{card.rarity}</span>
-      {/* note de Basile : patch posé sur les traits décoratifs de l'en-tête (rien du tout si la carte n'est pas notée) */}
-      {card.grade ? <GradePatch grade={card.grade} className="oncard" style={{ left: `${L.gradeX * 100}%`, top: `${L.gradeTop * 100}%` }} /> : null}
-      <div
-        className={`nameband ${capByName ? "withcap" : ""}`}
-        style={{
-          top: `${L.nameTop * 100}%`,
-          height: `${(L.statsTop - L.nameTop) * 100}%`,
-          // avec le symbole de capacité à droite, un nom long passe sur deux lignes au lieu de rétrécir
-          ...(capByName
-            ? (ex.name.length > 30 ? { fontSize: "5.3cqw" } : ex.name.length > 16 ? { fontSize: "6.2cqw" } : {})
-            : (ex.name.length > 30 ? { fontSize: "5.6cqw" } : ex.name.length > 16 ? { fontSize: "6.9cqw", whiteSpace: "nowrap" } : {})),
-        }}
-      >
-        {ex.name}
+      <img className="frame" src={frameSrc(card.rarity)} alt="" draggable={false} decoding="async" />
+      {/* fenêtre de l'illustration : le personnage et son matériel ne débordent jamais sur le nom, la rareté ou le panneau du bas */}
+      <div className="artwin" style={{ clipPath: L.clip }}>
+        <img
+          className="art"
+          src={ex.image}
+          alt={ex.name}
+          draggable={false}
+          style={{
+            ...pos(L.art),
+            ...(ex.fit ? { transform: `translate(${ex.fit.x ?? 0}%, ${ex.fit.y ?? 0}%) scale(${ex.fit.s ?? 1})` } : {}),
+          }}
+        />
       </div>
-      {capByName && (
-        <span className="capslot" style={{ top: `${L.nameTop * 100}%`, height: `${(L.statsTop - L.nameTop) * 100}%` }}>
-          <CapDot card={card} />
-        </span>
-      )}
-      <div className={`statband ${capInBand ? "withcap" : ""}`} style={{ top: `${L.statsTop * 100}%`, height: `${(L.statsBottom - L.statsTop) * 100}%`, ["--b" as string]: `${bandH}cqw` }}>
-        <div className="stats">
-          <Swords style={{ width: `calc(var(--b) * var(--is, .38))`, height: `calc(var(--b) * var(--is, .38))` }} />
-          <span className="lab" style={{ fontSize: `calc(var(--b) * var(--ls, .27))` }}>ATQ</span>
-          <span className="val" style={{ fontSize: `calc(var(--b) * var(--vs, .44))` }}>{hideStats ? "?" : card.atq}</span>
-          <Shield style={{ width: `calc(var(--b) * var(--is, .38))`, height: `calc(var(--b) * var(--is, .38))` }} />
-          <span className="lab" style={{ fontSize: `calc(var(--b) * var(--ls, .27))` }}>DEF</span>
-          <span className="val" style={{ fontSize: `calc(var(--b) * var(--vs, .44))` }}>{hideStats ? "?" : card.def}</span>
-        </div>
-        {top && card.passive && (
+      <span className="badge" style={{ ...pos(L.rarity), color }}>{card.rarity}</span>
+      {/* note de Basile : patch dans l'espace libre en haut au centre (rien du tout si la carte n'est pas notée) */}
+      {card.grade ? <GradePatch grade={card.grade} className="oncard" style={{ left: "38%", top: `${(L.rarity.y + 0.004) * 100}%` }} /> : null}
+      <div className="nameband" style={{ ...pos(L.title), ...(n > 26 ? { fontSize: "4.6cqw" } : n > 18 ? { fontSize: "5.4cqw" } : {}) }}>
+        <span>{ex.name}</span>
+      </div>
+      <div className="cstats" style={pos(L.stats)}>
+        <Swords /><span className="lab">ATQ</span><span className="val">{hideStats ? "?" : card.atq}</span>
+        <Shield /><span className="lab">DEF</span><span className="val">{hideStats ? "?" : card.def}</span>
+      </div>
+      {cap && <span className="cability" style={pos(L.ability)}><CapDot card={card} /></span>}
+      <div className={`cright ${top ? "ispassive" : ""}`} style={{ ...pos(L.right), ["--pc" as string]: color }}>
+        {top && card.passive ? (
           <>
-            <i className="sep" style={{ background: `linear-gradient(180deg, transparent, ${color} 18%, ${color} 82%, transparent)` }} />
-            <div className={`passive ${card.passive.type === "BOTH" ? "both" : ""}`} style={{ ["--pc" as string]: color }}>
-              <small>{card.passive.type === "BOTH" ? "PASSIF · DU DECK" : "PASSIF"}</small>
-              {passiveLines(card.passive).map((l) => <b key={l}>{l}</b>)}
-              {card.passive.type !== "BOTH" && <em>du deck</em>}
-            </div>
-            {capInBand && <span className="capband"><CapDot card={card} /></span>}
+            <small>PASSIF</small>
+            {passiveLines(card.passive).map((l) => <b key={l}>{l}</b>)}
+            <em>du deck</em>
           </>
-        )}
+        ) : cap ? (
+          <b className="capname" style={{ color: capa.color }}>{capa.name}</b>
+        ) : null}
       </div>
       {holo && tier !== "mat" && <span className="fxl-sheen" aria-hidden />}
       {holo && tier === "holo" && <span className="fxl-rainbow" aria-hidden />}
