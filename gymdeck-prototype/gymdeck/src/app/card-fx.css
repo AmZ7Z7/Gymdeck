@@ -122,10 +122,10 @@
 .cfx-UR .cfx-sheen::after { content: none; }
 .fxl-UR .fxl-sheen { mix-blend-mode: screen; background: linear-gradient(115deg, transparent 32%, rgba(255,236,190,.22) 46%, transparent 58%); }
 
-/* LR : lueur or/rose (cadre néon du 25 oct.), reflet holographique léger, balayage de lumière, étincelles */
-.cfx-LR .cfx-in, .card.fxl-LR { filter: drop-shadow(0 0 2px rgba(255,236,140,.9)) drop-shadow(0 0 12px rgba(255,90,200,.45)) !important; }
-.cfx-LR .cfx-aura { display: block !important; background: radial-gradient(closest-side, rgba(255,210,90,.45), rgba(220,80,255,.22) 60%, transparent); }
-.cfx-LR .cfx-sheen, .cfx-LR .cfx-sparks, .fxl-LR .fxl-sheen { display: block !important; }  /* pas d'arc-en-ciel : le cadre néon est déjà multicolore et il grisait le personnage */
+/* LR : lueur bleu/cyan/lavande, reflet de lumière, balayage de lumière, étincelles */
+.cfx-LR .cfx-in, .card.fxl-LR { filter: drop-shadow(0 0 2px rgba(190,230,255,.9)) drop-shadow(0 0 12px rgba(110,170,255,.55)) !important; }
+.cfx-LR .cfx-aura { display: block !important; background: radial-gradient(closest-side, rgba(120,190,255,.55), rgba(170,140,255,.22) 60%, transparent); }
+.cfx-LR .cfx-sheen, .cfx-LR .cfx-sparks, .fxl-LR .fxl-sheen { display: block !important; }  /* pas d'arc-en-ciel : il grisait le personnage */
 .cfx-LR .cfx-rainbow { mix-blend-mode: soft-light; opacity: .32; }
 .cfx-LR .cfx-rainbow i, .fxl-LR .fxl-rainbow { background: repeating-linear-gradient(115deg, #ffe14a 0%, #ff5fd2 8%, #fff6c8 14%, #3cc4ff 21%, #b06bff 27%, #ffe14a 33.33%) !important; }
 .fxl-LR .fxl-rainbow { mix-blend-mode: soft-light; opacity: .28 !important; }
@@ -133,5 +133,5 @@
   background: linear-gradient(105deg, transparent, rgba(220,240,255,.08) 30%, rgba(230,245,255,.55) 50%, rgba(220,240,255,.08) 70%, transparent);
   animation: cfxSweep 3.4s ease-in-out infinite; }
 .cfx-LR .cfx-sheen::after { content: none; }
-.cfx-LR .cfx-sparks i { box-shadow: 0 0 6px 1px #ffe14a; }
+.cfx-LR .cfx-sparks i { box-shadow: 0 0 6px 1px #9fd8ff; }
 .fxl-LR .fxl-sheen { mix-blend-mode: screen; background: linear-gradient(115deg, transparent 30%, rgba(230,245,255,.3) 45%, transparent 58%); }

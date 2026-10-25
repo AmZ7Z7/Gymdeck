@@ -28,7 +28,7 @@ const artBox = (L: { art: { x: number; y: number; w: number; h: number }; title:
 };
 
 /** Couleur des lettres de rareté, accordée à chaque cadre. */
-const BADGE_COLOR: Record<Rarity, string> = { C: "#e3e7ee", R: "#3ee88a", SR: "#5cc8ff", SSR: "#d77bff", UR: "#ffc93c", LR: "#ffe600" };
+const BADGE_COLOR: Record<Rarity, string> = { C: "#e3e7ee", R: "#3ee88a", SR: "#5cc8ff", SSR: "#d77bff", UR: "#ffc93c", LR: "#8fdcff" };
 
 const pos = (b: { x: number; y: number; w: number; h: number }): React.CSSProperties => ({
   left: `${b.x * 100}%`, top: `${b.y * 100}%`, width: `${b.w * 100}%`, height: `${b.h * 100}%`,
@@ -72,7 +72,7 @@ export function Card({ card, count, holo = true, cap = true, hideStats = false }
         <span>{ex.name}</span>
       </div>
       {/* panneau du bas : ATQ/DEF à gauche, symbole de capacité au milieu, passif (UR/LR) ou nom de capacité à droite */}
-      <div className="cpanel" style={{ ...pos({ x: L.stats.x, y: L.stats.y, w: L.right.x + L.right.w - L.stats.x, h: L.stats.h }), ["--k" as string]: Math.min(1.3, L.stats.h / 0.1) }}>
+      <div className="cpanel" style={{ ...pos({ x: L.stats.x, y: L.stats.y, w: L.right.x + L.right.w - L.stats.x, h: L.stats.h }), ["--k" as string]: Math.max(1, Math.min(1.3, L.stats.h / 0.1)) }}>
         <div className="cstats">
           <Swords /><span className="lab">ATQ</span><span className="val">{hideStats ? "?" : card.atq}</span>
           <Shield /><span className="lab">DEF</span><span className="val">{hideStats ? "?" : card.def}</span>
