@@ -21,6 +21,12 @@ export function passiveLabel(p: Passive): string {
 /** Image du cadre v2 (carte vierge complète : fond + bordure, kit du 24 oct. 2026). */
 export const frameSrc = (r: Rarity) => `/assets/frames/v2/${r}.webp`;
 
+/** Zone de l'illustration : toute la largeur de la fenêtre, du haut (sous le cartouche) jusqu'au bandeau du nom. */
+const artBox = (L: { art: { x: number; y: number; w: number; h: number }; title: { y: number } }) => {
+  const top = L.art.y - 0.055;
+  return { x: 0.105, y: top, w: 0.79, h: L.title.y - 0.012 - top };
+};
+
 const pos = (b: { x: number; y: number; w: number; h: number }): React.CSSProperties => ({
   left: `${b.x * 100}%`, top: `${b.y * 100}%`, width: `${b.w * 100}%`, height: `${b.h * 100}%`,
 });
@@ -43,13 +49,14 @@ export function Card({ card, count, holo = true, cap = true, hideStats = false }
       <img className="frame" src={frameSrc(card.rarity)} alt="" draggable={false} decoding="async" />
       {/* fenêtre de l'illustration : le personnage et son matériel ne débordent jamais sur le nom, la rareté ou le panneau du bas */}
       <div className="artwin" style={{ clipPath: L.clip }}>
+        <i className="floor" style={{ left: "18%", width: "64%", top: `${(L.title.y - 0.05) * 100}%`, height: "6%" }} aria-hidden />
         <img
           className="art"
           src={ex.image}
           alt={ex.name}
           draggable={false}
           style={{
-            ...pos(L.art),
+            ...pos(artBox(L)),
             ...(ex.fit ? { transform: `translate(${ex.fit.x ?? 0}%, ${ex.fit.y ?? 0}%) scale(${ex.fit.s ?? 1})` } : {}),
           }}
         />
@@ -65,12 +72,12 @@ export function Card({ card, count, holo = true, cap = true, hideStats = false }
         <Shield /><span className="lab">DEF</span><span className="val">{hideStats ? "?" : card.def}</span>
       </div>
       {cap && <span className="cability" style={pos(L.ability)}><CapDot card={card} /></span>}
-      <div className={`cright ${top ? "ispassive" : ""}`} style={{ ...pos(L.right), ["--pc" as string]: color }}>
+      <div className={`cright ${top ? "ispassive" : ""} ${top && card.passive?.type === "BOTH" ? "both" : ""}`} style={{ ...pos(L.right), ["--pc" as string]: color }}>
         {top && card.passive ? (
           <>
-            <small>PASSIF</small>
+            <small>{card.passive.type === "BOTH" ? "PASSIF · DECK" : "PASSIF"}</small>
             {passiveLines(card.passive).map((l) => <b key={l}>{l}</b>)}
-            <em>du deck</em>
+            {card.passive.type !== "BOTH" && <em>du deck</em>}
           </>
         ) : cap ? (
           <b className="capname" style={{ color: capa.color }}>{capa.name}</b>

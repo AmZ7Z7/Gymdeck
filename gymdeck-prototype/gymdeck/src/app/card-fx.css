@@ -106,3 +106,9 @@
 .fxgrid figure { margin: 0; }
 .fxgrid figcaption { margin-top: 12px; font-size: 14px; color: #cfd6e8; text-align: center; }
 .fxgrid figcaption b { font-family: var(--display); font-style: italic; font-size: 18px; margin-right: 4px; }
+
+/* ═════════ Cadres v2 (25 oct. 2026, demande d'Adrien) : plus aucun reflet, arc-en-ciel, lueur ni particule sur la carte ═════════
+   Les cartes rares gardent seulement l'inclinaison au doigt / à la souris. Supprimer ce bloc pour retrouver les anciens effets. */
+.cfx-sheen, .cfx-rainbow, .cfx-aura, .cfx-sparks, .fxl-sheen, .fxl-rainbow { display: none !important; }
+.cfx .cfx-in, .cfx-mat .card, .card.fxl-rare, .card.fxl-metal, .card.fxl-holo, .card.fxl-mat > img.frame, .card.fxl-mat .art { filter: none !important; }
+.card.fxl-mat .art, .cfx-mat .card .art { filter: drop-shadow(0 1.2cqw 1.6cqw rgba(0,0,0,.55)) !important; }
