@@ -61,7 +61,7 @@ export function Card({ card, count, holo = true, cap = true, hideStats = false }
           }}
         />
       </div>
-      <span className="badge" style={{ ...pos(L.rarity), color }}>{card.rarity}</span>
+      <span className={`badge ${card.rarity.length > 2 ? "long" : ""}`} style={{ ...pos(L.rarity), ["--bc" as string]: color }}><b>{card.rarity}</b></span>
       {/* note de Basile : patch dans l'espace libre en haut au centre (rien du tout si la carte n'est pas notée) */}
       {card.grade ? <GradePatch grade={card.grade} className="oncard" style={{ left: "38%", top: `${(L.rarity.y + 0.004) * 100}%` }} /> : null}
       <div className="nameband" style={{ ...pos(L.title), ...(n > 26 ? { fontSize: "4.6cqw" } : n > 18 ? { fontSize: "5.4cqw" } : {}) }}>

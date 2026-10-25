@@ -107,8 +107,31 @@
 .fxgrid figcaption { margin-top: 12px; font-size: 14px; color: #cfd6e8; text-align: center; }
 .fxgrid figcaption b { font-family: var(--display); font-style: italic; font-size: 18px; margin-right: 4px; }
 
-/* ═════════ Cadres v2 (25 oct. 2026, demande d'Adrien) : plus aucun reflet, arc-en-ciel, lueur ni particule sur la carte ═════════
-   Les cartes rares gardent seulement l'inclinaison au doigt / à la souris. Supprimer ce bloc pour retrouver les anciens effets. */
+/* ═════════ Cadres v2 (25 oct. 2026, demandes d'Adrien) ═════════
+   C, R, SR, SSR : sobres, sans reflet ni lueur. UR : un peu de lumière. LR : plus de lumière que l'UR (reflet bleu/cyan/lavande, lueur, étincelles).
+   Toutes gardent l'inclinaison. */
 .cfx-sheen, .cfx-rainbow, .cfx-aura, .cfx-sparks, .fxl-sheen, .fxl-rainbow { display: none !important; }
-.cfx .cfx-in, .cfx-mat .card, .card.fxl-rare, .card.fxl-metal, .card.fxl-holo, .card.fxl-mat > img.frame, .card.fxl-mat .art { filter: none !important; }
-.card.fxl-mat .art, .cfx-mat .card .art { filter: drop-shadow(0 1.2cqw 1.6cqw rgba(0,0,0,.55)) !important; }
+.cfx .cfx-in, .cfx-mat .card, .card.fxl-rare, .card.fxl-metal, .card.fxl-holo, .card.fxl-mat > img.frame { filter: none !important; }
+
+/* UR : lueur dorée douce + reflet lent */
+.cfx-UR .cfx-in, .card.fxl-UR { filter: drop-shadow(0 0 2px rgba(255,214,120,.7)) drop-shadow(0 0 9px rgba(255,176,32,.35)) !important; }
+.cfx-UR .cfx-sheen, .fxl-UR .fxl-sheen { display: block !important; }
+.cfx-UR .cfx-sheen::before { content: ""; position: absolute; top: -20%; bottom: -20%; left: -60%; width: 55%; mix-blend-mode: screen;
+  background: linear-gradient(105deg, transparent, rgba(255,236,190,.06) 30%, rgba(255,236,190,.38) 50%, rgba(255,236,190,.06) 70%, transparent);
+  animation: cfxSweep 4.5s ease-in-out infinite; }
+.cfx-UR .cfx-sheen::after { content: none; }
+.fxl-UR .fxl-sheen { mix-blend-mode: screen; background: linear-gradient(115deg, transparent 32%, rgba(255,236,190,.22) 46%, transparent 58%); }
+
+/* LR : lueur bleu/cyan/lavande, reflet holographique léger, balayage de lumière, étincelles */
+.cfx-LR .cfx-in, .card.fxl-LR { filter: drop-shadow(0 0 2px rgba(190,230,255,.9)) drop-shadow(0 0 12px rgba(110,170,255,.55)) !important; }
+.cfx-LR .cfx-aura { display: block !important; background: radial-gradient(closest-side, rgba(120,190,255,.55), rgba(170,140,255,.22) 60%, transparent); }
+.cfx-LR .cfx-sheen, .cfx-LR .cfx-rainbow, .cfx-LR .cfx-sparks, .fxl-LR .fxl-sheen, .fxl-LR .fxl-rainbow { display: block !important; }
+.cfx-LR .cfx-rainbow { mix-blend-mode: soft-light; opacity: .32; }
+.cfx-LR .cfx-rainbow i, .fxl-LR .fxl-rainbow { background: repeating-linear-gradient(115deg, #7fd3ff 0%, #c9b6ff 8%, #e9f7ff 14%, #6aa8ff 21%, #b49bff 27%, #7fd3ff 33.33%) !important; }
+.fxl-LR .fxl-rainbow { mix-blend-mode: soft-light; opacity: .28 !important; }
+.cfx-LR .cfx-sheen::before { content: ""; position: absolute; top: -20%; bottom: -20%; left: -60%; width: 60%; mix-blend-mode: screen;
+  background: linear-gradient(105deg, transparent, rgba(220,240,255,.08) 30%, rgba(230,245,255,.55) 50%, rgba(220,240,255,.08) 70%, transparent);
+  animation: cfxSweep 3.4s ease-in-out infinite; }
+.cfx-LR .cfx-sheen::after { content: none; }
+.cfx-LR .cfx-sparks i { box-shadow: 0 0 6px 1px #9fd8ff; }
+.fxl-LR .fxl-sheen { mix-blend-mode: screen; background: linear-gradient(115deg, transparent 30%, rgba(230,245,255,.3) 45%, transparent 58%); }

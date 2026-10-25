@@ -89,7 +89,11 @@ h2.section { font-family: var(--display); font-style: italic; font-weight: 800; 
 .card .artwin { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .card .art { position: absolute; object-fit: contain; object-position: center bottom; filter: drop-shadow(0 1.2cqw 1.6cqw rgba(0,0,0,.55)); }
 .card .artwin .floor { position: absolute; border-radius: 50%; background: radial-gradient(closest-side, rgba(0,0,0,.6), transparent); }
-.card .badge { position: absolute; display: grid; place-items: center; font-family: var(--display); font-style: italic; font-weight: 800; font-size: 7.4cqw; line-height: 1; padding-right: 1.6cqw; }
+.card .badge { position: absolute; display: grid; place-items: center; font-family: var(--display); font-style: italic; font-weight: 900; font-size: 10cqw; line-height: 1; letter-spacing: -.02em; padding-right: 1.4cqw; z-index: 2; }
+/* lettre de rareté intégrée au cartouche : dégradé de la couleur vers le blanc, contour sombre, relief */
+.card .badge > b { font-weight: 900; background: linear-gradient(180deg, #fff 0%, var(--bc) 55%, color-mix(in srgb, var(--bc) 60%, #000) 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+  -webkit-text-stroke: .35cqw rgba(0,0,0,.75); paint-order: stroke fill; filter: drop-shadow(0 .5cqw .5cqw rgba(0,0,0,.6)); }
+.card .badge.long { font-size: 8.4cqw; }
 .card .nameband { position: absolute; display: flex; align-items: center; justify-content: center; text-align: center; font-family: var(--display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 7cqw; line-height: .98; padding: 0 2cqw; overflow: hidden; }
 .card .nameband > span { line-height: 1.15; padding-top: .08em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .card .cstats { position: absolute; display: grid; grid-template-columns: auto auto 1fr; align-items: center; align-content: center; column-gap: 1.4cqw; row-gap: .4cqw; }
