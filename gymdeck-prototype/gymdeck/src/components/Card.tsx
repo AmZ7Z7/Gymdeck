@@ -27,6 +27,9 @@ const artBox = (L: { art: { x: number; y: number; w: number; h: number }; title:
   return { x: 0.105, y: top, w: 0.79, h: L.title.y - 0.012 - top };
 };
 
+/** Couleur des lettres de rareté, accordée à chaque cadre. */
+const BADGE_COLOR: Record<Rarity, string> = { C: "#e3e7ee", R: "#3ee88a", SR: "#5cc8ff", SSR: "#d77bff", UR: "#ffc93c", LR: "#ffe600" };
+
 const pos = (b: { x: number; y: number; w: number; h: number }): React.CSSProperties => ({
   left: `${b.x * 100}%`, top: `${b.y * 100}%`, width: `${b.w * 100}%`, height: `${b.h * 100}%`,
 });
@@ -61,27 +64,36 @@ export function Card({ card, count, holo = true, cap = true, hideStats = false }
           }}
         />
       </div>
-      <span className={`badge ${card.rarity.length > 2 ? "long" : ""}`} style={{ ...pos(L.rarity), ["--bc" as string]: color }}><b>{card.rarity}</b></span>
+      {/* lettre de rareté : grande, pleine, dans le cartouche du cadre (comme les anciens cadres) */}
+      <span className="badge" style={{ ...pos(L.rarity), fontSize: `${L.rarity.h * 150 * (card.rarity.length > 2 ? 0.86 : 1.02)}cqw`, color: BADGE_COLOR[card.rarity] }}>{card.rarity}</span>
       {/* note de Basile : patch dans l'espace libre en haut au centre (rien du tout si la carte n'est pas notée) */}
       {card.grade ? <GradePatch grade={card.grade} className="oncard" style={{ left: "38%", top: `${(L.rarity.y + 0.004) * 100}%` }} /> : null}
       <div className="nameband" style={{ ...pos(L.title), ...(n > 26 ? { fontSize: "4.6cqw" } : n > 18 ? { fontSize: "5.4cqw" } : {}) }}>
         <span>{ex.name}</span>
       </div>
-      <div className="cstats" style={pos(L.stats)}>
-        <Swords /><span className="lab">ATQ</span><span className="val">{hideStats ? "?" : card.atq}</span>
-        <Shield /><span className="lab">DEF</span><span className="val">{hideStats ? "?" : card.def}</span>
-      </div>
-      {cap && <span className="cability" style={pos(L.ability)}><CapDot card={card} /></span>}
-      <div className={`cright ${top ? "ispassive" : ""} ${top && card.passive?.type === "BOTH" ? "both" : ""}`} style={{ ...pos(L.right), ["--pc" as string]: color }}>
-        {top && card.passive ? (
-          <>
-            <small>{card.passive.type === "BOTH" ? "PASSIF · DECK" : "PASSIF"}</small>
-            {passiveLines(card.passive).map((l) => <b key={l}>{l}</b>)}
-            {card.passive.type !== "BOTH" && <em>du deck</em>}
-          </>
-        ) : cap ? (
-          <b className="capname" style={{ color: capa.color }}>{capa.name}</b>
-        ) : null}
+      {/* panneau du bas : ATQ/DEF à gauche, symbole de capacité au milieu, passif (UR/LR) ou nom de capacité à droite */}
+      <div className="cpanel" style={{ ...pos({ x: L.stats.x, y: L.stats.y, w: L.right.x + L.right.w - L.stats.x, h: L.stats.h }), ["--k" as string]: Math.min(1.3, L.stats.h / 0.1) }}>
+        <div className="cstats">
+          <Swords /><span className="lab">ATQ</span><span className="val">{hideStats ? "?" : card.atq}</span>
+          <Shield /><span className="lab">DEF</span><span className="val">{hideStats ? "?" : card.def}</span>
+        </div>
+        <i className="csep" style={{ ["--pc" as string]: BADGE_COLOR[card.rarity] }} />
+        <span className="cability">{cap && <CapDot card={card} />}</span>
+        <i className="csep" style={{ ["--pc" as string]: BADGE_COLOR[card.rarity] }} />
+        <div className={`cright ${top && card.passive?.type === "BOTH" ? "both" : ""}`} style={{ ["--pc" as string]: BADGE_COLOR[card.rarity] }}>
+          {top && card.passive ? (
+            <>
+              <small>PASSIF</small>
+              {passiveLines(card.passive).map((l) => <b key={l}>{l}</b>)}
+              <em>du deck</em>
+            </>
+          ) : cap ? (
+            <>
+              <small>CAPACITÉ</small>
+              <b className="capname" style={{ color: capa.color }}>{capa.name}</b>
+            </>
+          ) : null}
+        </div>
       </div>
       {holo && tier !== "mat" && <span className="fxl-sheen" aria-hidden />}
       {holo && tier === "holo" && <span className="fxl-rainbow" aria-hidden />}
