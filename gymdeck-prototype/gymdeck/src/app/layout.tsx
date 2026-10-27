@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { preload } from "react-dom";
+import { Analytics } from "@vercel/analytics/next";
 import "@fontsource/barlow/400.css";
 import "@fontsource/barlow/600.css";
 import "@fontsource/barlow-condensed/600-italic.css";
@@ -29,7 +30,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   preload("/assets/ui/dos-carte.webp", { as: "image" });
   return (
     <html lang="fr">
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* statistiques de visite Vercel (sans cookie) */}
+        <Analytics />
+      </body>
     </html>
   );
 }
