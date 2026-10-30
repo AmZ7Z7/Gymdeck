@@ -2,7 +2,9 @@
 
 import { motion } from "framer-motion";
 import { useEffect, useRef, useState } from "react";
-import { useGame } from "@/components/GameProvider";
+import { track } from "@vercel/analytics";
+import { SIGNUP_HASH, useGame } from "@/components/GameProvider";
+import { DEMO_PATH } from "@/lib/demo";
 import { LegalLinks } from "@/components/LegalPage";
 import { CardFX } from "@/components/CardFX";
 import { honorLine } from "@/lib/honor";
@@ -15,6 +17,17 @@ const FAN: CardData[] = [
   { exerciseSlug: "squat", rarity: "SR", atq: 468, def: 431, passive: null },
   { exerciseSlug: "leg-extension", rarity: "LR", atq: 1560, def: 1490, passive: { type: "BOTH", atqTenths: 31, defTenths: 29 } },
   { exerciseSlug: "gainage", rarity: "SSR", atq: 742, def: 688, passive: null },
+];
+
+/**
+ * Aperçus du jeu sur l'accueil : captures de la démo (public/assets/landing).
+ * Pour mettre tes propres captures, remplace ces fichiers en gardant les mêmes noms (format portrait, environ 750 × 1300).
+ */
+const SHOTS = [
+  { src: "/assets/landing/ouverture.jpg", label: "Ouvre tes boosters", alt: "Ouverture d’un booster : une carte légendaire apparaît" },
+  { src: "/assets/landing/collection.jpg", label: "Complète ta collection", alt: "La collection de cartes, classées par groupe musculaire" },
+  { src: "/assets/landing/holo.jpg", label: "Des cartes holographiques", alt: "Une carte rare holographique en gros plan" },
+  { src: "/assets/landing/marche.jpg", label: "Le Marché aux enchères", alt: "Le Marché, où les cartes se vendent aux enchères" },
 ];
 
 /** Première arrivée : création de compte (ou connexion), puis ouverture directe du premier booster. */
@@ -30,8 +43,12 @@ export function Onboarding() {
   const [busy, setBusy] = useState(false);
   const create = mode === "create";
   const ctaRef = useRef<HTMLParagraphElement>(null);
-  // retour du booster invité : on descend directement au formulaire
-  useEffect(() => { if (g.guestCards > 0) ctaRef.current?.scrollIntoView({ block: "start" }); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const authRef = useRef<HTMLDivElement>(null);
+  // retour du booster invité : on descend directement au formulaire ; lien « Créer un vrai compte » de la démo : pareil
+  useEffect(() => {
+    if (g.guestCards > 0) ctaRef.current?.scrollIntoView({ block: "start" });
+    else if (window.location.hash === `#${SIGNUP_HASH}`) authRef.current?.scrollIntoView({ block: "start" });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = async () => {
     setErr(null); setInfo(null);
@@ -64,11 +81,28 @@ export function Onboarding() {
     <motion.div className="onboard" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
       <img className="logohero wm" src="/assets/ui/wordmark.webp" alt="GymDeck" draggable={false} />
       <h1>Ta séance,<br />ton booster.</h1>
-      <p className="obsub">Le jeu de cartes à collectionner de la muscu.</p>
+      <p className="obsub">Le jeu de cartes à collectionner de la muscu : chaque séance validée te rapporte un booster de 5 cartes.</p>
       {/* téléphone : un éventail de vraies cartes (sur grand écran, la vitrine à droite les montre déjà) */}
       <div className="obfan" aria-hidden>
         {FAN.map((c, i) => <div key={c.rarity} className={`obfan-c obfan-${i}`}><CardFX card={c} tilt={false} /></div>)}
       </div>
+
+      <div className="obcta">
+        {/* l'adresse /demo est comptée dans les statistiques Vercel, en plus de l'événement */}
+        <a className="btn primary" href={DEMO_PATH} onClick={() => track("Essayer la démo")}>Essayer la démo</a>
+        <button className="btn ghost small" onClick={() => authRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}>Se connecter / Créer un compte</button>
+        <p className="obnote">Démo sans inscription : une partie déjà bien avancée, prête à jouer.</p>
+      </div>
+
+      <div className="obshots" aria-label="Aperçus du jeu">
+        {SHOTS.map((s) => (
+          <figure key={s.src}>
+            <img src={s.src} alt={s.alt} loading="lazy" decoding="async" draggable={false} />
+            <figcaption>{s.label}</figcaption>
+          </figure>
+        ))}
+      </div>
+
       <div className="steps3">
         <div><b>1</b><span>Valide ta séance du jour<small>{honorLine(g.day, 2)} 1 booster par jour.</small></span></div>
         <div><b>2</b> Ouvre ton booster de 5 cartes</div>
@@ -76,12 +110,13 @@ export function Onboarding() {
       </div>
 
       {create && !g.guestUsed && (
-        <button className="btn guestbtn" onClick={g.openGuestBooster}>Ouvre ton premier booster gratuit</button>
+        <button className="btn ghost small" onClick={g.openGuestBooster}>Ouvre un booster gratuit sans compte</button>
       )}
       {create && g.guestCards > 0 && (
         <p className="guestcta" role="status" ref={ctaRef}>Crée ton compte pour garder ces cartes et ouvrir 2 boosters de plus</p>
       )}
 
+      <div ref={authRef} className="obauth-anchor" />
       {cloud && (
         <div className="seg" style={{ marginBottom: 12 }}>
           <button className={create ? "on" : ""} onClick={() => { setMode("create"); setErr(null); }}>Créer un compte</button>
@@ -117,6 +152,7 @@ export function Onboarding() {
         {!cloud && <><br />Mode test : ton compte reste sur ce téléphone et ton mot de passe n’est pas enregistré.</>}
       </p>
       <LegalLinks />
+      <p className="obcredit">Projet conçu et développé par Adrien Mariotte</p>
     </motion.div>
   );
 }
