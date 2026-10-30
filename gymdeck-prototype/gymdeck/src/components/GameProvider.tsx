@@ -27,17 +27,22 @@ import {
 import { changedElsewhere, startupChoice, type SyncInfo } from "@/lib/sync";
 import { disablePush } from "@/lib/push";
 import { addGuestCards, loadGuest, saveGuest } from "@/lib/guest";
+import { DEMO_MAX_AGE_MS, DEMO_STORAGE_KEY, demoState, isDemoPath } from "@/lib/demo";
+
+/** Accueil ouvert directement sur le formulaire d'inscription (lien « Créer un vrai compte » de la démo). */
+export const SIGNUP_HASH = "inscription";
 import type { MuscleGroup, Rarity } from "@/lib/config";
 import { sfx } from "@/lib/sound";
 import { DECK_SIZE, type BoosterKind } from "@/lib/config";
 
 const STORAGE_KEY = "gymdeck:proto:v1";
 const ACCOUNT_KEY = "gymdeck:account:v1";
+const DEMO_AT_KEY = "gymdeck:demo:at";
 const SYNC_KEY = "gymdeck:sync:v1";
 const OTHER_DEVICE_MSG = "Ta partie a été mise à jour depuis un autre appareil.";
 
 /** Compte connecté : « local » = mode test sans serveur ; « cloud » = Supabase. */
-export interface Account { email: string; cloud: boolean; userId?: string }
+export interface Account { email: string; cloud: boolean; userId?: string; /** Mode démo (adresse /demo) : rien n'est envoyé en ligne. */ demo?: boolean }
 
 /** Session d'ouverture : survit à la fermeture / au rechargement de la page. */
 export interface OpeningSession {
@@ -122,6 +127,12 @@ interface Game {
   guestCards: number;
   /** Ouvre le booster gratuit sans compte (un seul par navigateur). */
   openGuestBooster: () => void;
+  /** Mode démo (adresse /demo) : partie fictive, rien n'est envoyé en ligne. */
+  demo: boolean;
+  /** Quitte la démo (vers l'accueil, ou directement vers le formulaire d'inscription). */
+  exitDemo: (toSignup?: boolean) => void;
+  /** Remet la démo à son état de départ. */
+  restartDemo: () => void;
   finishTutorial: () => void;
   setReminder: (r: Extra["reminder"]) => void;
   /** Coche / décoche un jour passé au calendrier. Renvoie un message d'erreur ou null. */
@@ -165,16 +176,28 @@ export const useGame = () => {
   return g;
 };
 
+/** Démo : la partie est rangée à part, la sauvegarde d'un vrai joueur sur le même téléphone n'est jamais touchée. */
+let storageKey = STORAGE_KEY;
 function load(): Persisted | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey);
     return raw ? (JSON.parse(raw) as Persisted) : null;
   } catch {
     return null;
   }
 }
 function save(p: Persisted) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); } catch { /* stockage indisponible */ }
+  try { localStorage.setItem(storageKey, JSON.stringify(p)); } catch { /* stockage indisponible */ }
+}
+/** Partie démo : reprise si elle date de moins de 12 h, sinon une nouvelle, complète. */
+function loadDemo(): Persisted {
+  try {
+    const at = Number(localStorage.getItem(DEMO_AT_KEY) ?? 0);
+    const saved = Date.now() - at < DEMO_MAX_AGE_MS ? load() : null;
+    if (saved) return saved;
+  } catch { /* ignoré */ }
+  try { localStorage.setItem(DEMO_AT_KEY, String(Date.now())); } catch { /* ignoré */ }
+  return { player: demoState(parisDay(new Date()), secureRng), opening: null };
 }
 function loadSync(): SyncInfo | null {
   try { const raw = localStorage.getItem(SYNC_KEY); return raw ? (JSON.parse(raw) as SyncInfo) : null; } catch { return null; }
@@ -240,7 +263,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   const trk = (p: PlayerState, kind: EventKind, n = 1) => track(p, kind, secureRng, parisDay(clock()), finalRank, n);
 
   useEffect(() => {
-    const saved = load();
+    const demo = isDemoPath(window.location.pathname);
+    if (demo) storageKey = DEMO_STORAGE_KEY;
+    const saved = demo ? loadDemo() : load();
     const initial0 = saved ?? { player: createAccount(), opening: null };
     const now0 = Date.now() + (initial0.player.extra?.dayShift ?? 0) * 86_400_000;
     const norm = normalizeState(initial0.player, secureRng, parisDay(new Date(now0)));
@@ -253,7 +278,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     setOpening(initial.opening);
     // compte : sauvegarde ancienne (prototype) avec pseudo → compte local automatique
     let acc: Account | null = null;
-    try { const raw = localStorage.getItem(ACCOUNT_KEY); acc = raw ? (JSON.parse(raw) as Account) : null; } catch { /* ignoré */ }
+    // démo : compte fictif, jamais enregistré ni relié à Supabase
+    if (demo) acc = { email: "", cloud: false, demo: true };
+    else try { const raw = localStorage.getItem(ACCOUNT_KEY); acc = raw ? (JSON.parse(raw) as Account) : null; } catch { /* ignoré */ }
     if (!acc && initial.player.name) acc = { email: "", cloud: false };
     sync.current = acc?.cloud ? loadSync() : null;
     if (acc?.cloud) {
@@ -706,6 +733,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     signOut: async () => {
       const acc = accountRef.current;
+      // démo : pas de compte à déconnecter, on quitte simplement la démo
+      if (acc?.demo) { window.location.assign("/"); return; }
       if (acc?.cloud) { await push(); await disablePush(); await cloudSignOut(); }
       setSync(null);
       saveAccount(null);
@@ -714,6 +743,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     deleteAccount: async () => {
       const acc = accountRef.current;
+      if (acc?.demo) return "Impossible en mode démo.";
       // plus aucun envoi en ligne : la sauvegarde ne doit pas être recréée juste après la suppression
       if (syncTimer.current) clearTimeout(syncTimer.current);
       const s = sync.current;
@@ -783,6 +813,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       const { player: p } = live.current;
       const b = p.boosters[0];
       if (b) commit({ player: p, opening: { boosterId: b.id, kind: b.kind, phase: "closed", cardIds: [], revealed: [], index: 0 } });
+    },
+    demo: !!account?.demo,
+    exitDemo: (toSignup) => {
+      try { localStorage.removeItem(DEMO_STORAGE_KEY); localStorage.removeItem(DEMO_AT_KEY); } catch { /* ignoré */ }
+      window.location.assign(toSignup ? `/#${SIGNUP_HASH}` : "/");
+    },
+    restartDemo: () => {
+      try { localStorage.setItem(DEMO_AT_KEY, String(Date.now())); } catch { /* ignoré */ }
+      commit({ player: demoState(parisDay(new Date()), secureRng), opening: null });
+      say("Démo remise à zéro.");
     },
     guestUsed: guest.used,
     guestCards: guest.cards,

@@ -872,7 +872,7 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 }
 
 /* Pastille GC animée */
-.gc { position: relative; font-variant-numeric: tabular-nums; }
+.gc { position: relative; font-variant-numeric: tabular-nums; white-space: nowrap; flex: none; }
 .gc.up .coin { animation: coinPop .5s cubic-bezier(.2,.9,.3,1.4); }
 @keyframes coinPop { 0% { transform: scale(1); } 40% { transform: scale(1.35) rotate(-12deg); } 100% { transform: scale(1); } }
 .gcdelta { position: absolute; right: 10px; top: calc(100% + 2px); padding: 1px 7px; border-radius: 8px; font-family: var(--display); font-style: italic; font-weight: 800; font-size: 16px; pointer-events: none; animation: deltaFly 1.25s ease-out forwards; z-index: 5; }
@@ -1464,3 +1464,24 @@ h2.section { text-shadow: 0 2px 0 rgba(0,0,0,.35); }
 .fp-prog { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; font-size: 13px; color: #8fe0ff; font-weight: 700; }
 .fp-prog .progress { margin: 0; }
 .fp-prog .progress i { background: linear-gradient(90deg, #3cc4ff, #8fe0ff); }
+
+/* ───────── Mode démo (adresse /demo) : bandeau en haut, les écrans commencent juste dessous ───────── */
+.app.demo { --demo-h: 34px; }
+.app.demo .screen, .app.demo .stage { top: var(--demo-h); }
+.demobar { position: absolute; top: 0; left: 0; right: 0; height: var(--demo-h); z-index: 45; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 14px;
+  background: linear-gradient(90deg, #ffd36b, #ff8a3d 55%, #ff4fa3); color: #0a0d14; font-size: 13px; }
+.demobar b { font-family: var(--display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 15px; letter-spacing: .03em; }
+.demobar span { flex: 1; font-weight: 600; }
+.demobar button { padding: 4px 10px; border-radius: 99px; background: #0a0d14; color: #fff; font-size: 13px; font-weight: 700; white-space: nowrap; }
+
+/* ───────── Accueil : boutons démo / compte, aperçus du jeu, signature ───────── */
+.obcta { display: grid; gap: 10px; }
+.obcta a.btn { text-decoration: none; }
+.obnote { margin: 0; text-align: center; font-size: 13.5px; color: #b4bcd2; }
+.obshots { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; margin: 4px -24px 0; padding: 4px 24px 6px; scrollbar-width: none; }
+.obshots::-webkit-scrollbar { display: none; }
+.obshots figure { flex: none; width: 46%; max-width: 190px; margin: 0; scroll-snap-align: start; }
+.obshots img { display: block; width: 100%; aspect-ratio: 375 / 650; object-fit: cover; object-position: top; border-radius: 16px; border: 1px solid var(--line); background: #0d1220; box-shadow: 0 10px 22px rgba(0,0,0,.4); }
+.obshots figcaption { margin-top: 7px; text-align: center; font-family: var(--display); font-style: italic; font-weight: 800; text-transform: uppercase; font-size: 15px; color: #dfe4f3; }
+.obauth-anchor { scroll-margin-top: 12px; }
+.obcredit { margin: -6px 0 0; text-align: center; font-size: 12.5px; color: #9aa3b8; }

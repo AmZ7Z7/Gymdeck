@@ -124,7 +124,13 @@ function Shell() {
   );
 
   return (
-    <div className="app" id="app-root" onPointerDownCapture={unlockAudio}>
+    <div className={`app ${g.demo ? "demo" : ""}`} id="app-root" onPointerDownCapture={unlockAudio}>
+      {g.demo && (
+        <div className="demobar" role="status">
+          <b>Mode démo</b><span>partie fictive</span>
+          <button onClick={() => g.exitDemo(true)}>Créer un vrai compte</button>
+        </div>
+      )}
       {needsName && g.opening?.guest ? (
         <Opening key={g.opening.boosterId} go={() => g.closeOpening()} />
       ) : needsName ? (
@@ -168,7 +174,8 @@ function Shell() {
             </nav>
           )}
           <TestPanel />
-          {g.extra.tutorialDone && <InstallTip />}
+          {/* pas de conseil d'installation en démo : le visiteur vient juste essayer */}
+          {g.extra.tutorialDone && !g.demo && <InstallTip />}
         </>
       )}
       {g.toast && <div className="toast" role="status" key={g.toast}>{g.toast}</div>}

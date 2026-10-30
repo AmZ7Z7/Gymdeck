@@ -117,13 +117,24 @@ export function Profile({ openPage, go }: { openPage: OpenPage; go: (t: Tab) => 
       </div>
 
       <h2 className="section" style={{ fontSize: 24, margin: "16px 0 8px" }}>Compte</h2>
+      {g.demo ? (
+        // démo : pas d'e-mail, de mot de passe ni de suppression de compte
+        <div className="panel">
+          <div className="kv"><span>Partie de démonstration</span><b>Sur cet appareil</b></div>
+          <button className="btn primary small" style={{ marginTop: 10 }} onClick={() => g.exitDemo(true)}>Créer un vrai compte</button>
+          <button className="btn ghost small" style={{ marginTop: 10 }} onClick={() => g.restartDemo()}>Recommencer la démo</button>
+          <button className="textbtn" style={{ display: "block", margin: "10px auto 0" }} onClick={() => g.exitDemo()}>Quitter la démo</button>
+          <LegalLinks />
+        </div>
+      ) : (
       <div className="panel">
         <div className="kv"><span>{g.account?.email || "Compte test"}</span><b>{g.account?.cloud ? "En ligne" : "Sur cet appareil"}</b></div>
         <button className="btn ghost small" style={{ marginTop: 10 }} onClick={() => setOut(true)}>Se déconnecter</button>
         <button className="textbtn danger" onClick={() => { setDel(true); setDelText(""); setDelErr(null); }}>Supprimer mon compte</button>
         <LegalLinks />
       </div>
-      <p className="warn">GymDeck est gratuit. Les cartes et les GymCoins n’ont aucune valeur en argent et ne peuvent pas être convertis. {g.account?.cloud ? "Tes progrès sont sauvegardés en ligne." : "Les progrès sont enregistrés sur cet appareil pendant le prototype."}</p>
+      )}
+      <p className="warn">GymDeck est gratuit. Les cartes et les GymCoins n’ont aucune valeur en argent et ne peuvent pas être convertis. {g.demo ? "En démo, rien n’est envoyé en ligne : la partie reste sur cet appareil." : g.account?.cloud ? "Tes progrès sont sauvegardés en ligne." : "Les progrès sont enregistrés sur cet appareil pendant le prototype."}</p>
 
 
       {edit && (
