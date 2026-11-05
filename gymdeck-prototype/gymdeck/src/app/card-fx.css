@@ -1,48 +1,77 @@
 /* ═════════ Effets des cartes selon la rareté (composant CardFX) ═════════
-   C : mate · R / SR : bordure colorée + léger reflet · SSR : bordure métallique + reflet qui bouge ·
-   UR / LR : holographique arc-en-ciel animé, lueur, particules, inclinaison.
+   C, R, SR : aucun effet lumineux. À partir de SSR, crescendo :
+   SSR : lumière derrière le personnage, reflet doux sur le cadre, petite lueur ·
+   UR : une lumière fait le tour du cadre, lueur qui respire, quelques étincelles ·
+   LR : deux lumières, halo multicolore, éclats en étoile sur le cadre, étincelles.
+   Aucune lumière ne passe sur l'illustration.
    Uniquement transform / opacity dans les animations : fluide sur un téléphone moyen. */
 
 .cfx { --fx-x: 0; --fx-y: 0; position: relative; isolation: isolate; }
 /* la carte s'incline sous le doigt au lieu de faire défiler la page */
 .cfx-tilt { touch-action: none; }
 .cfx-in { position: relative; transform: perspective(700px) rotateX(calc(var(--fx-y) * -9deg)) rotateY(calc(var(--fx-x) * 11deg)); transition: transform .2s ease-out; }
-/* reflets découpés à la forme de la carte (l'image du cadre sert de masque) */
-.cfx-sheen, .cfx-rainbow { position: absolute; inset: 0; pointer-events: none; overflow: hidden;
-  -webkit-mask-image: var(--fmask); mask-image: var(--fmask); -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
 
 /* C : mate, sobre */
 .cfx-mat .card { filter: saturate(.9) contrast(.97); }
 
-/* R / SR : bordure colorée, léger reflet fixe qui suit un peu l'inclinaison */
-.cfx-rare .cfx-in { filter: drop-shadow(0 0 1.5px var(--rc)) drop-shadow(0 0 7px color-mix(in srgb, var(--rc) 55%, transparent)); }
-.cfx-rare .cfx-sheen::before { content: ""; position: absolute; inset: -30%; mix-blend-mode: screen;
-  background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.22) 48%, transparent 58%);
-  transform: translateX(calc(var(--fx-x) * 14%)); }
+/* Lumière derrière le personnage, entre le cadre et l'illustration */
+.artlight { position: absolute; left: 7%; right: 7%; top: 7%; height: 60%; pointer-events: none; border-radius: 50%; }
+.artlight::after { content: ""; position: absolute; inset: 0; background: radial-gradient(closest-side, color-mix(in srgb, var(--rc) 55%, #fff), color-mix(in srgb, var(--rc) 40%, transparent) 48%, transparent); }
+.artlight-SSR { opacity: .6; }
+.artlight-UR { opacity: .75; }
+.artlight-LR { opacity: .95; }
+.artlight-LR::after { background: radial-gradient(closest-side, #fff, rgba(150,200,255,.55) 45%, transparent); }
+/* LR : calme les traînées multicolores du fond (le cadre et son image restent intacts), la couleur reste sur le bord */
+.artveil { position: absolute; inset: 0; pointer-events: none; background: rgba(9,8,28,.8);
+  clip-path: polygon(6.9% 3.8%, 70% 3.8%, 66% 7.2%, 70.5% 11%, 92.9% 11%, 92.9% 60%, 81% 68%, 6.9% 68%); }
+.cfx-holo .artlight { animation: cfxArtlight 3.4s ease-in-out infinite; }
+@keyframes cfxArtlight { 0%, 100% { transform: scale(.94); } 50% { transform: scale(1.05); } }
 
-/* SSR : bordure métallique, reflet qui balaie la carte */
-.cfx-metal .cfx-in { filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 2px var(--rc)) drop-shadow(0 0 10px color-mix(in srgb, var(--rc) 60%, transparent)); }
-.cfx-metal .cfx-sheen::before { content: ""; position: absolute; top: -20%; bottom: -20%; left: -60%; width: 60%; mix-blend-mode: screen;
-  background: linear-gradient(105deg, transparent, rgba(255,255,255,.08) 30%, rgba(255,255,255,.6) 50%, rgba(255,255,255,.08) 70%, transparent);
-  animation: cfxSweep 3.2s ease-in-out infinite; }
-.cfx-metal .cfx-sheen::after { content: ""; position: absolute; inset: 0; mix-blend-mode: overlay; opacity: .5;
-  background: linear-gradient(160deg, rgba(255,255,255,.35), transparent 35%, rgba(0,0,0,.25) 65%, rgba(255,255,255,.25)); }
-@keyframes cfxSweep { 0%, 30% { transform: translateX(0) skewX(-12deg); } 80%, 100% { transform: translateX(380%) skewX(-12deg); } }
+/* Lumière sur le cadre : le premier masque suit la forme de la carte, le second retire l'intérieur */
+.cfx-rim { position: absolute; inset: 0; pointer-events: none; -webkit-mask-image: var(--fmask); mask-image: var(--fmask); -webkit-mask-size: 100% 100%; mask-size: 100% 100%; mix-blend-mode: screen; }
+.cfx-rim i { position: absolute; inset: 0; display: block; overflow: hidden; box-sizing: border-box; padding: 5.6% 7%;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+.cfx-SSR .cfx-rim i { padding: 4.2% 5.2%; }
 
-/* UR / LR : lueur, holographique arc-en-ciel, particules */
-.cfx-holo .cfx-in { filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 3px var(--rc)); }
-.cfx-aura { position: absolute; inset: -9%; z-index: -1; border-radius: 12%; pointer-events: none;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--rc) 75%, transparent), color-mix(in srgb, var(--rc) 25%, transparent) 60%, transparent);
-  filter: blur(8px); animation: cfxAura 2.6s ease-in-out infinite; }
-@keyframes cfxAura { 0%, 100% { opacity: .65; transform: scale(.97); } 50% { opacity: 1; transform: scale(1.04); } }
-/* « overlay » colore la carte sans éclaircir les zones sombres : pas de brume grise sur le personnage */
-.cfx-holo .cfx-rainbow { mix-blend-mode: overlay; opacity: .55; }
-.cfx-LR .cfx-rainbow { opacity: .65; }
-.cfx-rainbow i { position: absolute; top: -10%; bottom: -10%; left: -100%; width: 300%; display: block;
-  background: repeating-linear-gradient(115deg, #ff3b6b 0%, #ffb020 5%, #f6ff3b 10%, #2dff8a 15%, #3cc4ff 20%, #8a5bff 25%, #ff4fa3 30%, #ff3b6b 33.33%);
-  transform: translateX(calc(var(--fx-x) * 8%)); animation: cfxHolo 6s linear infinite; }
-.cfx-UR .cfx-rainbow i { background: repeating-linear-gradient(115deg, #ffb020 0%, #fff4c2 6%, #ff8a3d 12%, #ffd36b 18%, #3cc4ff 24%, #ffb020 33.33%); }
-@keyframes cfxHolo { from { translate: 0 0; } to { translate: 33.33% 0; } }
+/* SSR : petite lueur, reflet doux qui passe de temps en temps sur le cadre */
+.cfx-metal .cfx-in { filter: drop-shadow(0 0 7px color-mix(in srgb, var(--rc) 45%, transparent)); }
+.cfx-metal .cfx-rim i::before { content: ""; position: absolute; top: -10%; bottom: -10%; left: -50%; width: 50%;
+  background: linear-gradient(105deg, transparent, rgba(255,255,255,.75) 50%, transparent);
+  animation: cfxSweep 5s ease-in-out infinite; }
+@keyframes cfxSweep { 0%, 35% { transform: translateX(0) skewX(-14deg); } 85%, 100% { transform: translateX(320%) skewX(-14deg); } }
+
+/* UR et LR : des lumières font le tour du cadre (un grand cône de lumière qui tourne, visible seulement sur le cadre) */
+.cfx-holo .cfx-rim i::before, .cfx-LR .cfx-rim i::after { content: ""; position: absolute; left: 50%; top: 50%; width: 360%; aspect-ratio: 1; margin: -180% 0 0 -180%; }
+.cfx-holo .cfx-rim i::before { background: conic-gradient(transparent 0 72%, color-mix(in srgb, var(--rc) 60%, transparent) 88%, #fff 98%, transparent 100%);
+  animation: cfxOrbit 4.2s linear infinite; }
+.cfx-LR .cfx-rim i::before { background: conic-gradient(transparent 0 68%, rgba(255,90,200,.7) 84%, #fff 98%, transparent 100%); animation-duration: 3.4s; }
+.cfx-LR .cfx-rim i::after { background: conic-gradient(transparent 0 68%, rgba(70,190,255,.7) 84%, #fff 98%, transparent 100%);
+  animation: cfxOrbit 3.4s linear -1.7s infinite; }
+@keyframes cfxOrbit { to { transform: rotate(360deg); } }
+
+/* Lueur autour de la carte */
+.cfx-holo .cfx-in { filter: drop-shadow(0 0 2px color-mix(in srgb, var(--rc) 70%, #fff)); }
+.cfx-aura { position: absolute; inset: -7%; z-index: -1; border-radius: 12%; pointer-events: none;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--rc) 65%, transparent) 70%, transparent);
+  filter: blur(9px); animation: cfxAura 3.4s ease-in-out infinite; }
+.cfx-LR .cfx-aura { inset: -11%; background: conic-gradient(from 20deg, #ff4fa3, #ffd34a, #3cc4ff, #8a5bff, #ff4fa3);
+  -webkit-mask-image: radial-gradient(closest-side, #000 72%, transparent); mask-image: radial-gradient(closest-side, #000 72%, transparent); filter: blur(11px); }
+@keyframes cfxAura { 0%, 100% { opacity: .55; transform: scale(.98); } 50% { opacity: .95; transform: scale(1.03); } }
+
+/* LR : éclats en étoile qui scintillent sur le cadre */
+.cfx-stars { position: absolute; inset: 0; pointer-events: none; }
+.cfx-stars i { position: absolute; width: 17%; aspect-ratio: 1; margin: -8.5% 0 0 -8.5%; opacity: 0;
+  background: radial-gradient(closest-side, #fff, rgba(255,255,255,.35) 18%, transparent 45%), linear-gradient(90deg, transparent 8%, #fff 50%, transparent 92%) center / 100% 5% no-repeat, linear-gradient(transparent 8%, #fff 50%, transparent 92%) center / 5% 100% no-repeat;
+  animation: cfxStar 3.6s ease-in-out infinite; animation-delay: calc(var(--k) * -.72s); }
+.cfx-stars i:nth-child(1) { left: 6%; top: 5%; }
+.cfx-stars i:nth-child(2) { left: 95%; top: 32%; }
+.cfx-stars i:nth-child(3) { left: 5%; top: 58%; }
+.cfx-stars i:nth-child(4) { left: 93%; top: 94%; }
+.cfx-stars i:nth-child(5) { left: 40%; top: 98%; }
+@keyframes cfxStar { 0%, 62%, 100% { opacity: 0; transform: scale(.3) rotate(0deg); } 78% { opacity: 1; transform: scale(1) rotate(25deg); } }
+
+/* Étincelles qui montent autour de la carte */
 .cfx-sparks { position: absolute; inset: -6% -4%; pointer-events: none; }
 .cfx-sparks i { position: absolute; bottom: 8%; left: calc(6% + var(--k) * 12.5%); width: 5px; height: 5px; border-radius: 50%; opacity: 0;
   background: #fff; box-shadow: 0 0 6px 1px var(--rc);
@@ -52,25 +81,17 @@
 
 @media (prefers-reduced-motion: reduce) {
   .cfx-in { transform: none; transition: none; }
-  .cfx-metal .cfx-sheen::before, .cfx-aura, .cfx-rainbow i { animation: none; }
-  .cfx-metal .cfx-sheen::before { transform: translateX(160%) skewX(-12deg); }
-  .cfx-sparks { display: none; }
+  .cfx-rim, .cfx-stars, .cfx-sparks { display: none; }
+  .cfx-aura, .cfx-holo .artlight { animation: none; opacity: .7; }
 }
 
 /* ═════════ Version légère et fixe (Card dans les grilles et listes) ═════════
-   Mêmes styles, sans animation ni lueur ni particules : des dizaines de cartes à l'écran restent fluides. */
-.fxl-sheen, .fxl-rainbow { position: absolute; inset: 0; pointer-events: none; overflow: hidden;
-  -webkit-mask-image: var(--fmask); mask-image: var(--fmask); -webkit-mask-size: 100% 100%; mask-size: 100% 100%; }
+   Sans animation ni particules : des dizaines de cartes à l'écran restent fluides.
+   Une petite lueur de plus en plus forte selon la rareté, à partir de SSR. */
 .card.fxl-mat > img.frame, .card.fxl-mat .art { filter: saturate(.9) contrast(.97); }
-.card.fxl-rare { filter: drop-shadow(0 0 1px var(--rc)) drop-shadow(0 0 4px color-mix(in srgb, var(--rc) 50%, transparent)); }
-.fxl-rare .fxl-sheen { mix-blend-mode: screen; background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,.2) 48%, transparent 58%); }
-.card.fxl-metal { filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 5px color-mix(in srgb, var(--rc) 60%, transparent)); }
-.fxl-metal .fxl-sheen { mix-blend-mode: screen; background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,.4) 34%, transparent 46%), linear-gradient(160deg, rgba(255,255,255,.2), transparent 35%, transparent 70%, rgba(255,255,255,.15)); }
-.card.fxl-holo { filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 6px var(--rc)); }
-.fxl-rainbow { mix-blend-mode: overlay; opacity: .5;
-  background: repeating-linear-gradient(115deg, #ff3b6b 0%, #ffb020 5%, #f6ff3b 10%, #2dff8a 15%, #3cc4ff 20%, #8a5bff 25%, #ff4fa3 30%, #ff3b6b 33.33%); }
-.fxl-UR .fxl-rainbow { background: repeating-linear-gradient(115deg, #ffb020 0%, #fff4c2 6%, #ff8a3d 12%, #ffd36b 18%, #3cc4ff 24%, #ffb020 33.33%); }
-.fxl-LR .fxl-rainbow { opacity: .6; }
+.card.fxl-metal { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--rc) 50%, transparent)); }
+.card.fxl-UR { filter: drop-shadow(0 0 6px color-mix(in srgb, var(--rc) 70%, transparent)); }
+.card.fxl-LR { filter: drop-shadow(0 0 2px rgba(255,255,255,.8)) drop-shadow(0 0 8px var(--rc)); }
 
 /* ═════════ Ouverture : explosion de lumière de la couleur de la rareté (aperçu) ═════════ */
 .cfx-burst { position: absolute; inset: -40%; pointer-events: none; z-index: -1; border-radius: 50%; opacity: 0;

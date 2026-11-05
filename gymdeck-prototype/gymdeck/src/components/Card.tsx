@@ -32,9 +32,12 @@ export function Card({ card, count, holo = true, cap = true, hideStats = false }
   return (
     <div
       className={`card ${card.grade ? "graded" : ""} ${holo ? `fxl fxl-${tier} fxl-${card.rarity}` : ""}`}
-      style={holo ? { ["--rc" as string]: color, ["--fmask" as string]: `url(/assets/frames/${card.rarity}.webp)` } : undefined}
+      style={{ ["--rc" as string]: color, ...(holo ? { ["--fmask" as string]: `url(/assets/frames/${card.rarity}.webp)` } : {}) }}
     >
       <img className="frame" src={`/assets/frames/${card.rarity}.webp`} alt="" draggable={false} decoding="async" />
+      {/* lumière derrière le personnage, à partir de SSR : elle ne colore pas l'illustration */}
+      {card.rarity === "LR" && <span className="artveil" aria-hidden />}
+      {(tier === "metal" || tier === "holo") && <span className={`artlight artlight-${card.rarity}`} aria-hidden />}
       <img
         className="art"
         src={ex.image}
@@ -88,8 +91,6 @@ export function Card({ card, count, holo = true, cap = true, hideStats = false }
           </>
         )}
       </div>
-      {holo && tier !== "mat" && <span className="fxl-sheen" aria-hidden />}
-      {holo && tier === "holo" && <span className="fxl-rainbow" aria-hidden />}
       {count && count > 1 ? <span className="count">×{count}</span> : null}
     </div>
   );

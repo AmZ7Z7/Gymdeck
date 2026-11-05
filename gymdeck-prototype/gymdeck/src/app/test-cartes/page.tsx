@@ -15,7 +15,7 @@ const DEMO: CardData[] = [
   { exerciseSlug: "developpe-incline", rarity: "UR", atq: 1104, def: 966, passive: { type: "ATQ", atqTenths: 36, defTenths: 0 } },
   { exerciseSlug: "leg-extension", rarity: "LR", atq: 1560, def: 1490, passive: { type: "BOTH", atqTenths: 31, defTenths: 29 } },
 ];
-const LABEL: Record<string, string> = { C: "Commune · mate", R: "Rare · bordure colorée", SR: "Rare · bordure colorée", SSR: "Très rare · bordure métallique", UR: "Haute rareté · holographique", LR: "Rareté maximale · holographique" };
+const LABEL: Record<string, string> = { C: "Commune · sans effet", R: "Rare · sans effet", SR: "Rare · sans effet", SSR: "Très rare · reflet sur le cadre", UR: "Haute rareté · lumière autour du cadre", LR: "Rareté maximale · deux lumières, halo, éclats" };
 
 export default function TestCartes() {
   const [run, setRun] = useState(0);

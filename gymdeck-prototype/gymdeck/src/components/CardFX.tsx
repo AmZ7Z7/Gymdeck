@@ -8,15 +8,17 @@ import { Card, fxTier } from "./Card";
 const reduced = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /**
- * Carte avec l'effet de sa rareté :
- * C mate · R/SR bordure colorée et léger reflet · SSR bordure métallique et reflet qui bouge ·
- * UR/LR holographique arc-en-ciel animé, lueur, particules, et inclinaison (souris, doigt ou gyroscope).
- * Tout en CSS ; le JS ne sert qu'à l'inclinaison.
+ * Carte avec l'effet de sa rareté. C, R, SR : aucun effet lumineux.
+ * À partir de SSR, crescendo : SSR reflet doux sur le cadre · UR lumière qui fait le tour du cadre, lueur, étincelles ·
+ * LR deux lumières, halo multicolore, éclats en étoile, étincelles. La lumière ne passe jamais sur l'illustration.
+ * Tout en CSS ; le JS ne sert qu'à l'inclinaison (souris, doigt ou gyroscope).
  */
 export function CardFX({ card, tilt = true, className = "" }: { card: CardData; tilt?: boolean; className?: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const tier = fxTier(card.rarity);
   const moving = tilt && tier !== "mat";
+  const top = tier === "holo";
+  const lit = tier === "metal" || top;
 
   useEffect(() => {
     const el = ref.current;
@@ -55,16 +57,20 @@ export function CardFX({ card, tilt = true, className = "" }: { card: CardData; 
       onPointerLeave={leave}
       onPointerUp={leave}
     >
-      {tier === "holo" && <span className="cfx-aura" aria-hidden />}
+      {top && <span className="cfx-aura" aria-hidden />}
       <div className="cfx-in">
-        {/* l'effet maison remplace l'ancien reflet doré / arc-en-ciel du cadre */}
         <Card card={card} holo={false} />
-        {tier !== "mat" && <span className="cfx-sheen" aria-hidden />}
-        {tier === "holo" && <span className="cfx-rainbow" aria-hidden><i /></span>}
+        {/* la lumière reste sur le cadre : le masque découpe la forme de la carte, puis retire l'intérieur */}
+        {lit && <span className="cfx-rim" aria-hidden><i /></span>}
+        {card.rarity === "LR" && (
+          <span className="cfx-stars" aria-hidden>
+            {Array.from({ length: 5 }, (_, k) => <i key={k} style={{ ["--k" as string]: k }} />)}
+          </span>
+        )}
       </div>
-      {tier === "holo" && (
+      {top && (
         <span className="cfx-sparks" aria-hidden>
-          {Array.from({ length: 8 }, (_, k) => <i key={k} style={{ ["--k" as string]: k }} />)}
+          {Array.from({ length: card.rarity === "LR" ? 8 : 4 }, (_, k) => <i key={k} style={{ ["--k" as string]: k * (card.rarity === "LR" ? 1 : 2) }} />)}
         </span>
       )}
     </div>

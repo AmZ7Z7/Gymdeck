@@ -26,7 +26,7 @@ const FAN: CardData[] = [
 const SHOTS = [
   { src: "/assets/landing/ouverture.jpg", label: "Ouvre tes boosters", alt: "Ouverture d’un booster : une carte légendaire apparaît" },
   { src: "/assets/landing/collection.jpg", label: "Complète ta collection", alt: "La collection de cartes, classées par groupe musculaire" },
-  { src: "/assets/landing/holo.jpg", label: "Des cartes holographiques", alt: "Une carte rare holographique en gros plan" },
+  { src: "/assets/landing/holo.jpg", label: "Des cartes qui brillent", alt: "Une carte rare lumineuse en gros plan" },
   { src: "/assets/landing/marche.jpg", label: "Le Marché aux enchères", alt: "Le Marché, où les cartes se vendent aux enchères" },
 ];
 
